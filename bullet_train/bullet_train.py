@@ -25,20 +25,14 @@ class BulletTrain:
         :param identity: application's unique identifier for the user to check feature states
         :return: list of dictionaries representing feature states for environment / identity
         """
-        try:
-            headers = self._generate_header_content()
-            if identity:
-                response = requests.get(self.flags_endpoint + identity, headers=headers)
-            else:
-                response = requests.get(self.flags_endpoint, headers=headers)
+        if identity:
+            data = self._get_flags_response(identity=identity)
+        else:
+            data = self._get_flags_response()
 
-            if response.status_code == 200:
-                return response.json()
-            else:
-                print("Failed to get flags for environment.")
-
-        except Exception as e:
-            print("Error was: " + e.message)
+        if data:
+            return data
+        else:
             print("Failed to get flags for environment.")
 
     def get_flags_for_user(self, identity):
@@ -57,12 +51,12 @@ class BulletTrain:
         :param feature_name: name of feature to test existence of
         :return: True if exists, False if not.
         """
-        response = self._get_flag_response(feature_name)
+        data = self._get_flags_response(feature_name)
 
-        if response.status_code != 200:
-            return False
+        if data:
+            return True
 
-        return True
+        return False
 
     def feature_enabled(self, feature_name, identity=None):
         """
@@ -75,10 +69,10 @@ class BulletTrain:
         if not feature_name:
             return None
 
-        response = self._get_flag_response(feature_name, identity)
+        data = self._get_flags_response(feature_name, identity)
 
-        if response.status_code == 200:
-            return response.json()['enabled']
+        if data:
+            return data['enabled']
         else:
             return None
 
@@ -93,30 +87,44 @@ class BulletTrain:
         if not feature_name:
             return None
 
-        response = self._get_flag_response(feature_name, identity)
+        data = self._get_flags_response(feature_name, identity)
 
-        if response.status_code == 200:
-            return response.json()['feature_state_value']
+        if data:
+            return data['feature_state_value']
         else:
             return None
 
-    def _get_flag_response(self, feature_name, identity=None):
+    def _get_flags_response(self, feature_name=None, identity=None):
         """
         Private helper method to hit the flags endpoint
 
         :param feature_name: name of feature to determine value of (must match 'ID' on bullet-train.io)
         :param identity: (optional) application's unique identifier for the user to check feature state
-        :return: response object from hitting flags endpoint
+        :return: data returned by API if successful, None if not.
         """
-        params = {"feature": feature_name}
+        params = {"feature": feature_name} if feature_name else {}
 
-        if identity:
-            response = requests.get(self.flags_endpoint + identity, params=params,
-                                    headers=self._generate_header_content())
-        else:
-            response = requests.get(self.flags_endpoint, params=params,
-                                    headers=self._generate_header_content())
-        return response
+        try:
+            if identity:
+                response = requests.get(self.flags_endpoint + identity, params=params,
+                                        headers=self._generate_header_content())
+            else:
+                response = requests.get(self.flags_endpoint, params=params,
+                                        headers=self._generate_header_content())
+
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    return data
+                else:
+                    print("API didn't return any data")
+                    return None
+            else:
+                return None
+
+        except Exception as e:
+            print("Got error getting response from API. Error message was " + e.message)
+            return None
 
     def _generate_header_content(self, headers={}):
         """
