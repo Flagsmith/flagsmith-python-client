@@ -1,0 +1,24 @@
+Metadata-Version: 1.1
+Name: bullet-train
+Version: 0.0.1
+Summary: Bullet Train Python SDK
+Home-page: https://github.com/solidstategroup/bullet-train-python-client
+Author: Solid State Group
+Author-email: bullettrain@solidstategroup.com
+License: BSD3
+Description: Bullet Train Python SDK
+Keywords: feature,flag,bullet,train,remote,config
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.0
+Classifier: Programming Language :: Python :: 3.1
+Classifier: Programming Language :: Python :: 3.2
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
