@@ -1,11 +1,15 @@
 from setuptools import setup
 
+with open("Readme.md", "r") as readme:
+    long_description = readme.read()
+
 setup(
     name="bullet-train",
-    version="1.0.0",
+    version="1.0.1",
     packages=["bullet_train"],
     description="Bullet Train Python SDK",
-    long_description="Bullet Train Python SDK",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Solid State Group",
     author_email="bullettrain@solidstategroup.com",
     license="BSD3",
