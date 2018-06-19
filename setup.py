@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="bullet-train",
-    version="0.0.1",
+    version="1.0.0",
     packages=["bullet_train"],
     description="Bullet Train Python SDK",
     long_description="Bullet Train Python SDK",
@@ -12,7 +12,7 @@ setup(
     url="https://github.com/solidstategroup/bullet-train-python-client",
     keywords=["feature", "flag", "bullet", "train", "remote", "config"],
     install_requires=[
-        'requests',
+        'requests>=2.19.1',
     ],
     classifiers=[
         'License :: OSI Approved :: BSD License',
