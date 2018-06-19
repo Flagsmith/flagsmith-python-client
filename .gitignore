@@ -2,3 +2,5 @@
 .venv
 
 *.pyc
+
+build/
