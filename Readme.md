@@ -11,7 +11,9 @@ These instructions will get you a copy of the project up and running on your loc
 ## Installing
 
 ### VIA pip
-// todo
+```
+pip install bullet-train
+```
 	
 ## Usage
 **Retrieving feature flags for your project**
