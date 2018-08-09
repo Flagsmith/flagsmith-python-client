@@ -1,4 +1,8 @@
+import logging
 import requests
+
+
+logger = logging.getLogger(__name__)
 
 SERVER_URL = 'https://api.bullet-train.io/api'
 FLAGS_ENDPOINT = '{}/v1/flags/'
@@ -117,13 +121,13 @@ class BulletTrain:
                 if data:
                     return data
                 else:
-                    print("API didn't return any data")
+                    logger.error("API didn't return any data")
                     return None
             else:
                 return None
 
         except Exception as e:
-            print("Got error getting response from API. Error message was " + e.message)
+            logger.error("Got error getting response from API. Error message was " + e.message)
             return None
 
     def _generate_header_content(self, headers={}):
