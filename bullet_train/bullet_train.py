@@ -111,13 +111,10 @@ class BulletTrain:
         :param identity: application's unique identifier for the user to check feature state
         :return: Trait value. None otherwise.
         """
-        if not trait_key:
+        if not all([trait_key, identity]):
             return None
-
-        if not identity:
-            return None
-
-        data = self._get_flags_response(None, identity)
+    
+        data = self._get_flags_response(identity=identity, feature_name=None)
 
         traits = data['traits']
         for trait in traits:
@@ -133,15 +130,9 @@ class BulletTrain:
         :param trait_value: value of trait
         :param identity: application's unique identifier for the user to check feature state
         """
-        if not trait_key:
+        if not all([trait_key, trait_value, identity]):
             return None
-
-        if not trait_value:
-            return None
-
-        if not identity:
-            return None
-
+        
         identifier = {}
         identifier['identifier'] = identity
         payload = {}
@@ -152,8 +143,6 @@ class BulletTrain:
         r = requests.post(self.traits_endpoint, 
                       json=payload, 
                       headers=self._generate_header_content())
-        logging.warning(r)
-
 
     def _get_flags_response(self, feature_name=None, identity=None):
         """
