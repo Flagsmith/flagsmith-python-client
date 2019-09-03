@@ -35,6 +35,10 @@ if bt.has_feature("header"):
 value = bt.get_value("header", '<My User Id>')
 
 value = bt.get_value("header")
+
+bt.set_trait("accept-cookies", "true", "ben@bullet-train.io"))
+bt.get_trait("accept-cookies", "ben@bullet-train.io"))
+
 ```
 
 **Available Options**
