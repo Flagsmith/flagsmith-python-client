@@ -1,11 +1,14 @@
 import logging
 import requests
+import json
 
 
 logger = logging.getLogger(__name__)
 
 SERVER_URL = 'https://api.bullet-train.io/api'
 FLAGS_ENDPOINT = '{}/v1/flags/'
+IDENTITY_ENDPOINT = '{}/v1/identities/'
+TRAIT_ENDPOINT = '{}/v1/traits/'
 
 
 class BulletTrain:
@@ -19,6 +22,8 @@ class BulletTrain:
         self.environment_id = environment_id
         self.api = api
         self.flags_endpoint = FLAGS_ENDPOINT.format(api)
+        self.identities_endpoint = IDENTITY_ENDPOINT.format(api)
+        self.traits_endpoint = TRAIT_ENDPOINT.format(api)
 
     def get_flags(self, identity=None):
         """
@@ -98,6 +103,47 @@ class BulletTrain:
         else:
             return None
 
+    def get_trait(self, trait_key, identity):
+        """
+        Get value of given trait for the identity of an environment.
+
+        :param trait_key: key of trait to determine value of (must match 'ID' on bullet-train.io)
+        :param identity: application's unique identifier for the user to check feature state
+        :return: Trait value. None otherwise.
+        """
+        if not all([trait_key, identity]):
+            return None
+    
+        data = self._get_flags_response(identity=identity, feature_name=None)
+
+        traits = data['traits']
+        for trait in traits:
+            if trait.get('trait_key') == trait_key:
+                return trait.get('trait_value')
+
+    def set_trait(self, trait_key, trait_value, identity):
+        """
+        Set value of given trait for the identity of an environment. Note that this will lazily create
+        a new trait if the trait_key has not been seen before for this identity
+
+        :param trait_key: key of trait
+        :param trait_value: value of trait
+        :param identity: application's unique identifier for the user to check feature state
+        """
+        if not all([trait_key, trait_value, identity]):
+            return None
+        
+        identifier = {}
+        identifier['identifier'] = identity
+        payload = {}
+        payload['identity'] = identifier
+        payload['trait_key'] = trait_key
+        payload['trait_value'] = trait_value
+        
+        r = requests.post(self.traits_endpoint, 
+                      json=payload, 
+                      headers=self._generate_header_content())
+
     def _get_flags_response(self, feature_name=None, identity=None):
         """
         Private helper method to hit the flags endpoint
@@ -110,7 +156,8 @@ class BulletTrain:
 
         try:
             if identity:
-                response = requests.get(self.flags_endpoint + identity, params=params,
+                response = requests.get(self.identities_endpoint + "/?identifier=" + identity, 
+                                        params=params,
                                         headers=self._generate_header_content())
             else:
                 response = requests.get(self.flags_endpoint, params=params,
