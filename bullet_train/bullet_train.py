@@ -1,7 +1,6 @@
 import logging
-import requests
-import json
 
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ class BulletTrain:
         """
         if not all([trait_key, identity]):
             return None
-    
+
         data = self._get_flags_response(identity=identity, feature_name=None)
 
         traits = data['traits']
@@ -132,16 +131,17 @@ class BulletTrain:
         """
         if not all([trait_key, trait_value, identity]):
             return None
-        
-        identifier = {}
-        identifier['identifier'] = identity
-        payload = {}
-        payload['identity'] = identifier
-        payload['trait_key'] = trait_key
-        payload['trait_value'] = trait_value
-        
-        r = requests.post(self.traits_endpoint, 
-                      json=payload, 
+
+        payload = {
+            'identity': {
+                'identifier': identity
+            },
+            'trait_key': trait_key,
+            'trait_value': trait_value
+        }
+
+        requests.post(self.traits_endpoint,
+                      json=payload,
                       headers=self._generate_header_content())
 
     def _get_flags_response(self, feature_name=None, identity=None):
@@ -156,7 +156,7 @@ class BulletTrain:
 
         try:
             if identity:
-                response = requests.get(self.identities_endpoint + "/?identifier=" + identity, 
+                response = requests.get(self.identities_endpoint + "/?identifier=" + identity,
                                         params=params,
                                         headers=self._generate_header_content())
             else:
