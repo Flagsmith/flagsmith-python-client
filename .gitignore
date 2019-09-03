@@ -4,3 +4,6 @@
 *.pyc
 
 build/
+
+.vscode/
+.python-version
