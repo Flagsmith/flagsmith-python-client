@@ -174,7 +174,7 @@ class BulletTrain:
                 return None
 
         except Exception as e:
-            logger.error("Got error getting response from API. Error message was " + e.message)
+            logger.error("Got error getting response from API. Error message was %s" % e)
             return None
 
     def _generate_header_content(self, headers={}):
