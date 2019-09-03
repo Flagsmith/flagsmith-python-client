@@ -156,8 +156,8 @@ class BulletTrain:
 
         try:
             if identity:
-                response = requests.get(self.identities_endpoint + "/?identifier=" + identity,
-                                        params=params,
+                params['identifier'] = identity
+                response = requests.get(self.identities_endpoint, params=params,
                                         headers=self._generate_header_content())
             else:
                 response = requests.get(self.flags_endpoint, params=params,
