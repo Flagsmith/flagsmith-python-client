@@ -41,7 +41,7 @@ class BulletTrain:
         if data:
             return data
         else:
-            print("Failed to get flags for environment.")
+            logger.error("Failed to get flags for environment.")
 
     def get_flags_for_user(self, identity):
         """
