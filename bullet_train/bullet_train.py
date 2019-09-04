@@ -90,7 +90,7 @@ class BulletTrain:
 
         :param feature_name: name of feature to determine value of (must match 'ID' on bullet-train.io)
         :param identity: (optional) application's unique identifier for the user to check feature state
-        :return: True / False if feature exists. None otherwise.
+        :return: value of the feature state if feature exists, None otherwise
         """
         if not feature_name:
             return None
