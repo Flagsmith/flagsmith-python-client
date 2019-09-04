@@ -80,7 +80,12 @@ class BulletTrain:
         data = self._get_flags_response(feature_name, identity)
 
         if data:
-            return data['enabled']
+            if data.get('flags'):
+                for flag in data.get('flags'):
+                    if flag['feature']['name'] == feature_name:
+                        return flag['enabled']
+            else:
+                return data['enabled']
         else:
             return None
 
@@ -98,7 +103,14 @@ class BulletTrain:
         data = self._get_flags_response(feature_name, identity)
 
         if data:
-            return data['feature_state_value']
+            # using new endpoints means that the flags come back in a list, filter this for the one we want and
+            # return it's value
+            if data.get('flags'):
+                for flag in data.get('flags'):
+                    if flag['feature']['name'] == feature_name:
+                        return flag['feature_state_value']
+            else:
+                return data['feature_state_value']
         else:
             return None
 
