@@ -4,6 +4,8 @@
 *.pyc
 
 build/
+dist/
+bullet_train.egg-info/
 
 .vscode/
 .python-version

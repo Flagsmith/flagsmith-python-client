@@ -11,6 +11,7 @@ These instructions will get you a copy of the project up and running on your loc
 ## Installing
 
 ### VIA pip
+
 ```
 pip install bullet-train
 ```
@@ -19,7 +20,8 @@ pip install bullet-train
 **Retrieving feature flags for your project**
 
 **For full documentation visit [https://docs.bullet-train.io](https://docs.bullet-train.io)**
-```python
+
+```
 from bullet_train import BulletTrain;
 
 bt = BulletTrain(environment_id="<YOUR_ENVIRONMENT_KEY>")
@@ -38,7 +40,6 @@ value = bt.get_value("header")
 
 bt.set_trait("accept-cookies", "true", "ben@bullet-train.io"))
 bt.get_trait("accept-cookies", "ben@bullet-train.io"))
-
 ```
 
 **Available Options**
