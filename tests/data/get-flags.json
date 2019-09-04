@@ -1,0 +1,19 @@
+[
+    {
+        "id": 1,
+        "feature": {
+            "id": 1,
+            "name": "test",
+            "created_date": "2019-08-27T14:53:45.698555Z",
+            "initial_value": null,
+            "description": null,
+            "default_enabled": false,
+            "type": "FLAG",
+            "project": 1
+        },
+        "feature_state_value": null,
+        "enabled": false,
+        "environment": 1,
+        "identity": null
+    }
+]
