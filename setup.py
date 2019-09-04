@@ -5,7 +5,7 @@ with open("Readme.md", "r") as readme:
 
 setup(
     name="bullet-train",
-    version="1.0.1",
+    version="1.0.3",
     packages=["bullet_train"],
     description="Bullet Train Python SDK",
     long_description=long_description,
