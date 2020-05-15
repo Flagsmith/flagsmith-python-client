@@ -141,7 +141,8 @@ class BulletTrain:
         :param trait_value: value of trait
         :param identity: application's unique identifier for the user to check feature state
         """
-        if not all([trait_key, trait_value, identity]):
+        values = [trait_key, trait_value, identity]
+        if None in values or '' in values:
             return None
 
         payload = {
