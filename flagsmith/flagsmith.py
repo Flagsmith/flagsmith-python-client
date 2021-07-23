@@ -4,10 +4,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SERVER_URL = 'https://api.flagsmith.com/api'
-FLAGS_ENDPOINT = '{}/v1/flags/'
-IDENTITY_ENDPOINT = '{}/v1/identities/'
-TRAIT_ENDPOINT = '{}/v1/traits/'
+SERVER_URL = 'https://api.flagsmith.com/api/v1/'
+FLAGS_ENDPOINT = 'flags/'
+IDENTITY_ENDPOINT = 'identities/'
+TRAIT_ENDPOINT = 'traits/'
 
 
 class Flagsmith:
@@ -20,9 +20,9 @@ class Flagsmith:
         """
         self.environment_id = environment_id
         self.api = api
-        self.flags_endpoint = FLAGS_ENDPOINT.format(api)
-        self.identities_endpoint = IDENTITY_ENDPOINT.format(api)
-        self.traits_endpoint = TRAIT_ENDPOINT.format(api)
+        self.flags_endpoint = api + FLAGS_ENDPOINT
+        self.identities_endpoint = api+ IDENTITY_ENDPOINT
+        self.traits_endpoint = api + TRAIT_ENDPOINT
 
     def get_flags(self, identity=None):
         """
