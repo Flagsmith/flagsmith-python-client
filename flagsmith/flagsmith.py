@@ -4,10 +4,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SERVER_URL = 'https://api.flagsmith.com/api/v1/'
-FLAGS_ENDPOINT = 'flags/'
-IDENTITY_ENDPOINT = 'identities/'
-TRAIT_ENDPOINT = 'traits/'
+SERVER_URL = "https://api.flagsmith.com/api/v1/"
+FLAGS_ENDPOINT = "flags/"
+IDENTITY_ENDPOINT = "identities/"
+TRAIT_ENDPOINT = "traits/"
 
 
 class Flagsmith:
@@ -21,7 +21,7 @@ class Flagsmith:
         self.environment_id = environment_id
         self.api = api
         self.flags_endpoint = api + FLAGS_ENDPOINT
-        self.identities_endpoint = api+ IDENTITY_ENDPOINT
+        self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
 
     def get_flags(self, identity=None):
@@ -80,12 +80,12 @@ class Flagsmith:
         data = self._get_flags_response(feature_name, identity)
 
         if data:
-            if data.get('flags'):
-                for flag in data.get('flags'):
-                    if flag['feature']['name'] == feature_name:
-                        return flag['enabled']
+            if data.get("flags"):
+                for flag in data.get("flags"):
+                    if flag["feature"]["name"] == feature_name:
+                        return flag["enabled"]
             else:
-                return data['enabled']
+                return data["enabled"]
         else:
             return None
 
@@ -105,12 +105,12 @@ class Flagsmith:
         if data:
             # using new endpoints means that the flags come back in a list, filter this for the one we want and
             # return it's value
-            if data.get('flags'):
-                for flag in data.get('flags'):
-                    if flag['feature']['name'] == feature_name:
-                        return flag['feature_state_value']
+            if data.get("flags"):
+                for flag in data.get("flags"):
+                    if flag["feature"]["name"] == feature_name:
+                        return flag["feature_state_value"]
             else:
-                return data['feature_state_value']
+                return data["feature_state_value"]
         else:
             return None
 
@@ -127,10 +127,10 @@ class Flagsmith:
 
         data = self._get_flags_response(identity=identity, feature_name=None)
 
-        traits = data['traits']
+        traits = data["traits"]
         for trait in traits:
-            if trait.get('trait_key') == trait_key:
-                return trait.get('trait_value')
+            if trait.get("trait_key") == trait_key:
+                return trait.get("trait_value")
 
     def set_trait(self, trait_key, trait_value, identity):
         """
@@ -142,20 +142,18 @@ class Flagsmith:
         :param identity: application's unique identifier for the user to check feature state
         """
         values = [trait_key, trait_value, identity]
-        if None in values or '' in values:
+        if None in values or "" in values:
             return None
 
         payload = {
-            'identity': {
-                'identifier': identity
-            },
-            'trait_key': trait_key,
-            'trait_value': trait_value
+            "identity": {"identifier": identity},
+            "trait_key": trait_key,
+            "trait_value": trait_value,
         }
 
-        requests.post(self.traits_endpoint,
-                      json=payload,
-                      headers=self._generate_header_content())
+        requests.post(
+            self.traits_endpoint, json=payload, headers=self._generate_header_content()
+        )
 
     def _get_flags_response(self, feature_name=None, identity=None):
         """
@@ -169,12 +167,18 @@ class Flagsmith:
 
         try:
             if identity:
-                params['identifier'] = identity
-                response = requests.get(self.identities_endpoint, params=params,
-                                        headers=self._generate_header_content())
+                params["identifier"] = identity
+                response = requests.get(
+                    self.identities_endpoint,
+                    params=params,
+                    headers=self._generate_header_content(),
+                )
             else:
-                response = requests.get(self.flags_endpoint, params=params,
-                                        headers=self._generate_header_content())
+                response = requests.get(
+                    self.flags_endpoint,
+                    params=params,
+                    headers=self._generate_header_content(),
+                )
 
             if response.status_code == 200:
                 data = response.json()
@@ -187,7 +191,9 @@ class Flagsmith:
                 return None
 
         except Exception as e:
-            logger.error("Got error getting response from API. Error message was %s" % e)
+            logger.error(
+                "Got error getting response from API. Error message was %s" % e
+            )
             return None
 
     def _generate_header_content(self, headers={}):
@@ -197,5 +203,5 @@ class Flagsmith:
         :param headers: (optional) dictionary of other required header values
         :return: dictionary with required environment header appended to it
         """
-        headers['X-Environment-Key'] = self.environment_id
+        headers["X-Environment-Key"] = self.environment_id
         return headers
