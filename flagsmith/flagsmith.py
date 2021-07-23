@@ -4,7 +4,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SERVER_URL = 'https://api.bullet-train.io/api'
+SERVER_URL = 'https://api.flagsmith.com/api'
 FLAGS_ENDPOINT = '{}/v1/flags/'
 IDENTITY_ENDPOINT = '{}/v1/identities/'
 TRAIT_ENDPOINT = '{}/v1/traits/'
