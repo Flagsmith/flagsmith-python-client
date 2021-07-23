@@ -5,7 +5,7 @@ with open("Readme.md", "r") as readme:
 
 setup(
     name="flagsmith",
-    version="2.0.0",
+    version="2.0.1",
     packages=["flagsmith"],
     description="Flagsmith Python SDK",
     long_description=long_description,
