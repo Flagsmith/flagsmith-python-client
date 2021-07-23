@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest==5.1.2
+black
+pre-commit
