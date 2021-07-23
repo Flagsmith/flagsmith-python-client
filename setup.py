@@ -4,17 +4,17 @@ with open("Readme.md", "r") as readme:
     long_description = readme.read()
 
 setup(
-    name="bullet-train",
-    version="1.0.5",
-    packages=["bullet_train"],
-    description="Bullet Train Python SDK",
+    name="flagsmith",
+    version="2.0.0",
+    packages=["flagsmith"],
+    description="Flagsmith Python SDK",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Solid State Group",
-    author_email="bullettrain@solidstategroup.com",
+    author="Bullet Train Ltd",
+    author_email="supoprt@flagsmith.com",
     license="BSD3",
-    url="https://github.com/solidstategroup/bullet-train-python-client",
-    keywords=["feature", "flag", "bullet", "train", "remote", "config"],
+    url="https://github.com/Flagsmith/flagsmith-python-client",
+    keywords=["feature", "flag", "flagsmith", "remote", "config"],
     install_requires=[
         'requests>=2.19.1',
     ],
