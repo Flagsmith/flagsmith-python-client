@@ -13,9 +13,9 @@ TRAIT_ENDPOINT = '{}/v1/traits/'
 class Flagsmith:
     def __init__(self, environment_id, api=SERVER_URL):
         """
-        Initialise bullet train environment.
+        Initialise Flagsmith environment.
 
-        :param environment_id: environment key obtained from bullet train UI
+        :param environment_id: environment key obtained from the Flagsmith UI
         :param api: (optional) api url to override when using self hosted version
         """
         self.environment_id = environment_id
