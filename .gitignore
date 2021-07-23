@@ -10,3 +10,6 @@ flagsmith.egg-info/
 
 .vscode/
 .python-version
+
+.envrc
+.tool-versions
