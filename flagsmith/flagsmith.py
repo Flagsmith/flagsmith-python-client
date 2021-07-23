@@ -10,7 +10,7 @@ IDENTITY_ENDPOINT = '{}/v1/identities/'
 TRAIT_ENDPOINT = '{}/v1/traits/'
 
 
-class BulletTrain:
+class Flagsmith:
     def __init__(self, environment_id, api=SERVER_URL):
         """
         Initialise bullet train environment.
@@ -70,7 +70,7 @@ class BulletTrain:
         """
         Get enabled state of given feature for an environment.
 
-        :param feature_name: name of feature to determine if enabled (must match 'ID' on bullet-train.io)
+        :param feature_name: name of feature to determine if enabled (must match 'ID' on flagsmith.com)
         :param identity: (optional) application's unique identifier for the user to check feature state
         :return: True / False if feature exists. None otherwise.
         """
@@ -93,7 +93,7 @@ class BulletTrain:
         """
         Get value of given feature for an environment.
 
-        :param feature_name: name of feature to determine value of (must match 'ID' on bullet-train.io)
+        :param feature_name: name of feature to determine value of (must match 'ID' on flagsmith.com)
         :param identity: (optional) application's unique identifier for the user to check feature state
         :return: value of the feature state if feature exists, None otherwise
         """
@@ -118,7 +118,7 @@ class BulletTrain:
         """
         Get value of given trait for the identity of an environment.
 
-        :param trait_key: key of trait to determine value of (must match 'ID' on bullet-train.io)
+        :param trait_key: key of trait to determine value of (must match 'ID' on flagsmith.com)
         :param identity: application's unique identifier for the user to check feature state
         :return: Trait value. None otherwise.
         """
@@ -161,7 +161,7 @@ class BulletTrain:
         """
         Private helper method to hit the flags endpoint
 
-        :param feature_name: name of feature to determine value of (must match 'ID' on bullet-train.io)
+        :param feature_name: name of feature to determine value of (must match 'ID' on flagsmith.com)
         :param identity: (optional) application's unique identifier for the user to check feature state
         :return: data returned by API if successful, None if not.
         """
