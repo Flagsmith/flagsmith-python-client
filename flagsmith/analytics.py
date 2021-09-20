@@ -2,17 +2,21 @@ import logging
 from collections import UserDict
 from datetime import datetime
 
-import requests
+from requests_futures.sessions import FuturesSession
 
 logger = logging.getLogger(__name__)
 
 ANALYTICS_ENDPOINT = "analytics/flags/"
+
+# Used to control how often we send data(in seconds)
 ANALYTICS_TIMER = 10
+
+session = FuturesSession()
 
 
 class AnalyticsProc(UserDict):
     """
-    AnalyticsProc is you to track how often individual Flags are evaluated within the Flagsmith SDK
+    AnalyticsProc is usedd to track how often individual Flags are evaluated within the Flagsmith SDK
     docs: https://docs.flagsmith.com/advanced-use/flag-analytics
     """
 
@@ -37,12 +41,13 @@ class AnalyticsProc(UserDict):
 
     def flush(self):
         try:
-            requests.post(
+            session.post(
                 self.analytics_endpoint,
                 data=self.data,
                 timeout=5,
                 headers={"X-Environment-Key": self.environment_id},
             )
+
         except Exception as e:
             logger.error("Failed to send anaytics data. Error message was %s" % e)
 
