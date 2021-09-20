@@ -16,7 +16,7 @@ session = FuturesSession()
 
 class AnalyticsProc(UserDict):
     """
-    AnalyticsProc is usedd to track how often individual Flags are evaluated within the Flagsmith SDK
+    AnalyticsProc is used to track how often individual Flags are evaluated within the Flagsmith SDK
     docs: https://docs.flagsmith.com/advanced-use/flag-analytics
     """
 
