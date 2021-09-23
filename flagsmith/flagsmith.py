@@ -17,7 +17,7 @@ class Flagsmith:
 
         :param environment_id: environment key obtained from the Flagsmith UI
         :param api: (optional) api url to override when using self hosted version
-        :param headers: (optional) headers dictionary which will be passed in headers for each api call made to flagsmith
+        :param headers: (optional) dict which will be passed in headers for each api call
         """
         self.environment_id = environment_id
         self.api = api
