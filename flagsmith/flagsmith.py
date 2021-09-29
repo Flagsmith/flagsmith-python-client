@@ -196,12 +196,14 @@ class Flagsmith:
             )
             return None
 
-    def _generate_header_content(self, headers={}):
+    def _generate_header_content(self, headers=None):
         """
         Generates required header content for accessing API
 
         :param headers: (optional) dictionary of other required header values
         :return: dictionary with required environment header appended to it
         """
+        headers = headers or {}
+
         headers["X-Environment-Key"] = self.environment_id
         return headers
