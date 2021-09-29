@@ -24,7 +24,9 @@ class Flagsmith:
         self.flags_endpoint = api + FLAGS_ENDPOINT
         self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
-        self.custom_headers = custom_headers if custom_headers and type(custom_headers) == dict else {}
+        self.custom_headers = (
+            custom_headers if custom_headers and type(custom_headers) == dict else {}
+        )
 
     def get_flags(self, identity=None):
         """
@@ -154,7 +156,9 @@ class Flagsmith:
         }
 
         requests.post(
-            self.traits_endpoint, json=payload, headers=self._generate_header_content(self.custom_headers)
+            self.traits_endpoint,
+            json=payload,
+            headers=self._generate_header_content(self.custom_headers),
         )
 
     def _get_flags_response(self, feature_name=None, identity=None):
