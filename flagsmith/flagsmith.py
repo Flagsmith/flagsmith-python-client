@@ -157,7 +157,7 @@ class Flagsmith:
             self.traits_endpoint,
             json=payload,
             headers=self._generate_header_content(),
-            timeout=self.request_timeout
+            timeout=self.request_timeout,
         )
 
     def _get_flags_response(self, feature_name=None, identity=None):
@@ -177,14 +177,14 @@ class Flagsmith:
                     self.identities_endpoint,
                     params=params,
                     headers=self._generate_header_content(),
-                    timeout=self.request_timeout
+                    timeout=self.request_timeout,
                 )
             else:
                 response = requests.get(
                     self.flags_endpoint,
                     params=params,
                     headers=self._generate_header_content(),
-                    timeout=self.request_timeout
+                    timeout=self.request_timeout,
                 )
 
             if response.status_code == 200:
