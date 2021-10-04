@@ -31,7 +31,8 @@ def test_analytics_processor_flush_post_request_data_match_ananlytics_data(
     # Then
     session.post.assert_called()
     post_call = session.mock_calls[0]
-    assert {1: 1, 2: 1} == post_call.kwargs["data"]
+
+    assert {1: 1, 2: 1} == post_call[2]["data"]
 
 
 def test_analytics_processor_flush_early_exit_if_analytics_data_is_empty(
