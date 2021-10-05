@@ -45,7 +45,7 @@ class AnalyticsProcessor:
             timeout=self.timeout,
             headers={
                 "X-Environment-Key": self.environment_key,
-                "Content-type": "application/json",
+                "Content-Type": "application/json",
             },
         )
 
