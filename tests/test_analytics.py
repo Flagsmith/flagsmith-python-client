@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -31,8 +32,7 @@ def test_analytics_processor_flush_post_request_data_match_ananlytics_data(
     # Then
     session.post.assert_called()
     post_call = session.mock_calls[0]
-
-    assert {1: 1, 2: 1} == post_call[2]["data"]
+    assert {"1": 1, "2": 1} == json.loads(post_call[2]["data"])
 
 
 def test_analytics_processor_flush_early_exit_if_analytics_data_is_empty(
@@ -49,13 +49,15 @@ def test_analytics_processor_calling_track_feature_calls_flush_when_timer_runs_o
     analytics_processor,
 ):
     # Given
-    analytics_processor.flush = mock.Mock()
-    with mock.patch("flagsmith.analytics.datetime") as mocked_datetime:
+    with mock.patch("flagsmith.analytics.datetime") as mocked_datetime, mock.patch(
+        "flagsmith.analytics.session"
+    ) as session:
         # Let's move the time
         mocked_datetime.now.return_value = datetime.now() + timedelta(
             seconds=ANALYTICS_TIMER + 1
         )
         # When
         analytics_processor.track_feature(1)
+
     # Then
-    analytics_processor.flush.assert_called()
+    session.post.assert_called()
