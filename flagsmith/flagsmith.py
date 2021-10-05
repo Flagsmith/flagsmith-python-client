@@ -11,18 +11,20 @@ TRAIT_ENDPOINT = "traits/"
 
 
 class Flagsmith:
-    def __init__(self, environment_id, api=SERVER_URL):
+    def __init__(self, environment_id, api=SERVER_URL, request_timeout=None):
         """
         Initialise Flagsmith environment.
 
         :param environment_id: environment key obtained from the Flagsmith UI
         :param api: (optional) api url to override when using self hosted version
+        :param request_timeout: (optional) request timeout in seconds
         """
         self.environment_id = environment_id
         self.api = api
         self.flags_endpoint = api + FLAGS_ENDPOINT
         self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
+        self.request_timeout = request_timeout
 
     def get_flags(self, identity=None):
         """
@@ -152,7 +154,10 @@ class Flagsmith:
         }
 
         requests.post(
-            self.traits_endpoint, json=payload, headers=self._generate_header_content()
+            self.traits_endpoint,
+            json=payload,
+            headers=self._generate_header_content(),
+            timeout=self.request_timeout,
         )
 
     def _get_flags_response(self, feature_name=None, identity=None):
@@ -172,12 +177,14 @@ class Flagsmith:
                     self.identities_endpoint,
                     params=params,
                     headers=self._generate_header_content(),
+                    timeout=self.request_timeout,
                 )
             else:
                 response = requests.get(
                     self.flags_endpoint,
                     params=params,
                     headers=self._generate_header_content(),
+                    timeout=self.request_timeout,
                 )
 
             if response.status_code == 200:
