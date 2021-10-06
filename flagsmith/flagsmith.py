@@ -2,6 +2,8 @@ import logging
 
 import requests
 
+from .analytics import AnalyticsProcessor
+
 logger = logging.getLogger(__name__)
 
 SERVER_URL = "https://api.flagsmith.com/api/v1/"
@@ -19,12 +21,16 @@ class Flagsmith:
         :param api: (optional) api url to override when using self hosted version
         :param request_timeout: (optional) request timeout in seconds
         """
+
         self.environment_id = environment_id
         self.api = api
         self.flags_endpoint = api + FLAGS_ENDPOINT
         self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
         self.request_timeout = request_timeout
+        self._analytics_processor = AnalyticsProcessor(
+            environment_id, api, self.request_timeout
+        )
 
     def get_flags(self, identity=None):
         """
@@ -62,8 +68,9 @@ class Flagsmith:
         :return: True if exists, False if not.
         """
         data = self._get_flags_response(feature_name)
-
         if data:
+            feature_id = data["feature"]["id"]
+            self._analytics_processor.track_feature(feature_id)
             return True
 
         return False
@@ -72,7 +79,7 @@ class Flagsmith:
         """
         Get enabled state of given feature for an environment.
 
-        :param feature_name: name of feature to determine if enabled (must match 'ID' on flagsmith.com)
+        :param feature_name: name of feature to determine if enabled
         :param identity: (optional) application's unique identifier for the user to check feature state
         :return: True / False if feature exists. None otherwise.
         """
@@ -81,21 +88,19 @@ class Flagsmith:
 
         data = self._get_flags_response(feature_name, identity)
 
-        if data:
-            if data.get("flags"):
-                for flag in data.get("flags"):
-                    if flag["feature"]["name"] == feature_name:
-                        return flag["enabled"]
-            else:
-                return data["enabled"]
-        else:
+        if not data:
             return None
+
+        feature_id = data["feature"]["id"]
+        self._analytics_processor.track_feature(feature_id)
+
+        return data["enabled"]
 
     def get_value(self, feature_name, identity=None):
         """
         Get value of given feature for an environment.
 
-        :param feature_name: name of feature to determine value of (must match 'ID' on flagsmith.com)
+        :param feature_name: name of feature to determine value of
         :param identity: (optional) application's unique identifier for the user to check feature state
         :return: value of the feature state if feature exists, None otherwise
         """
@@ -104,17 +109,11 @@ class Flagsmith:
 
         data = self._get_flags_response(feature_name, identity)
 
-        if data:
-            # using new endpoints means that the flags come back in a list, filter this for the one we want and
-            # return it's value
-            if data.get("flags"):
-                for flag in data.get("flags"):
-                    if flag["feature"]["name"] == feature_name:
-                        return flag["feature_state_value"]
-            else:
-                return data["feature_state_value"]
-        else:
+        if not data:
             return None
+        feature_id = data["feature"]["id"]
+        self._analytics_processor.track_feature(feature_id)
+        return data["feature_state_value"]
 
     def get_trait(self, trait_key, identity):
         """
