@@ -28,7 +28,9 @@ class Flagsmith:
         self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
         self.request_timeout = request_timeout
-        self._analytics_proc = AnalyticsProc(environment_id, api)
+        self._analytics_processor = AnalyticsProcessor(
+            environment_id, api, self.request_timeout
+        )
 
     def get_flags(self, identity=None):
         """
