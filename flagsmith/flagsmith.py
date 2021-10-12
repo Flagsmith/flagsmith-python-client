@@ -13,12 +13,15 @@ TRAIT_ENDPOINT = "traits/"
 
 
 class Flagsmith:
-    def __init__(self, environment_id, api=SERVER_URL, request_timeout=None):
+    def __init__(
+        self, environment_id, api=SERVER_URL, custom_headers=None, request_timeout=None
+    ):
         """
         Initialise Flagsmith environment.
 
         :param environment_id: environment key obtained from the Flagsmith UI
         :param api: (optional) api url to override when using self hosted version
+        :param custom_headers: (optional) dict which will be passed in headers for each api call
         :param request_timeout: (optional) request timeout in seconds
         """
 
@@ -27,6 +30,7 @@ class Flagsmith:
         self.flags_endpoint = api + FLAGS_ENDPOINT
         self.identities_endpoint = api + IDENTITY_ENDPOINT
         self.traits_endpoint = api + TRAIT_ENDPOINT
+        self.custom_headers = custom_headers or {}
         self.request_timeout = request_timeout
         self._analytics_processor = AnalyticsProcessor(
             environment_id, api, self.request_timeout
@@ -155,7 +159,7 @@ class Flagsmith:
         requests.post(
             self.traits_endpoint,
             json=payload,
-            headers=self._generate_header_content(),
+            headers=self._generate_header_content(self.custom_headers),
             timeout=self.request_timeout,
         )
 
@@ -175,14 +179,14 @@ class Flagsmith:
                 response = requests.get(
                     self.identities_endpoint,
                     params=params,
-                    headers=self._generate_header_content(),
+                    headers=self._generate_header_content(self.custom_headers),
                     timeout=self.request_timeout,
                 )
             else:
                 response = requests.get(
                     self.flags_endpoint,
                     params=params,
-                    headers=self._generate_header_content(),
+                    headers=self._generate_header_content(self.custom_headers),
                     timeout=self.request_timeout,
                 )
 
