@@ -4,6 +4,7 @@ import typing
 import requests
 
 from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.utils import generate_header_content
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ class Flagsmith:
         requests.post(
             self.traits_endpoint,
             json=payload,
-            headers=self._generate_header_content(self.custom_headers),
+            headers=generate_header_content(self.environment_key, self.custom_headers),
             timeout=self.request_timeout,
         )
 
@@ -194,14 +195,18 @@ class Flagsmith:
                 response = requests.get(
                     self.identities_endpoint,
                     params=params,
-                    headers=self._generate_header_content(self.custom_headers),
+                    headers=generate_header_content(
+                        self.environment_key, self.custom_headers
+                    ),
                     timeout=self.request_timeout,
                 )
             else:
                 response = requests.get(
                     self.flags_endpoint,
                     params=params,
-                    headers=self._generate_header_content(self.custom_headers),
+                    headers=generate_header_content(
+                        self.environment_key, self.custom_headers
+                    ),
                     timeout=self.request_timeout,
                 )
 
@@ -220,17 +225,3 @@ class Flagsmith:
                 "Got error getting response from API. Error message was %s" % e
             )
             return None
-
-    def _generate_header_content(
-        self, headers: typing.Dict[str, str] = None
-    ) -> typing.Dict[str, str]:
-        """
-        Generates required header content for accessing API
-
-        :param headers: (optional) dictionary of other required header values
-        :return: dictionary with required environment header appended to it
-        """
-        headers = headers or {}
-
-        headers["X-Environment-Key"] = self.environment_key
-        return headers
