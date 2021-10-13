@@ -57,10 +57,10 @@ class Flagsmith:
         else:
             data = self._get_flags_response()
 
-        if data:
-            return data
-        else:
+        if not data:
             logger.error("Failed to get flags for environment.")
+            return None
+        return data
 
     def get_flags_for_user(
         self, identity: str
@@ -161,7 +161,7 @@ class Flagsmith:
         """
         values = [trait_key, trait_value, identity]
         if None in values or "" in values:
-            return None
+            return
 
         payload = {
             "identity": {"identifier": identity},
