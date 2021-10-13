@@ -1,8 +1,9 @@
 import logging
+import typing
 
 import requests
 
-from .analytics import AnalyticsProcessor
+from flagsmith.analytics import AnalyticsProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,11 @@ TRAIT_ENDPOINT = "traits/"
 
 class Flagsmith:
     def __init__(
-        self, environment_key, api=SERVER_URL, custom_headers=None, request_timeout=None
+        self,
+        environment_key: str,
+        api: str = SERVER_URL,
+        custom_headers: typing.Dict[str, str] = None,
+        request_timeout: int = None,
     ):
         """
         Initialise Flagsmith environment.
@@ -36,7 +41,9 @@ class Flagsmith:
             environment_key, api, self.request_timeout
         )
 
-    def get_flags(self, identity=None):
+    def get_flags(
+        self, identity: str = None
+    ) -> typing.Optional[typing.List[typing.Mapping]]:
         """
         Get all flags for the environment or optionally provide an identity within an environment
         to get their flags. Will return overridden identity flags where given and fill in the gaps
@@ -55,7 +62,9 @@ class Flagsmith:
         else:
             logger.error("Failed to get flags for environment.")
 
-    def get_flags_for_user(self, identity):
+    def get_flags_for_user(
+        self, identity: str
+    ) -> typing.Optional[typing.List[typing.Mapping]]:
         """
         Get all flags for a user
 
@@ -64,7 +73,7 @@ class Flagsmith:
         """
         return self.get_flags(identity=identity)
 
-    def has_feature(self, feature_name):
+    def has_feature(self, feature_name: str) -> bool:
         """
         Determine if given feature exists for an environment.
 
@@ -79,7 +88,9 @@ class Flagsmith:
 
         return False
 
-    def feature_enabled(self, feature_name, identity=None):
+    def feature_enabled(
+        self, feature_name: str, identity: str = None
+    ) -> typing.Optional[bool]:
         """
         Get enabled state of given feature for an environment.
 
@@ -100,7 +111,9 @@ class Flagsmith:
 
         return data["enabled"]
 
-    def get_value(self, feature_name, identity=None):
+    def get_value(
+        self, feature_name: str, identity: str = None
+    ) -> typing.Union[None, int, str, bool]:
         """
         Get value of given feature for an environment.
 
@@ -119,7 +132,7 @@ class Flagsmith:
         self._analytics_processor.track_feature(feature_id)
         return data["feature_state_value"]
 
-    def get_trait(self, trait_key, identity):
+    def get_trait(self, trait_key: str, identity: str) -> typing.Optional[str]:
         """
         Get value of given trait for the identity of an environment.
 
@@ -137,7 +150,7 @@ class Flagsmith:
             if trait.get("trait_key") == trait_key:
                 return trait.get("trait_value")
 
-    def set_trait(self, trait_key, trait_value, identity):
+    def set_trait(self, trait_key: str, trait_value: str, identity: str):
         """
         Set value of given trait for the identity of an environment. Note that this will lazily create
         a new trait if the trait_key has not been seen before for this identity
@@ -163,7 +176,9 @@ class Flagsmith:
             timeout=self.request_timeout,
         )
 
-    def _get_flags_response(self, feature_name=None, identity=None):
+    def _get_flags_response(
+        self, feature_name: str = None, identity: str = None
+    ) -> typing.Optional[typing.Any]:
         """
         Private helper method to hit the flags endpoint
 
@@ -206,7 +221,9 @@ class Flagsmith:
             )
             return None
 
-    def _generate_header_content(self, headers=None):
+    def _generate_header_content(
+        self, headers: typing.Dict[str, str] = None
+    ) -> typing.Dict[str, str]:
         """
         Generates required header content for accessing API
 
