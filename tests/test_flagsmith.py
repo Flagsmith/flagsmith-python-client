@@ -61,7 +61,7 @@ class FlagsmithTestCase(TestCase):
     test_environment_key = "test-env-key"
 
     def setUp(self) -> None:
-        self.bt = Flagsmith(environment_id=self.test_environment_key, api=TEST_API_URL)
+        self.bt = Flagsmith(environment_key=self.test_environment_key, api=TEST_API_URL)
 
     @mock.patch(
         "flagsmith.flagsmith.requests.get",

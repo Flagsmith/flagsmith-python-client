@@ -4,7 +4,7 @@ from flagsmith import Flagsmith
 
 api_key = input("Please provide an environment api key: ")
 
-flagsmith = Flagsmith(environment_id=api_key)
+flagsmith = Flagsmith(environment_key=api_key)
 
 identifier = input("Please provide an example identity: ")
 feature_name = input("Please provide an example feature name: ")

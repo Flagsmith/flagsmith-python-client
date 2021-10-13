@@ -14,18 +14,18 @@ TRAIT_ENDPOINT = "traits/"
 
 class Flagsmith:
     def __init__(
-        self, environment_id, api=SERVER_URL, custom_headers=None, request_timeout=None
+        self, environment_key, api=SERVER_URL, custom_headers=None, request_timeout=None
     ):
         """
         Initialise Flagsmith environment.
 
-        :param environment_id: environment key obtained from the Flagsmith UI
+        :param environment_key: environment key obtained from the Flagsmith UI
         :param api: (optional) api url to override when using self hosted version
         :param custom_headers: (optional) dict which will be passed in headers for each api call
         :param request_timeout: (optional) request timeout in seconds
         """
 
-        self.environment_id = environment_id
+        self.environment_key = environment_key
         self.api = api
         self.flags_endpoint = api + FLAGS_ENDPOINT
         self.identities_endpoint = api + IDENTITY_ENDPOINT
@@ -33,7 +33,7 @@ class Flagsmith:
         self.custom_headers = custom_headers or {}
         self.request_timeout = request_timeout
         self._analytics_processor = AnalyticsProcessor(
-            environment_id, api, self.request_timeout
+            environment_key, api, self.request_timeout
         )
 
     def get_flags(self, identity=None):
@@ -215,5 +215,5 @@ class Flagsmith:
         """
         headers = headers or {}
 
-        headers["X-Environment-Key"] = self.environment_id
+        headers["X-Environment-Key"] = self.environment_key
         return headers
