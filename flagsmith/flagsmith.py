@@ -39,7 +39,9 @@ class Flagsmith:
         self.custom_headers = custom_headers or {}
         self.request_timeout = request_timeout
         self._analytics_processor = AnalyticsProcessor(
-            environment_key, api, self.request_timeout
+            api,
+            generate_header_content(self.environment_key, self.custom_headers),
+            self.request_timeout,
         )
 
     def get_flags(
