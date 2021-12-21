@@ -10,7 +10,7 @@ setup(
     description="Flagsmith Python SDK",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Bullet Train Ltd",
+    author="Flagsmith",
     author_email="supoprt@flagsmith.com",
     license="BSD3",
     url="https://github.com/Flagsmith/flagsmith-python-client",
@@ -20,9 +20,6 @@ setup(
     ],
     classifiers=[
         "License :: OSI Approved :: BSD License",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.6",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.0",
         "Programming Language :: Python :: 3.1",
@@ -32,5 +29,8 @@ setup(
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
