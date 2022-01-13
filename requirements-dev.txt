@@ -1,4 +1,6 @@
 -r requirements.txt
-pytest==5.1.2
+pytest
+pytest-mock
 black
 pre-commit
+responses
