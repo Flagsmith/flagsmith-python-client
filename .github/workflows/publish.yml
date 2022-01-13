@@ -1,0 +1,26 @@
+name: Publish Pypi Package
+
+on:
+    push:
+        tags:
+            - '*'
+
+jobs:
+    package:
+        runs-on: ubuntu-latest
+        name: Publish Pypi Package
+
+        steps:
+            - name: Cloning repo
+              uses: actions/checkout@v2
+              with:
+                  fetch-depth: 0
+
+            - name: Build binary wheel and a source tarball
+              run: python setup.py sdist
+
+            - name: Publish Package to Pypi
+              uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  user: __token__
+                  password: ${{ secrets.PYPI_API_TOKEN }}
