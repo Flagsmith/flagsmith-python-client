@@ -9,6 +9,7 @@ from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel, TraitModel
 from requests.adapters import HTTPAdapter, Retry
 
+from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import Flags
 from flagsmith.polling_manager import EnvironmentDataPollingManager
@@ -56,7 +57,9 @@ class Flagsmith:
             )
             self.environment_data_polling_manager_thread.start()
 
-        # TODO: analytics processor
+        self._analytics_processor = AnalyticsProcessor(
+            environment_key, self.api_url, timeout=self.request_timeout
+        )
 
     def get_environment_flags(self) -> Flags:
         if self._environment:
@@ -84,7 +87,8 @@ class Flagsmith:
 
     def _get_environment_flags_from_document(self) -> Flags:
         return Flags.from_feature_state_models(
-            engine.get_environment_feature_states(self._environment)
+            feature_states=engine.get_environment_feature_states(self._environment),
+            analytics_processor=self._analytics_processor,
         )
 
     def _get_identity_flags_from_document(
@@ -95,12 +99,15 @@ class Flagsmith:
             self._environment, identity_model
         )
         return Flags.from_feature_state_models(
-            feature_states, identity_model.composite_key
+            feature_states=feature_states,
+            analytics_processor=self._analytics_processor,
+            identity_id=identity_model.composite_key,
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
         return Flags.from_api_flags(
-            self._get_json_response(url=self.environment_flags_url, method="GET")
+            flags=self._get_json_response(url=self.environment_flags_url, method="GET"),
+            analytics_processor=self._analytics_processor,
         )
 
     def _get_identity_flags_from_api(
@@ -116,7 +123,9 @@ class Flagsmith:
         json_response = self._get_json_response(
             url=self.identities_url, method="POST", body=data
         )
-        return Flags.from_api_flags(json_response["flags"])
+        return Flags.from_api_flags(
+            flags=json_response["flags"], analytics_processor=self._analytics_processor
+        )
 
     def _get_json_response(self, url: str, method: str, body: dict = None):
         try:
