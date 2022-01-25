@@ -11,7 +11,7 @@ jobs:
         strategy:
             max-parallel: 4
             matrix:
-                python-version: [3.6, 3.7, 3.8, 3.9, 3.10]
+                python-version: ["3.7", "3.8", "3.9", "3.10"]
 
         steps:
             - name: Cloning repo
@@ -32,9 +32,9 @@ jobs:
 
             - name: Check Formatting
               run: | 
-                black --check .
-                flake8 .
-                isort --check .
+                poetry run black --check .
+                poetry run flake8 .
+                poetry run isort --check .
 
             - name: Run Tests
-              run: pytest
+              run: poetry run pytest
