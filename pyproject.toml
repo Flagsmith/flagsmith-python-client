@@ -7,6 +7,9 @@ license = "BSD3"
 readme = "Readme.md"
 keywords = ["feature", "flag", "flagsmith", "remote", "config"]
 documentation = "https://docs.flagsmith.com"
+packages = [
+    {include = "flagsmith"},
+]
 
 [tool.poetry.dependencies]
 python = ">=3.7.0,<4"
