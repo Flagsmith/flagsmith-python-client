@@ -28,10 +28,14 @@ jobs:
             - name: Install Dependencies
               run: |
                   python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
+                  pip install poetry
+                  poetry install
 
             - name: Check Formatting
-              run: black --check .
+              run: | 
+                black --check .
+                flake8 .
+                isort . --check
 
             - name: Run Tests
               run: pytest

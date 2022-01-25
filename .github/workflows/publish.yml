@@ -16,11 +16,9 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Build binary wheel and a source tarball
-              run: python setup.py sdist
-
-            - name: Publish Package to Pypi
-              uses: pypa/gh-action-pypi-publish@release/v1
+            - name: Build and publish to pypi
+              uses: JRubics/poetry-publish@v1.10
               with:
-                  user: __token__
-                  password: ${{ secrets.PYPI_API_TOKEN }}
+                pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+                ignore_dev_requirements: "yes"
+                build_format: "sdist"
