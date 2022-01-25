@@ -13,6 +13,7 @@ from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import Flags
 from flagsmith.polling_manager import EnvironmentDataPollingManager
+from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,11 @@ class Flagsmith:
         )
 
     def get_environment_flags(self) -> Flags:
+        """
+        Get all the default for flags for the current environment.
+
+        :return: Flags object holding all the flags for the current environment.
+        """
         if self._environment:
             return self._get_environment_flags_from_document()
         return self._get_environment_flags_from_api()
@@ -69,14 +75,21 @@ class Flagsmith:
     def get_identity_flags(
         self, identifier: str, traits: typing.Dict[str, typing.Any] = None
     ) -> Flags:
+        """
+        Get all the flags for the current environment for a given identity. Will also
+        upsert all traits to the Flagsmith API for future evaluations. Providing a
+        trait with a value of None will remove the trait from the identity if it exists.
+
+        :param identifier: a unique identifier for the identity in the current
+            environment, e.g. email address, username, uuid
+        :param traits: a dictionary of traits to add / update on the identity in
+            Flagsmith, e.g. {"num_orders": 10}
+        :return: Flags object holding all the flags for the given identity.
+        """
         traits = traits or {}
         if self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(identifier, traits)
-
-    def delete_identity_trait(self, identifier: str, trait_key: str) -> None:
-        # TODO: set the trait value to None and send to the API
-        pass
 
     def update_environment(self):
         self._environment = self._get_environment_from_api()
@@ -113,13 +126,7 @@ class Flagsmith:
     def _get_identity_flags_from_api(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
-        data = {
-            "identifier": identifier,
-            "traits": [
-                {"trait_key": key, "trait_value": value}
-                for key, value in traits.items()
-            ],
-        }
+        data = generate_identities_data(identifier, traits)
         json_response = self._get_json_response(
             url=self.identities_url, method="POST", body=data
         )

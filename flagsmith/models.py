@@ -70,15 +70,41 @@ class Flags:
         )
 
     def all_flags(self) -> typing.List[Flag]:
+        """
+        Get a list of all Flag objects.
+
+        :return: list of Flag objects.
+        """
         return list(self.flags.values())
 
     def is_feature_enabled(self, feature_name: str) -> bool:
+        """
+        Check whether a given feature is enabled.
+
+        :param feature_name: the name of the feature to check if enabled.
+        :return: Boolean representing the enabled state of a given feature.
+        :raises FlagsmithClientError: if feature doesn't exist
+        """
         return self.get_flag(feature_name).enabled
 
-    def get_feature_value(self, feature_name: str) -> bool:
+    def get_feature_value(self, feature_name: str) -> typing.Any:
+        """
+        Get the value of a particular feature.
+
+        :param feature_name: the name of the feature to retrieve the value of.
+        :return: the value of the given feature.
+        :raises FlagsmithClientError: if feature doesn't exist
+        """
         return self.get_flag(feature_name).value
 
     def get_flag(self, feature_name: str) -> typing.Optional[Flag]:
+        """
+        Get a specific flag given the feature name.
+
+        :param feature_name: the name of the feature to retrieve the flag for.
+        :return: Flag object.
+        :raises FlagsmithClientError: if feature doesn't exist
+        """
         try:
             flag = self.flags[feature_name]
         except KeyError:
