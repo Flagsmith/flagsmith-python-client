@@ -22,6 +22,10 @@ FLAGS_ENDPOINT = "flags/"
 IDENTITY_ENDPOINT = "identities/"
 TRAITS_ENDPOINT = "traits/"
 
+# TODO:
+#    - defaults
+#    - disable analytics
+
 
 class Flagsmith:
     def __init__(
