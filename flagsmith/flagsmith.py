@@ -35,7 +35,7 @@ class Flagsmith:
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout: int = None,
         enable_client_side_evaluation: bool = False,
-        environment_refresh_interval_seconds: int = 10,
+        environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
     ):
         self.session = requests.Session()
