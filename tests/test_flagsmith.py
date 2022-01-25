@@ -4,7 +4,7 @@ import uuid
 import pytest
 import requests
 import responses
-from flag_engine.features.models import FeatureStateModel, FeatureModel
+from flag_engine.features.models import FeatureModel, FeatureStateModel
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
@@ -102,7 +102,7 @@ def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
 
 
 @responses.activate()
-def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
+def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
     flagsmith, identities_json
 ):
     # Given

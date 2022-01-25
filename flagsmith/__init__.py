@@ -1,1 +1,1 @@
-from .flagsmith import Flagsmith
+from .flagsmith import Flagsmith  # noqa

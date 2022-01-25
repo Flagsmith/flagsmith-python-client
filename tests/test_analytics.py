@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from unittest import mock
 
-from flagsmith.analytics import ANALYTICS_TIMER, AnalyticsProcessor
+from flagsmith.analytics import ANALYTICS_TIMER
 
 
 def test_analytics_processor_track_feature_updates_analytics_data(analytics_processor):
