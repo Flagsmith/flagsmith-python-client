@@ -1,19 +1,21 @@
 # Flagsmith Basic Python Example
 
-To use this basic example, you'll need to first configure a project with at least one feature in Flagsmith.
+This directory contains a basic Flask application which utilises Flagsmith. To run the example application, you'll 
+need to go through the following steps:
 
-Once you've done this, you'll then need to install the latest version of the Flagsmith package by running:
+1. Create an account, organisation and project on [Flagsmith](https://flagsmith.com)
+2. Create a feature in the project called "secret_button"
+3. Give the feature a value using the json editor as follows: 
 
-```bash
-pip install flagsmith
+```json
+{"colour": "#ababab"}
 ```
 
-Then you can run:
+4. Update the .env file located in this directory with the environment key of one of the environments in flagsmith (
+This can be found on the 'settings' page accessed from the menu on the left under the chosen environment.)
+5. From a terminal window, export those environment variables (either manually or by using `export $(cat .env)`)
+6. Run the app using `flask run`
+7. Browse to http://localhost:5000
 
-```bash
-python example.py
-```
-
-The script will grab some information from you such as the environment key to test with, an identifier and a feature
-name. Once you've inputted those, the script will run you through all of the methods available in the Flagsmith
-client and print the result.
+Now you can play around with the 'secret_button' feature in flagsmith, turn it on to show it and edit the colour in the
+json value to edit the colour of the button. 
