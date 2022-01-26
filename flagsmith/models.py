@@ -10,7 +10,7 @@ from flagsmith.exceptions import FlagsmithClientError
 @dataclass
 class BaseFlag:
     enabled: bool
-    value: typing.Any
+    value: typing.Union[str, int, float, bool]
     feature_name: str
 
 
@@ -26,7 +26,9 @@ class Flag(BaseFlag):
 
     @classmethod
     def from_feature_state_model(
-        cls, feature_state_model: FeatureStateModel, identity_id: typing.Any = None
+        cls,
+        feature_state_model: FeatureStateModel,
+        identity_id: typing.Union[str, int] = None,
     ) -> "Flag":
         return Flag(
             enabled=feature_state_model.enabled,
@@ -55,7 +57,7 @@ class Flags:
         cls,
         feature_states: typing.List[FeatureStateModel],
         analytics_processor: AnalyticsProcessor,
-        identity_id: typing.Any = None,
+        identity_id: typing.Union[str, int] = None,
         defaults: typing.List[DefaultFlag] = None,
     ) -> "Flags":
         flags = {
