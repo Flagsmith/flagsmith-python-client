@@ -24,7 +24,6 @@ TRAITS_ENDPOINT = "traits/"
 
 # TODO:
 #    - defaults
-#    - disable analytics
 
 
 class Flagsmith:
@@ -37,6 +36,7 @@ class Flagsmith:
         enable_client_side_evaluation: bool = False,
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
+        enable_analytics: bool = False,
     ):
         self.session = requests.Session()
         self.session.headers.update(
@@ -62,8 +62,12 @@ class Flagsmith:
             )
             self.environment_data_polling_manager_thread.start()
 
-        self._analytics_processor = AnalyticsProcessor(
-            environment_key, self.api_url, timeout=self.request_timeout
+        self._analytics_processor = (
+            AnalyticsProcessor(
+                environment_key, self.api_url, timeout=self.request_timeout
+            )
+            if enable_analytics
+            else None
         )
 
     def get_environment_flags(self) -> Flags:

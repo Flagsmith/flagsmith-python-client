@@ -38,7 +38,7 @@ class Flag:
 @dataclass
 class Flags:
     flags: typing.Dict[str, Flag]
-    _analytics_processor: AnalyticsProcessor
+    _analytics_processor: AnalyticsProcessor = None
 
     @classmethod
     def from_feature_state_models(
@@ -110,5 +110,7 @@ class Flags:
         except KeyError:
             raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
 
-        self._analytics_processor.track_feature(flag.feature_id)
+        if self._analytics_processor:
+            self._analytics_processor.track_feature(flag.feature_id)
+
         return flag
