@@ -4,10 +4,20 @@ import os
 from flask import Flask, render_template
 
 from flagsmith import Flagsmith
+from flagsmith.models import DefaultFlag
 
 app = Flask(__name__)
 
-flagsmith = Flagsmith(environment_key=os.environ.get("FLAGSMITH_ENVIRONMENT_KEY"))
+flagsmith = Flagsmith(
+    environment_key=os.environ.get("FLAGSMITH_ENVIRONMENT_KEY"),
+    defaults=[
+        DefaultFlag(
+            enabled=True,
+            value=json.dumps({"colour": "#b8b8b8"}),
+            feature_name="secret_button",
+        )
+    ],
+)
 
 
 @app.route("/")
