@@ -8,6 +8,7 @@ from flag_engine.features.models import FeatureModel, FeatureStateModel
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
+from flagsmith.models import DefaultFlag
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
@@ -188,3 +189,100 @@ def test_non_200_response_raises_flagsmith_api_error(flagsmith):
 
     # Then
     # expected exception raised
+
+
+@responses.activate()
+def test_default_flag_is_used_when_no_environment_flags_returned(api_key):
+    # Given
+    # a default flag
+    default_flag = DefaultFlag(
+        enabled=True, value="some-default-value", feature_name="some_feature"
+    )
+    flagsmith = Flagsmith(environment_key=api_key, defaults=[default_flag])
+
+    # and we mock the API to return an empty list of flags
+    responses.add(
+        url=flagsmith.environment_flags_url, method="GET", body=json.dumps([])
+    )
+
+    # When
+    flags = flagsmith.get_environment_flags()
+
+    # Then
+    # the data from the default flag is used
+    flag = flags.get_flag(default_flag.feature_name)
+    assert flag.enabled == default_flag.enabled
+    assert flag.value == default_flag.value
+    assert flag.feature_name == default_flag.feature_name
+
+
+@responses.activate()
+def test_default_flag_is_not_used_when_environment_flags_returned(api_key, flags_json):
+    # Given
+    # A default flag
+    default_flag = DefaultFlag(
+        enabled=True, value="some-default-value", feature_name="some_feature"
+    )
+    flagsmith = Flagsmith(environment_key=api_key, defaults=[default_flag])
+
+    # but we mock the API to return an actual value for the same feature
+    responses.add(url=flagsmith.environment_flags_url, method="GET", body=flags_json)
+
+    # When
+    flags = flagsmith.get_environment_flags()
+
+    # Then
+    # the data from the API response is used, not the default flag
+    flag = flags.get_flag(default_flag.feature_name)
+    assert flag.value != default_flag.value
+    assert flag.value == "some-value"  # hard coded value in tests/data/flags.json
+
+
+@responses.activate()
+def test_default_flag_is_used_when_no_identity_flags_returned(api_key):
+    # Given
+    # a default flag
+    default_flag = DefaultFlag(
+        enabled=True, value="some-default-value", feature_name="some_feature"
+    )
+    flagsmith = Flagsmith(environment_key=api_key, defaults=[default_flag])
+
+    # and we mock the API to return an empty list of flags
+    response_data = {"flags": [], "traits": []}
+    responses.add(
+        url=flagsmith.identities_url, method="POST", body=json.dumps(response_data)
+    )
+
+    # When
+    flags = flagsmith.get_identity_flags(identifier="identifier")
+
+    # Then
+    # the data from the default flag is used
+    flag = flags.get_flag(default_flag.feature_name)
+    assert flag.enabled == default_flag.enabled
+    assert flag.value == default_flag.value
+    assert flag.feature_name == default_flag.feature_name
+
+
+@responses.activate()
+def test_default_flag_is_not_used_when_identity_flags_returned(
+    api_key, identities_json
+):
+    # Given
+    # A default flag
+    default_flag = DefaultFlag(
+        enabled=True, value="some-default-value", feature_name="some_feature"
+    )
+    flagsmith = Flagsmith(environment_key=api_key, defaults=[default_flag])
+
+    # but we mock the API to return an actual value for the same feature
+    responses.add(url=flagsmith.identities_url, method="POST", body=identities_json)
+
+    # When
+    flags = flagsmith.get_identity_flags(identifier="identifier")
+
+    # Then
+    # the data from the API response is used, not the default flag
+    flag = flags.get_flag(default_flag.feature_name)
+    assert flag.value != default_flag.value
+    assert flag.value == "some-value"  # hard coded value in tests/data/identities.json

@@ -8,11 +8,21 @@ from flagsmith.exceptions import FlagsmithClientError
 
 
 @dataclass
-class Flag:
+class BaseFlag:
     enabled: bool
     value: typing.Any
     feature_name: str
+
+
+@dataclass
+class DefaultFlag(BaseFlag):
+    is_default = True
+
+
+@dataclass
+class Flag(BaseFlag):
     feature_id: int
+    is_default = False
 
     @classmethod
     def from_feature_state_model(
@@ -37,7 +47,7 @@ class Flag:
 
 @dataclass
 class Flags:
-    flags: typing.Dict[str, Flag]
+    flags: typing.Dict[str, BaseFlag]
     _analytics_processor: AnalyticsProcessor = None
 
     @classmethod
@@ -46,30 +56,38 @@ class Flags:
         feature_states: typing.List[FeatureStateModel],
         analytics_processor: AnalyticsProcessor,
         identity_id: typing.Any = None,
+        defaults: typing.List[DefaultFlag] = None,
     ) -> "Flags":
-        return cls(
-            flags={
-                feature_state.feature.name: Flag.from_feature_state_model(
-                    feature_state, identity_id=identity_id
-                )
-                for feature_state in feature_states
-            },
-            _analytics_processor=analytics_processor,
-        )
+        flags = {
+            feature_state.feature.name: Flag.from_feature_state_model(
+                feature_state, identity_id=identity_id
+            )
+            for feature_state in feature_states
+        }
+
+        for default in defaults or []:
+            flags.setdefault(default.feature_name, default)
+
+        return cls(flags=flags, _analytics_processor=analytics_processor)
 
     @classmethod
     def from_api_flags(
-        cls, flags: typing.List[dict], analytics_processor: AnalyticsProcessor
+        cls,
+        api_flags: typing.List[dict],
+        analytics_processor: AnalyticsProcessor,
+        defaults: typing.List[DefaultFlag] = None,
     ) -> "Flags":
-        return cls(
-            flags={
-                flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
-                for flag_data in flags
-            },
-            _analytics_processor=analytics_processor,
-        )
+        flags = {
+            flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
+            for flag_data in api_flags
+        }
 
-    def all_flags(self) -> typing.List[Flag]:
+        for default in defaults or []:
+            flags.setdefault(default.feature_name, default)
+
+        return cls(flags=flags, _analytics_processor=analytics_processor)
+
+    def all_flags(self) -> typing.List[BaseFlag]:
         """
         Get a list of all Flag objects.
 
@@ -97,7 +115,7 @@ class Flags:
         """
         return self.get_flag(feature_name).value
 
-    def get_flag(self, feature_name: str) -> typing.Optional[Flag]:
+    def get_flag(self, feature_name: str) -> typing.Optional[BaseFlag]:
         """
         Get a specific flag given the feature name.
 
@@ -110,7 +128,7 @@ class Flags:
         except KeyError:
             raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
 
-        if self._analytics_processor:
+        if self._analytics_processor and hasattr(flag, "feature_id"):
             self._analytics_processor.track_feature(flag.feature_id)
 
         return flag

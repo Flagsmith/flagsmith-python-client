@@ -11,32 +11,27 @@ from requests.adapters import HTTPAdapter, Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
-from flagsmith.models import Flags
+from flagsmith.models import DefaultFlag, Flags
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://api.flagsmith.com/api/v1/"
-FLAGS_ENDPOINT = "flags/"
-IDENTITY_ENDPOINT = "identities/"
-TRAITS_ENDPOINT = "traits/"
-
-# TODO:
-#    - defaults
+DEFAULT_API_URL = "https://api.flagsmith.com/api/v1/"
 
 
 class Flagsmith:
     def __init__(
         self,
         environment_key: str,
-        api_url: str = API_URL,
+        api_url: str = DEFAULT_API_URL,
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout: int = None,
         enable_client_side_evaluation: bool = False,
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
+        defaults: typing.List[DefaultFlag] = None,
     ):
         self.session = requests.Session()
         self.session.headers.update(
@@ -69,6 +64,8 @@ class Flagsmith:
             if enable_analytics
             else None
         )
+
+        self.defaults = defaults or []
 
     def get_environment_flags(self) -> Flags:
         """
@@ -110,6 +107,7 @@ class Flagsmith:
         return Flags.from_feature_state_models(
             feature_states=engine.get_environment_feature_states(self._environment),
             analytics_processor=self._analytics_processor,
+            defaults=self.defaults,
         )
 
     def _get_identity_flags_from_document(
@@ -123,12 +121,18 @@ class Flagsmith:
             feature_states=feature_states,
             analytics_processor=self._analytics_processor,
             identity_id=identity_model.composite_key,
+            defaults=self.defaults,
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
+        api_flags = self._get_json_response(
+            url=self.environment_flags_url, method="GET"
+        )
+
         return Flags.from_api_flags(
-            flags=self._get_json_response(url=self.environment_flags_url, method="GET"),
+            api_flags=api_flags,
             analytics_processor=self._analytics_processor,
+            defaults=self.defaults,
         )
 
     def _get_identity_flags_from_api(
@@ -139,7 +143,9 @@ class Flagsmith:
             url=self.identities_url, method="POST", body=data
         )
         return Flags.from_api_flags(
-            flags=json_response["flags"], analytics_processor=self._analytics_processor
+            api_flags=json_response["flags"],
+            analytics_processor=self._analytics_processor,
+            defaults=self.defaults,
         )
 
     def _get_json_response(self, url: str, method: str, body: dict = None):
