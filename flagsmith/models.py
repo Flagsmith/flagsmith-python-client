@@ -117,7 +117,7 @@ class Flags:
         """
         return self.get_flag(feature_name).value
 
-    def get_flag(self, feature_name: str) -> typing.Optional[BaseFlag]:
+    def get_flag(self, feature_name: str) -> BaseFlag:
         """
         Get a specific flag given the feature name.
 
