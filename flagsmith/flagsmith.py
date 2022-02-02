@@ -45,7 +45,7 @@ class Flagsmith:
 
         self.environment_flags_url = f"{self.api_url}flags/"
         self.identities_url = f"{self.api_url}identities/"
-        self.environment_url = f"{self.api_url}environment/"
+        self.environment_url = f"{self.api_url}environment-document/"
 
         self._environment = None
         if enable_client_side_evaluation:
