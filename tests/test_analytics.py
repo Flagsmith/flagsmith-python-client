@@ -5,7 +5,10 @@ from unittest import mock
 
 import requests
 
-from flagsmith.analytics import DEFAULT_FLUSH_INTERVAL_SECONDS, AnalyticsProcessor
+from flagsmith.analytics import (
+    DEFAULT_FLUSH_INTERVAL_SECONDS,
+    AnalyticsProcessor,
+)
 
 
 def test_analytics_processor_track_feature_updates_analytics_data(analytics_processor):
