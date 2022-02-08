@@ -1,6 +1,8 @@
 import json
+import logging
 from datetime import datetime
 
+import requests
 from requests_futures.sessions import FuturesSession
 
 ANALYTICS_ENDPOINT = "analytics/flags/"
@@ -8,7 +10,7 @@ ANALYTICS_ENDPOINT = "analytics/flags/"
 # Used to control how often we send data(in seconds)
 ANALYTICS_TIMER = 10
 
-session = FuturesSession(max_workers=4)
+logger = logging.getLogger(__name__)
 
 
 class AnalyticsProcessor:
@@ -17,7 +19,13 @@ class AnalyticsProcessor:
     the Flagsmith SDK. Docs: https://docs.flagsmith.com/advanced-use/flag-analytics.
     """
 
-    def __init__(self, environment_key: str, base_api_url: str, timeout: int = 3):
+    def __init__(
+        self,
+        environment_key: str,
+        base_api_url: str,
+        timeout: int = 3,
+        session: FuturesSession = None,
+    ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
         the Flagsmith API.
@@ -32,6 +40,7 @@ class AnalyticsProcessor:
         self._last_flushed = datetime.now()
         self.analytics_data = {}
         self.timeout = timeout
+        self.session = session or FuturesSession(max_workers=4)
 
     def flush(self):
         """
@@ -40,18 +49,21 @@ class AnalyticsProcessor:
 
         if not self.analytics_data:
             return
-        session.post(
-            self.analytics_endpoint,
-            data=json.dumps(self.analytics_data),
-            timeout=self.timeout,
-            headers={
-                "X-Environment-Key": self.environment_key,
-                "Content-Type": "application/json",
-            },
-        )
 
-        self.analytics_data.clear()
-        self._last_flushed = datetime.now()
+        try:
+            self.session.post(
+                self.analytics_endpoint,
+                data=json.dumps(self.analytics_data),
+                timeout=self.timeout,
+                headers={
+                    "X-Environment-Key": self.environment_key,
+                    "Content-Type": "application/json",
+                },
+            )
+            self.analytics_data.clear()
+            self._last_flushed = datetime.now()
+        except requests.ConnectionError as e:
+            logger.error("Unable to send flag evaluation analytics to API.", exc_info=e)
 
     def track_feature(self, feature_id: int):
         self.analytics_data[feature_id] = self.analytics_data.get(feature_id, 0) + 1
