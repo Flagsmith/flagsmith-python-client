@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "flagsmith"
+version = "3.0.0"
+description = "Flagsmith Python SDK"
+authors = ["Flagsmith <support@flagsmith.com>"]
+license = "BSD3"
+readme = "Readme.md"
+keywords = ["feature", "flag", "flagsmith", "remote", "config"]
+documentation = "https://docs.flagsmith.com"
+packages = [
+    {include = "flagsmith"},
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7.0,<4"
+requests = "^2.27.1"
+requests-futures = "^1.0.0"
+flagsmith-flag-engine = "^1.5.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+pytest-mock = "^3.6.1"
+black = "^21.12b0"
+pre-commit = "^2.17.0"
+responses = "^0.17.0"
+flake8 = "^4.0.1"
+isort = "^5.10.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
