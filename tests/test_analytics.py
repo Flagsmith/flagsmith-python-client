@@ -5,7 +5,7 @@ from unittest import mock
 
 import requests
 
-from flagsmith.analytics import ANALYTICS_TIMER, AnalyticsProcessor
+from flagsmith.analytics import DEFAULT_FLUSH_INTERVAL_SECONDS, AnalyticsProcessor
 
 
 def test_analytics_processor_track_feature_updates_analytics_data(analytics_processor):
@@ -73,7 +73,7 @@ def test_analytics_processor_calling_track_feature_calls_flush_when_timer_runs_o
     with mock.patch("flagsmith.analytics.datetime") as mocked_datetime:
         # Let's move the time
         mocked_datetime.now.return_value = datetime.now() + timedelta(
-            seconds=ANALYTICS_TIMER + 1
+            seconds=DEFAULT_FLUSH_INTERVAL_SECONDS + 1
         )
         # When
         analytics_processor.track_feature(1)
