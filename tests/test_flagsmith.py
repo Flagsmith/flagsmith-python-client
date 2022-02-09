@@ -20,7 +20,7 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
     )
 
     # When
-    Flagsmith(environment_key=api_key, enable_client_side_evaluation=True)
+    Flagsmith(environment_key=api_key, enable_local_evaluation=True)
 
     # Then
     mock_polling_manager.start.assert_called_once()

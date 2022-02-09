@@ -26,8 +26,8 @@ class Flagsmith:
         environment_key: str,
         api_url: str = DEFAULT_API_URL,
         custom_headers: typing.Dict[str, typing.Any] = None,
-        request_timeout: int = None,
-        enable_client_side_evaluation: bool = False,
+        request_timeout_seconds: int = None,
+        enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
@@ -40,7 +40,7 @@ class Flagsmith:
         retries = retries or Retry(total=3, backoff_factor=0.1)
 
         self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
-        self.request_timeout = request_timeout
+        self.request_timeout_seconds = request_timeout_seconds
         self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
         self.environment_flags_url = f"{self.api_url}flags/"
@@ -48,7 +48,7 @@ class Flagsmith:
         self.environment_url = f"{self.api_url}environment-document/"
 
         self._environment = None
-        if enable_client_side_evaluation:
+        if enable_local_evaluation:
             self.environment_data_polling_manager_thread = (
                 EnvironmentDataPollingManager(
                     main=self,
@@ -59,7 +59,7 @@ class Flagsmith:
 
         self._analytics_processor = (
             AnalyticsProcessor(
-                environment_key, self.api_url, timeout=self.request_timeout
+                environment_key, self.api_url, timeout=self.request_timeout_seconds
             )
             if enable_analytics
             else None
@@ -151,7 +151,9 @@ class Flagsmith:
     def _get_json_response(self, url: str, method: str, body: dict = None):
         try:
             request_method = getattr(self.session, method.lower())
-            response = request_method(url, json=body, timeout=self.request_timeout)
+            response = request_method(
+                url, json=body, timeout=self.request_timeout_seconds
+            )
             if response.status_code != 200:
                 raise FlagsmithAPIError(
                     "Invalid request made to Flagsmith API. Response status code: %d",
