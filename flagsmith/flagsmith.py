@@ -22,6 +22,20 @@ DEFAULT_API_URL = "https://api.flagsmith.com/api/v1/"
 
 
 class Flagsmith:
+    """A Flagsmith client.
+
+    Provides an interface for interacting with the Flagsmith http API.
+
+    Basic Usage::
+
+      >>> from flagsmith import Flagsmith
+      >>> flagsmith = Flagsmith(environment_key="<your API key>")
+      >>> environment_flags = flagsmith.get_environment_flags()
+      >>> feature_enabled = environment_flags.is_feature_enabled("foo")
+      >>> identity_flags = flagsmith.get_identity_flags("identifier", {"foo": "bar"})
+      >>> feature_enabled_for_identity = identity_flags.is_feature_enabled("foo")
+    """
+
     def __init__(
         self,
         environment_key: str,
@@ -34,6 +48,24 @@ class Flagsmith:
         enable_analytics: bool = False,
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
     ):
+        """
+        :param environment_key: The environment key obtained from Flagsmith interface
+        :param api_url: Override the URL of the Flagsmith API to communicate with
+        :param custom_headers: Additional headers to add to requests made to the
+            Flagsmith API
+        :param request_timeout_seconds: Number of seconds to wait for a request to
+            complete before terminating the request
+        :param enable_local_evaluation: Enables local evaluation of flags
+        :param environment_refresh_interval_seconds: If using local evaluation,
+            specify the interval period between refreshes of local environment data
+        :param retries: a urllib3.Retry object to use on all http requests to the
+            Flagsmith API
+        :param enable_analytics: if enabled, sends additional requests to the Flagsmith
+            API to power flag analytics charts
+        :param default_flag_handler: callable which will be used in the case where
+            flags cannot be retrieved from the API or a non existent feature is
+            requested
+        """
         self.session = requests.Session()
         self.session.headers.update(
             **{"X-Environment-Key": environment_key}, **(custom_headers or {})
