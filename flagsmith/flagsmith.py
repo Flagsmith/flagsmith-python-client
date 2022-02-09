@@ -6,7 +6,7 @@ from .analytics import AnalyticsProcessor
 
 logger = logging.getLogger(__name__)
 
-SERVER_URL = "https://api.flagsmith.com/api/v1/"
+SERVER_URL = "https://edge.api.flagsmith.com/api/v1/"
 FLAGS_ENDPOINT = "flags/"
 IDENTITY_ENDPOINT = "identities/"
 TRAIT_ENDPOINT = "traits/"
