@@ -4,7 +4,3 @@ class FlagsmithClientError(Exception):
 
 class FlagsmithAPIError(FlagsmithClientError):
     pass
-
-
-class FeatureDoesNotExist(FlagsmithClientError):
-    pass

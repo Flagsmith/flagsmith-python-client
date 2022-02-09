@@ -312,3 +312,27 @@ def test_default_flag_is_not_used_when_identity_flags_returned(
     assert not flag.is_default
     assert flag.value != default_flag.value
     assert flag.value == "some-value"  # hard coded value in tests/data/identities.json
+
+
+def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(mocker):
+    # Given
+    # a default flag and associated handler
+    default_flag = DefaultFlag(True, "some-default-value")
+
+    def default_flag_handler(feature_name: str) -> DefaultFlag:
+        return default_flag
+
+    # but we mock the request session to raise a ConnectionError
+    mock_session = mocker.MagicMock()
+    mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
+    mock_session.get.side_effect = requests.ConnectionError
+
+    flagsmith = Flagsmith(
+        environment_key="some-key", default_flag_handler=default_flag_handler
+    )
+
+    # When
+    flags = flagsmith.get_environment_flags()
+
+    # Then
+    assert flags.get_flag("some-feature") == default_flag

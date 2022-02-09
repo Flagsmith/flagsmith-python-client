@@ -7,7 +7,8 @@ from flag_engine import engine
 from flag_engine.environments.builders import build_environment_model
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel, TraitModel
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
@@ -31,9 +32,7 @@ class Flagsmith:
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
-        default_flag_handler: typing.Callable[
-            [str], DefaultFlag
-        ] = lambda feature_name: DefaultFlag(False, None),
+        default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
     ):
         self.session = requests.Session()
         self.session.headers.update(
@@ -127,28 +126,37 @@ class Flagsmith:
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
-        api_flags = self._get_json_response(
-            url=self.environment_flags_url, method="GET"
-        )
-
-        return Flags.from_api_flags(
-            api_flags=api_flags,
-            analytics_processor=self._analytics_processor,
-            default_flag_handler=self.default_flag_handler,
-        )
+        try:
+            api_flags = self._get_json_response(
+                url=self.environment_flags_url, method="GET"
+            )
+            return Flags.from_api_flags(
+                api_flags=api_flags,
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
+        except FlagsmithAPIError:
+            if self.default_flag_handler:
+                return Flags(default_flag_handler=self.default_flag_handler)
+            raise
 
     def _get_identity_flags_from_api(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
-        data = generate_identities_data(identifier, traits)
-        json_response = self._get_json_response(
-            url=self.identities_url, method="POST", body=data
-        )
-        return Flags.from_api_flags(
-            api_flags=json_response["flags"],
-            analytics_processor=self._analytics_processor,
-            default_flag_handler=self.default_flag_handler,
-        )
+        try:
+            data = generate_identities_data(identifier, traits)
+            json_response = self._get_json_response(
+                url=self.identities_url, method="POST", body=data
+            )
+            return Flags.from_api_flags(
+                api_flags=json_response["flags"],
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
+        except FlagsmithAPIError:
+            if self.default_flag_handler:
+                return Flags(default_flag_handler=self.default_flag_handler)
+            raise
 
     def _get_json_response(self, url: str, method: str, body: dict = None):
         try:

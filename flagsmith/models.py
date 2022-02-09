@@ -1,9 +1,10 @@
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from flag_engine.features.models import FeatureStateModel
 
 from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.exceptions import FlagsmithClientError
 
 
 @dataclass
@@ -49,10 +50,8 @@ class Flag(BaseFlag):
 
 @dataclass
 class Flags:
-    flags: typing.Dict[str, BaseFlag]
-    default_flag_handler: typing.Callable[
-        [str], DefaultFlag
-    ] = lambda feature_name: DefaultFlag(False, None)
+    flags: typing.Dict[str, Flag] = field(default_factory=dict)
+    default_flag_handler: typing.Callable[[str], DefaultFlag] = None
     _analytics_processor: AnalyticsProcessor = None
 
     @classmethod
@@ -94,7 +93,7 @@ class Flags:
             _analytics_processor=analytics_processor,
         )
 
-    def all_flags(self) -> typing.List[BaseFlag]:
+    def all_flags(self) -> typing.List[Flag]:
         """
         Get a list of all Flag objects.
 
@@ -108,6 +107,7 @@ class Flags:
 
         :param feature_name: the name of the feature to check if enabled.
         :return: Boolean representing the enabled state of a given feature.
+        :raises FlagsmithClientError: if feature doesn't exist
         """
         return self.get_flag(feature_name).enabled
 
@@ -117,6 +117,7 @@ class Flags:
 
         :param feature_name: the name of the feature to retrieve the value of.
         :return: the value of the given feature.
+        :raises FlagsmithClientError: if feature doesn't exist
         """
         return self.get_flag(feature_name).value
 
@@ -125,12 +126,15 @@ class Flags:
         Get a specific flag given the feature name.
 
         :param feature_name: the name of the feature to retrieve the flag for.
-        :return: Flag object.
+        :return: BaseFlag object.
+        :raises FlagsmithClientError: if feature doesn't exist
         """
         try:
             flag = self.flags[feature_name]
         except KeyError:
-            return self.default_flag_handler(feature_name)
+            if self.default_flag_handler:
+                return self.default_flag_handler(feature_name)
+            raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
 
         if self._analytics_processor and hasattr(flag, "feature_id"):
             self._analytics_processor.track_feature(flag.feature_id)
