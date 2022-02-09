@@ -151,7 +151,9 @@ class Flagsmith:
     def _get_json_response(self, url: str, method: str, body: dict = None):
         try:
             request_method = getattr(self.session, method.lower())
-            response = request_method(url, json=body, timeout=self.request_timeout_seconds)
+            response = request_method(
+                url, json=body, timeout=self.request_timeout_seconds
+            )
             if response.status_code != 200:
                 raise FlagsmithAPIError(
                     "Invalid request made to Flagsmith API. Response status code: %d",
