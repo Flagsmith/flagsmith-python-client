@@ -4,25 +4,25 @@ from dataclasses import dataclass
 from flag_engine.features.models import FeatureStateModel
 
 from flagsmith.analytics import AnalyticsProcessor
-from flagsmith.exceptions import FlagsmithClientError
 
 
 @dataclass
 class BaseFlag:
     enabled: bool
-    value: typing.Union[str, int, float, bool]
-    feature_name: str
+    value: typing.Union[str, int, float, bool, type(None)]
+    is_default: bool
 
 
-@dataclass
 class DefaultFlag(BaseFlag):
-    is_default = True
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, is_default=True, **kwargs)
 
 
-@dataclass
 class Flag(BaseFlag):
-    feature_id: int
-    is_default = False
+    def __init__(self, *args, feature_id: int, feature_name: str, **kwargs):
+        super().__init__(*args, is_default=False, **kwargs)
+        self.feature_id = feature_id
+        self.feature_name = feature_name
 
     @classmethod
     def from_feature_state_model(
@@ -50,6 +50,9 @@ class Flag(BaseFlag):
 @dataclass
 class Flags:
     flags: typing.Dict[str, BaseFlag]
+    default_flag_handler: typing.Callable[
+        [str], DefaultFlag
+    ] = lambda feature_name: DefaultFlag(False, None)
     _analytics_processor: AnalyticsProcessor = None
 
     @classmethod
@@ -57,8 +60,8 @@ class Flags:
         cls,
         feature_states: typing.List[FeatureStateModel],
         analytics_processor: AnalyticsProcessor,
+        default_flag_handler: typing.Callable,
         identity_id: typing.Union[str, int] = None,
-        defaults: typing.List[DefaultFlag] = None,
     ) -> "Flags":
         flags = {
             feature_state.feature.name: Flag.from_feature_state_model(
@@ -67,27 +70,29 @@ class Flags:
             for feature_state in feature_states
         }
 
-        for default in defaults or []:
-            flags.setdefault(default.feature_name, default)
-
-        return cls(flags=flags, _analytics_processor=analytics_processor)
+        return cls(
+            flags=flags,
+            default_flag_handler=default_flag_handler,
+            _analytics_processor=analytics_processor,
+        )
 
     @classmethod
     def from_api_flags(
         cls,
         api_flags: typing.List[dict],
         analytics_processor: AnalyticsProcessor,
-        defaults: typing.List[DefaultFlag] = None,
+        default_flag_handler: typing.Callable,
     ) -> "Flags":
         flags = {
             flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
             for flag_data in api_flags
         }
 
-        for default in defaults or []:
-            flags.setdefault(default.feature_name, default)
-
-        return cls(flags=flags, _analytics_processor=analytics_processor)
+        return cls(
+            flags=flags,
+            default_flag_handler=default_flag_handler,
+            _analytics_processor=analytics_processor,
+        )
 
     def all_flags(self) -> typing.List[BaseFlag]:
         """
@@ -103,7 +108,6 @@ class Flags:
 
         :param feature_name: the name of the feature to check if enabled.
         :return: Boolean representing the enabled state of a given feature.
-        :raises FlagsmithClientError: if feature doesn't exist
         """
         return self.get_flag(feature_name).enabled
 
@@ -113,7 +117,6 @@ class Flags:
 
         :param feature_name: the name of the feature to retrieve the value of.
         :return: the value of the given feature.
-        :raises FlagsmithClientError: if feature doesn't exist
         """
         return self.get_flag(feature_name).value
 
@@ -123,12 +126,11 @@ class Flags:
 
         :param feature_name: the name of the feature to retrieve the flag for.
         :return: Flag object.
-        :raises FlagsmithClientError: if feature doesn't exist
         """
         try:
             flag = self.flags[feature_name]
         except KeyError:
-            raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
+            return self.default_flag_handler(feature_name)
 
         if self._analytics_processor and hasattr(flag, "feature_id"):
             self._analytics_processor.track_feature(flag.feature_id)

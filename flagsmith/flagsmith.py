@@ -31,7 +31,9 @@ class Flagsmith:
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
-        defaults: typing.List[DefaultFlag] = None,
+        default_flag_handler: typing.Callable[
+            [str], DefaultFlag
+        ] = lambda feature_name: DefaultFlag(False, None),
     ):
         self.session = requests.Session()
         self.session.headers.update(
@@ -65,7 +67,7 @@ class Flagsmith:
             else None
         )
 
-        self.defaults = defaults or []
+        self.default_flag_handler = default_flag_handler
 
     def get_environment_flags(self) -> Flags:
         """
@@ -107,7 +109,7 @@ class Flagsmith:
         return Flags.from_feature_state_models(
             feature_states=engine.get_environment_feature_states(self._environment),
             analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_identity_flags_from_document(
@@ -121,7 +123,7 @@ class Flagsmith:
             feature_states=feature_states,
             analytics_processor=self._analytics_processor,
             identity_id=identity_model.composite_key,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
@@ -132,7 +134,7 @@ class Flagsmith:
         return Flags.from_api_flags(
             api_flags=api_flags,
             analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_identity_flags_from_api(
@@ -145,7 +147,7 @@ class Flagsmith:
         return Flags.from_api_flags(
             api_flags=json_response["flags"],
             analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_json_response(self, url: str, method: str, body: dict = None):
