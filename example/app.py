@@ -8,17 +8,25 @@ from flagsmith.models import DefaultFlag
 
 app = Flask(__name__)
 
-flagsmith = Flagsmith(
-    environment_key=os.environ.get("FLAGSMITH_ENVIRONMENT_KEY"),
-    defaults=[
-        # Set a default flag which will be used if the "secret_button"
-        # feature is not returned by the API
-        DefaultFlag(
+
+def default_flag_handler(feature_name: str) -> DefaultFlag:
+    """
+    Function that will be used if the API doesn't respond, or an unknown
+    feature is requested
+    """
+
+    if feature_name == "secret_button":
+        return DefaultFlag(
             enabled=False,
             value=json.dumps({"colour": "#b8b8b8"}),
-            feature_name="secret_button",
         )
-    ],
+
+    return DefaultFlag(False, None)
+
+
+flagsmith = Flagsmith(
+    environment_key=os.environ.get("FLAGSMITH_ENVIRONMENT_KEY"),
+    default_flag_handler=default_flag_handler,
 )
 
 

@@ -7,7 +7,8 @@ from flag_engine import engine
 from flag_engine.environments.builders import build_environment_model
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel, TraitModel
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
@@ -21,6 +22,20 @@ DEFAULT_API_URL = "https://api.flagsmith.com/api/v1/"
 
 
 class Flagsmith:
+    """A Flagsmith client.
+
+    Provides an interface for interacting with the Flagsmith http API.
+
+    Basic Usage::
+
+      >>> from flagsmith import Flagsmith
+      >>> flagsmith = Flagsmith(environment_key="<your API key>")
+      >>> environment_flags = flagsmith.get_environment_flags()
+      >>> feature_enabled = environment_flags.is_feature_enabled("foo")
+      >>> identity_flags = flagsmith.get_identity_flags("identifier", {"foo": "bar"})
+      >>> feature_enabled_for_identity = identity_flags.is_feature_enabled("foo")
+    """
+
     def __init__(
         self,
         environment_key: str,
@@ -31,8 +46,26 @@ class Flagsmith:
         environment_refresh_interval_seconds: int = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
-        defaults: typing.List[DefaultFlag] = None,
+        default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
     ):
+        """
+        :param environment_key: The environment key obtained from Flagsmith interface
+        :param api_url: Override the URL of the Flagsmith API to communicate with
+        :param custom_headers: Additional headers to add to requests made to the
+            Flagsmith API
+        :param request_timeout_seconds: Number of seconds to wait for a request to
+            complete before terminating the request
+        :param enable_local_evaluation: Enables local evaluation of flags
+        :param environment_refresh_interval_seconds: If using local evaluation,
+            specify the interval period between refreshes of local environment data
+        :param retries: a urllib3.Retry object to use on all http requests to the
+            Flagsmith API
+        :param enable_analytics: if enabled, sends additional requests to the Flagsmith
+            API to power flag analytics charts
+        :param default_flag_handler: callable which will be used in the case where
+            flags cannot be retrieved from the API or a non existent feature is
+            requested
+        """
         self.session = requests.Session()
         self.session.headers.update(
             **{"X-Environment-Key": environment_key}, **(custom_headers or {})
@@ -65,7 +98,7 @@ class Flagsmith:
             else None
         )
 
-        self.defaults = defaults or []
+        self.default_flag_handler = default_flag_handler
 
     def get_environment_flags(self) -> Flags:
         """
@@ -107,7 +140,7 @@ class Flagsmith:
         return Flags.from_feature_state_models(
             feature_states=engine.get_environment_feature_states(self._environment),
             analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_identity_flags_from_document(
@@ -121,32 +154,41 @@ class Flagsmith:
             feature_states=feature_states,
             analytics_processor=self._analytics_processor,
             identity_id=identity_model.composite_key,
-            defaults=self.defaults,
+            default_flag_handler=self.default_flag_handler,
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
-        api_flags = self._get_json_response(
-            url=self.environment_flags_url, method="GET"
-        )
-
-        return Flags.from_api_flags(
-            api_flags=api_flags,
-            analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
-        )
+        try:
+            api_flags = self._get_json_response(
+                url=self.environment_flags_url, method="GET"
+            )
+            return Flags.from_api_flags(
+                api_flags=api_flags,
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
+        except FlagsmithAPIError:
+            if self.default_flag_handler:
+                return Flags(default_flag_handler=self.default_flag_handler)
+            raise
 
     def _get_identity_flags_from_api(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
-        data = generate_identities_data(identifier, traits)
-        json_response = self._get_json_response(
-            url=self.identities_url, method="POST", body=data
-        )
-        return Flags.from_api_flags(
-            api_flags=json_response["flags"],
-            analytics_processor=self._analytics_processor,
-            defaults=self.defaults,
-        )
+        try:
+            data = generate_identities_data(identifier, traits)
+            json_response = self._get_json_response(
+                url=self.identities_url, method="POST", body=data
+            )
+            return Flags.from_api_flags(
+                api_flags=json_response["flags"],
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
+        except FlagsmithAPIError:
+            if self.default_flag_handler:
+                return Flags(default_flag_handler=self.default_flag_handler)
+            raise
 
     def _get_json_response(self, url: str, method: str, body: dict = None):
         try:
