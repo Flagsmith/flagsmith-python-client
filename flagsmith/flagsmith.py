@@ -83,6 +83,12 @@ class Flagsmith:
 
         self._environment = None
         if enable_local_evaluation:
+            if not environment_key.startswith("ser."):
+                raise ValueError(
+                    "In order to use local evaluation, please generate a server key "
+                    "in the environment settings page."
+                )
+
             self.environment_data_polling_manager_thread = (
                 EnvironmentDataPollingManager(
                     main=self,

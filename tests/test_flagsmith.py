@@ -360,3 +360,8 @@ def test_get_identity_segments_with_valid_trait(local_eval_flagsmith, environmen
     # Then
     assert len(segments) == 1
     assert segments[0].name == "Test segment"  # obtained from data/environment.json
+
+
+def test_local_evaluation_requires_server_key():
+    with pytest.raises(ValueError):
+        Flagsmith(environment_key="not-a-server-key", enable_local_evaluation=True)
