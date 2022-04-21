@@ -7,12 +7,13 @@ from flag_engine import engine
 from flag_engine.environments.builders import build_environment_model
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel, TraitModel
+from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
-from flagsmith.models import DefaultFlag, Flags
+from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.utils.identities import generate_identities_data
 
@@ -43,7 +44,7 @@ class Flagsmith:
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
-        environment_refresh_interval_seconds: int = 60,
+        environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: Retry = None,
         enable_analytics: bool = False,
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
@@ -128,6 +129,29 @@ class Flagsmith:
         if self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(identifier, traits)
+
+    def get_identity_segments(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> typing.List[Segment]:
+        """
+        Get a list of segments that the given identity is in.
+
+        :param identifier: a unique identifier for the identity in the current
+            environment, e.g. email address, username, uuid
+        :param traits: a dictionary of traits to add / update on the identity in
+            Flagsmith, e.g. {"num_orders": 10}
+        :return: list of Segment objects that the identity is part of.
+        """
+
+        if not self._environment:
+            raise FlagsmithClientError(
+                "Local evaluation required to obtain identity segments."
+            )
+
+        traits = traits or {}
+        identity_model = self._build_identity_model(identifier, **traits)
+        segment_models = get_identity_segments(self._environment, identity_model)
+        return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self):
         self._environment = self._get_environment_from_api()

@@ -140,3 +140,9 @@ class Flags:
             self._analytics_processor.track_feature(flag.feature_id)
 
         return flag
+
+
+@dataclass
+class Segment:
+    id: int
+    name: str
