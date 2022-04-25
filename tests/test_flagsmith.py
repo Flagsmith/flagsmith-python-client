@@ -11,7 +11,7 @@ from flagsmith.exceptions import FlagsmithAPIError
 from flagsmith.models import DefaultFlag
 
 
-def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
+def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
     # Given
     mock_polling_manager = mocker.MagicMock()
     mocker.patch(
@@ -20,7 +20,7 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
     )
 
     # When
-    Flagsmith(environment_key=api_key, enable_local_evaluation=True)
+    Flagsmith(environment_key=server_api_key, enable_local_evaluation=True)
 
     # Then
     mock_polling_manager.start.assert_called_once()
