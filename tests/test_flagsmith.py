@@ -11,7 +11,7 @@ from flagsmith.exceptions import FlagsmithAPIError
 from flagsmith.models import DefaultFlag
 
 
-def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
+def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
     # Given
     mock_polling_manager = mocker.MagicMock()
     mocker.patch(
@@ -20,7 +20,7 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, api_key):
     )
 
     # When
-    Flagsmith(environment_key=api_key, enable_local_evaluation=True)
+    Flagsmith(environment_key=server_api_key, enable_local_evaluation=True)
 
     # Then
     mock_polling_manager.start.assert_called_once()
@@ -349,7 +349,9 @@ def test_get_identity_segments_no_traits(local_eval_flagsmith, environment_model
     assert segments == []
 
 
-def test_get_identity_segments_with_valid_trait(local_eval_flagsmith, environment_model):
+def test_get_identity_segments_with_valid_trait(
+    local_eval_flagsmith, environment_model
+):
     # Given
     identifier = "identifier"
     traits = {"foo": "bar"}  # obtained from data/environment.json
@@ -360,3 +362,8 @@ def test_get_identity_segments_with_valid_trait(local_eval_flagsmith, environmen
     # Then
     assert len(segments) == 1
     assert segments[0].name == "Test segment"  # obtained from data/environment.json
+
+
+def test_local_evaluation_requires_server_key():
+    with pytest.raises(ValueError):
+        Flagsmith(environment_key="not-a-server-key", enable_local_evaluation=True)

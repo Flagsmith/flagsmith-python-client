@@ -4,12 +4,10 @@ import random
 import string
 
 import pytest
-import responses
 from flag_engine.environments.builders import build_environment_model
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
-from flagsmith.flagsmith import DEFAULT_API_URL
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
