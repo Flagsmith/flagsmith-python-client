@@ -4,10 +4,12 @@ import random
 import string
 
 import pytest
+import responses
 from flag_engine.environments.builders import build_environment_model
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.flagsmith import DEFAULT_API_URL
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -24,6 +26,11 @@ def api_key():
     return "".join(random.sample(string.ascii_letters, 20))
 
 
+@pytest.fixture(scope="session")
+def server_api_key():
+    return "ser.%s" % "".join(random.sample(string.ascii_letters, 20))
+
+
 @pytest.fixture()
 def flagsmith(api_key):
     return Flagsmith(environment_key=api_key)
@@ -33,6 +40,26 @@ def flagsmith(api_key):
 def environment_json():
     with open(os.path.join(DATA_DIR, "environment.json"), "rt") as f:
         yield f.read()
+
+
+@pytest.fixture()
+def local_eval_flagsmith(server_api_key, environment_json, mocker):
+    mock_session = mocker.MagicMock()
+    mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
+
+    mock_environment_document_response = mocker.MagicMock(status_code=200)
+    mock_environment_document_response.json.return_value = json.loads(environment_json)
+    mock_session.get.return_value = mock_environment_document_response
+
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        environment_refresh_interval_seconds=0.1,
+    )
+
+    yield flagsmith
+
+    flagsmith.__del__()
 
 
 @pytest.fixture()

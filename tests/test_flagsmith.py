@@ -336,3 +336,27 @@ def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(mock
 
     # Then
     assert flags.get_flag("some-feature") == default_flag
+
+
+def test_get_identity_segments_no_traits(local_eval_flagsmith, environment_model):
+    # Given
+    identifier = "identifier"
+
+    # When
+    segments = local_eval_flagsmith.get_identity_segments(identifier)
+
+    # Then
+    assert segments == []
+
+
+def test_get_identity_segments_with_valid_trait(local_eval_flagsmith, environment_model):
+    # Given
+    identifier = "identifier"
+    traits = {"foo": "bar"}  # obtained from data/environment.json
+
+    # When
+    segments = local_eval_flagsmith.get_identity_segments(identifier, traits)
+
+    # Then
+    assert len(segments) == 1
+    assert segments[0].name == "Test segment"  # obtained from data/environment.json

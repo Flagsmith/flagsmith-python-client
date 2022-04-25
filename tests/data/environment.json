@@ -11,7 +11,30 @@
     },
     "id": 1,
     "hide_disabled_flags": false,
-    "segments": []
+    "segments": [
+      {
+        "id": 1,
+        "name": "Test segment",
+        "rules": [
+          {
+            "type": "ALL",
+            "rules": [
+              {
+                "type": "ALL",
+                "rules": [],
+                "conditions": [
+                  {
+                    "operator": "EQUAL",
+                    "property_": "foo",
+                    "value": "bar"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   "segment_overrides": [],
   "id": 1,
