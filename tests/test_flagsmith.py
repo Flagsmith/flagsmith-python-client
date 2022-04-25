@@ -349,7 +349,9 @@ def test_get_identity_segments_no_traits(local_eval_flagsmith, environment_model
     assert segments == []
 
 
-def test_get_identity_segments_with_valid_trait(local_eval_flagsmith, environment_model):
+def test_get_identity_segments_with_valid_trait(
+    local_eval_flagsmith, environment_model
+):
     # Given
     identifier = "identifier"
     traits = {"foo": "bar"}  # obtained from data/environment.json
