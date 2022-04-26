@@ -1,7 +1,11 @@
 import typing
 from dataclasses import dataclass, field
 
-from flag_engine.features.models import FeatureStateModel
+from flag_engine.features.models import (
+    FeatureStateModel,
+    FlagsmithValue,
+    FlagsmithValueType,
+)
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithClientError
@@ -10,8 +14,36 @@ from flagsmith.exceptions import FlagsmithClientError
 @dataclass
 class BaseFlag:
     enabled: bool
-    value: typing.Union[str, int, float, bool, type(None)]
+    value: FlagsmithValue
     is_default: bool
+
+    def get_string_value(self) -> typing.Optional[str]:
+        return (
+            str(self.value.value)
+            if self.value.value_type == FlagsmithValueType.STRING
+            else None
+        )
+
+    def get_boolean_value(self) -> typing.Optional[bool]:
+        return (
+            self.value.value == "True"
+            if self.value.value_type == FlagsmithValueType.BOOLEAN
+            else None
+        )
+
+    def get_integer_value(self) -> int:
+        return (
+            int(self.value.value)
+            if self.value.value_type == FlagsmithValueType.INTEGER
+            else None
+        )
+
+    def get_float_value(self) -> float:
+        return (
+            float(self.value.value)
+            if self.value.value_type == FlagsmithValueType.FLOAT
+            else None
+        )
 
 
 class DefaultFlag(BaseFlag):
