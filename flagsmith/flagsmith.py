@@ -19,7 +19,7 @@ from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_URL = "https://api.flagsmith.com/api/v1/"
+DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 
 
 class Flagsmith:
