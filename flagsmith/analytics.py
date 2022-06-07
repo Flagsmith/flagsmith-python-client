@@ -32,7 +32,6 @@ class AnalyticsProcessor:
         self._last_flushed = datetime.now()
         self.analytics_data = {}
         self.timeout = timeout
-        super().__init__()
 
     def flush(self):
         """

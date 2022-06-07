@@ -1,0 +1,2 @@
+flask==2.0.2
+flagsmith>=3.0.0

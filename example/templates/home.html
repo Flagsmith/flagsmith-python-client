@@ -1,0 +1,25 @@
+<!doctype html>
+<head>
+    <style></style>
+</head>
+<title>Flagsmith Example</title>
+<body>
+<p>Hello, {{ identifier or 'World' }}.</p>
+{% if show_button %}
+<button style="background-color: {{ button_colour }}">A secret button</button>
+{% endif %}
+
+<p></p>
+
+<form action="/" method="GET">
+    <h3>Identify as a user</h3>
+    <label for="identifier">Identifier: </label><input name="identifier" id="identifier"><br>
+
+    <p>... with an optional user trait</p>
+    <label for="trait-key">Trait key: </label><input name="trait-key" id="trait-key"><br>
+    <label for="trait-value">Trait value: </label><input name="trait-value" id="trait-value"><br><br>
+
+    <button type="submit">Identify!</button>
+</form>
+
+</body>
