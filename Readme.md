@@ -8,7 +8,7 @@ The SDK for Python applications for [https://www.flagsmith.com/](https://www.fla
 
 ## Adding to your project
 
-For full documentation visit [https://docs.flagsmith.com/clients/python/](https://docs.flagsmith.com/clients/python/)
+For full documentation visit [https://docs.flagsmith.com/clients/server-side](https://docs.flagsmith.com/clients/server-side).
 
 ## Contributing
 
