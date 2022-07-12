@@ -136,8 +136,8 @@ class Flags:
                 return self.default_flag_handler(feature_name)
             raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
 
-        if self._analytics_processor and hasattr(flag, "feature_id"):
-            self._analytics_processor.track_feature(flag.feature_id)
+        if self._analytics_processor and hasattr(flag, "feature_name"):
+            self._analytics_processor.track_feature(flag.feature_name)
 
         return flag
 
