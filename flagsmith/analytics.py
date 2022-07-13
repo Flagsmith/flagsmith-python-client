@@ -53,7 +53,7 @@ class AnalyticsProcessor:
         self.analytics_data.clear()
         self._last_flushed = datetime.now()
 
-    def track_feature(self, feature_id: int):
-        self.analytics_data[feature_id] = self.analytics_data.get(feature_id, 0) + 1
+    def track_feature(self, feature_name: str):
+        self.analytics_data[feature_name] = self.analytics_data.get(feature_name, 0) + 1
         if (datetime.now() - self._last_flushed).seconds > ANALYTICS_TIMER:
             self.flush()
