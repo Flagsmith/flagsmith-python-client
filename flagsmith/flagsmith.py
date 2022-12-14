@@ -277,7 +277,7 @@ class Flagsmith:
     def _add_identity_to_state(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ):
-        if self.tracked_identities:
+        if hasattr(self, "tracked_identities"):
             # TODO: should this just write the traits as they're passed rather than manipulate them
             #  into API format here?
             self.tracked_identities["local_state"][identifier] = {
