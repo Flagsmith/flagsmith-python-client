@@ -15,7 +15,7 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_
     # Given
     mock_polling_manager = mocker.MagicMock()
     mocker.patch(
-        "flagsmith.flagsmith.EnvironmentDataPollingManager",
+        "flagsmith.flagsmith.PollingManager",
         return_value=mock_polling_manager,
     )
 

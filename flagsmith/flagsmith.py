@@ -14,7 +14,7 @@ from urllib3 import Retry
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
-from flagsmith.polling_manager import EnvironmentDataPollingManager
+from flagsmith.polling_manager import PollingManager
 from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,8 @@ class Flagsmith:
         retries: Retry = None,
         enable_analytics: bool = False,
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
+        report_identities: bool = False,
+        report_identities_refresh_interval_seconds: typing.Union[int, float] = 60,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface
@@ -89,13 +91,22 @@ class Flagsmith:
                     "in the environment settings page."
                 )
 
-            self.environment_data_polling_manager_thread = (
-                EnvironmentDataPollingManager(
-                    main=self,
-                    refresh_interval_seconds=environment_refresh_interval_seconds,
-                )
+            self.environment_data_polling_manager_thread = PollingManager(
+                to_execute=self.update_environment,
+                refresh_interval_seconds=environment_refresh_interval_seconds,
             )
             self.environment_data_polling_manager_thread.start()
+
+            if report_identities:
+                self.tracked_identities = {}
+                # use a local state sub key in case we want to try and optimise in the future to
+                # only call the API if a change has been made
+                self.tracked_identities.setdefault("local_state", dict())
+                self.identity_reporter = PollingManager(
+                    to_execute=self.report_identities,
+                    refresh_interval_seconds=report_identities_refresh_interval_seconds,
+                )
+                self.identity_reporter.start()
 
         self._analytics_processor = (
             AnalyticsProcessor(
@@ -133,6 +144,7 @@ class Flagsmith:
         """
         traits = traits or {}
         if self._environment:
+            self._add_identity_to_state(identifier, traits)
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(identifier, traits)
 
@@ -159,8 +171,17 @@ class Flagsmith:
         segment_models = get_identity_segments(self._environment, identity_model)
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
+    def bulk_identify(self, identity_data):
+        # TODO: implement bulk identify
+        pass
+
     def update_environment(self):
         self._environment = self._get_environment_from_api()
+
+    def report_identities(self):
+        self.bulk_identify(
+            identity_data=self.tracked_identities["local_state"].values()
+        )
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
@@ -252,6 +273,20 @@ class Flagsmith:
             environment_api_key=self._environment.api_key,
             identity_traits=trait_models,
         )
+
+    def _add_identity_to_state(
+        self, identifier: str, traits: typing.Dict[str, typing.Any]
+    ):
+        if self.tracked_identities:
+            # TODO: should this just write the traits as they're passed rather than manipulate them
+            #  into API format here?
+            self.tracked_identities["local_state"][identifier] = {
+                "identifier": identifier,
+                "traits": [
+                    {"trait_key": key, "trait_value": value}
+                    for key, value in traits.items()
+                ],
+            }
 
     def __del__(self):
         if hasattr(self, "environment_data_polling_manager_thread"):

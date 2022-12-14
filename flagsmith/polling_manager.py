@@ -2,22 +2,21 @@ import threading
 import time
 import typing
 
-if typing.TYPE_CHECKING:
-    from flagsmith import Flagsmith
 
-
-class EnvironmentDataPollingManager(threading.Thread):
+class PollingManager(threading.Thread):
     def __init__(
-        self, main: "Flagsmith", refresh_interval_seconds: typing.Union[int, float] = 10
+        self,
+        to_execute: typing.Callable,
+        refresh_interval_seconds: typing.Union[int, float] = 10,
     ):
-        super(EnvironmentDataPollingManager, self).__init__()
+        super(PollingManager, self).__init__()
         self._stop_event = threading.Event()
-        self.main = main
+        self._callable = to_execute
         self.refresh_interval_seconds = refresh_interval_seconds
 
     def run(self) -> None:
         while not self._stop_event.is_set():
-            self.main.update_environment()
+            self._callable()
             time.sleep(self.refresh_interval_seconds)
 
     def stop(self) -> None:
