@@ -48,6 +48,7 @@ class Flagsmith:
         retries: Retry = None,
         enable_analytics: bool = False,
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
+        proxies: typing.Dict[str, str] = None,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface
@@ -66,11 +67,13 @@ class Flagsmith:
         :param default_flag_handler: callable which will be used in the case where
             flags cannot be retrieved from the API or a non existent feature is
             requested
+        :param proxies: as per https://requests.readthedocs.io/en/latest/api/#requests.Session.proxies
         """
         self.session = requests.Session()
         self.session.headers.update(
             **{"X-Environment-Key": environment_key}, **(custom_headers or {})
         )
+        self.session.proxies.update(proxies or {})
         retries = retries or Retry(total=3, backoff_factor=0.1)
 
         self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
