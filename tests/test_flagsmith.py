@@ -367,3 +367,14 @@ def test_get_identity_segments_with_valid_trait(
 def test_local_evaluation_requires_server_key():
     with pytest.raises(ValueError):
         Flagsmith(environment_key="not-a-server-key", enable_local_evaluation=True)
+
+
+def test_initialise_flagsmith_with_proxies():
+    # Given
+    proxies = {"https": "https://my.proxy.com/proxy-me"}
+
+    # When
+    flagsmith = Flagsmith(environment_key="test-key", proxies=proxies)
+
+    # Then
+    assert flagsmith.session.proxies == proxies
