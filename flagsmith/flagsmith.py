@@ -210,9 +210,14 @@ class Flagsmith:
     ) -> Flags:
         try:
             data = generate_identities_data(identifier, traits)
-            json_response = self._get_json_response(
-                url=self.identities_url, method="POST", body=data
-            )
+            if traits:
+                json_response = self._get_json_response(
+                    url=self.identities_url, method="POST", body=data
+                )
+            else:
+                json_response = self._get_json_response(
+                    url=self.identities_url, method="GET", query=data
+                )
             return Flags.from_api_flags(
                 api_flags=json_response["flags"],
                 analytics_processor=self._analytics_processor,

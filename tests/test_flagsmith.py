@@ -1,4 +1,5 @@
 import json
+import typing
 import uuid
 
 import pytest
@@ -82,18 +83,20 @@ def test_get_environment_flags_uses_local_environment_when_available(
 
 @responses.activate()
 def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
-    flagsmith, identities_json
-):
+    flagsmith: Flagsmith,
+    identities_json: typing.Dict[str, typing.Any],
+) -> None:
     # Given
-    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
+    responses.add(method="GET", url=flagsmith.identities_url, body=identities_json)
     identifier = "identifier"
 
     # When
     identity_flags = flagsmith.get_identity_flags(identifier=identifier).all_flags()
 
     # Then
-    assert responses.calls[0].request.body.decode() == json.dumps(
-        {"identifier": identifier, "traits": []}
+    assert (
+        responses.calls[0].request.path_url
+        == f"/api/v1/identities/?identifier={identifier}"
     )
 
     # Taken from hard coded values in tests/data/identities.json
@@ -285,8 +288,9 @@ def test_default_flag_is_used_when_no_identity_flags_returned(api_key):
 
 @responses.activate()
 def test_default_flag_is_not_used_when_identity_flags_returned(
-    api_key, identities_json
-):
+    api_key: str,
+    identities_json: typing.Dict[str, typing.Any],
+) -> None:
     # Given
     feature_name = "some_feature"
 
@@ -301,7 +305,7 @@ def test_default_flag_is_not_used_when_identity_flags_returned(
     )
 
     # but we mock the API to return an actual value for the same feature
-    responses.add(url=flagsmith.identities_url, method="POST", body=identities_json)
+    responses.add(url=flagsmith.identities_url, method="GET", body=identities_json)
 
     # When
     flags = flagsmith.get_identity_flags(identifier="identifier")
