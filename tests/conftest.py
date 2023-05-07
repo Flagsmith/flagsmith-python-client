@@ -47,7 +47,7 @@ def local_eval_flagsmith(server_api_key, environment_json, mocker):
 
     mock_environment_document_response = mocker.MagicMock(status_code=200)
     mock_environment_document_response.json.return_value = json.loads(environment_json)
-    mock_session.get.return_value = mock_environment_document_response
+    mock_session.request.return_value = mock_environment_document_response
 
     flagsmith = Flagsmith(
         environment_key=server_api_key,

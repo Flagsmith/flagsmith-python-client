@@ -223,11 +223,20 @@ class Flagsmith:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
-    def _get_json_response(self, url: str, method: str, body: dict = None):
+    def _get_json_response(
+        self,
+        url: str,
+        method: str,
+        body: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        query: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> typing.Any:
         try:
-            request_method = getattr(self.session, method.lower())
-            response = request_method(
-                url, json=body, timeout=self.request_timeout_seconds
+            response = self.session.request(
+                method=method,
+                url=url,
+                json=body,
+                params=query,
+                timeout=self.request_timeout_seconds,
             )
             if response.status_code != 200:
                 raise FlagsmithAPIError(
