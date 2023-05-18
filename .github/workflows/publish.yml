@@ -3,7 +3,7 @@ name: Publish Pypi Package
 on:
   push:
     tags:
-      - "*"
+      - '*'
 
 jobs:
   package:
@@ -20,5 +20,5 @@ jobs:
         uses: JRubics/poetry-publish@v1.10
         with:
           pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-          ignore_dev_requirements: "yes"
-          build_format: "sdist"
+          ignore_dev_requirements: 'yes'
+          build_format: 'sdist'
