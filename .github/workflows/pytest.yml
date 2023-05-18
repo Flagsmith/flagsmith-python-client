@@ -1,40 +1,40 @@
 name: Formatting and Tests
 
 on:
-    - pull_request
+  - pull_request
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        name: Pytest and Black formatting
+  test:
+    runs-on: ubuntu-latest
+    name: Pytest and Black formatting
 
-        strategy:
-            max-parallel: 4
-            matrix:
-                python-version: ["3.7", "3.8", "3.9", "3.10"]
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
 
-        steps:
-            - name: Cloning repo
-              uses: actions/checkout@v2
-              with:
-                  fetch-depth: 0
+    steps:
+      - name: Cloning repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
-              with:
-                  python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-            - name: Install Dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install poetry
-                  poetry install
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
 
-            - name: Check Formatting
-              run: | 
-                poetry run black --check .
-                poetry run flake8 .
-                poetry run isort --check .
+      - name: Check Formatting
+        run: |
+          poetry run black --check .
+          poetry run flake8 .
+          poetry run isort --check .
 
-            - name: Run Tests
-              run: poetry run pytest
+      - name: Run Tests
+        run: poetry run pytest

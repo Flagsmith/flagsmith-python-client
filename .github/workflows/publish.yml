@@ -1,24 +1,24 @@
 name: Publish Pypi Package
 
 on:
-    push:
-        tags:
-            - '*'
+  push:
+    tags:
+      - '*'
 
 jobs:
-    package:
-        runs-on: ubuntu-latest
-        name: Publish Pypi Package
+  package:
+    runs-on: ubuntu-latest
+    name: Publish Pypi Package
 
-        steps:
-            - name: Cloning repo
-              uses: actions/checkout@v2
-              with:
-                  fetch-depth: 0
+    steps:
+      - name: Cloning repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - name: Build and publish to pypi
-              uses: JRubics/poetry-publish@v1.10
-              with:
-                pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-                ignore_dev_requirements: "yes"
-                build_format: "sdist"
+      - name: Build and publish to pypi
+        uses: JRubics/poetry-publish@v1.10
+        with:
+          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+          ignore_dev_requirements: 'yes'
+          build_format: 'sdist'
