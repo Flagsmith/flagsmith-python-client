@@ -57,7 +57,7 @@ def local_eval_flagsmith(server_api_key, environment_json, mocker):
 
     yield flagsmith
 
-    flagsmith.__del__()
+    del flagsmith
 
 
 @pytest.fixture()

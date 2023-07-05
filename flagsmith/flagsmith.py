@@ -93,6 +93,7 @@ class Flagsmith:
                 EnvironmentDataPollingManager(
                     main=self,
                     refresh_interval_seconds=environment_refresh_interval_seconds,
+                    daemon=True,  # noqa
                 )
             )
             self.environment_data_polling_manager_thread.start()
