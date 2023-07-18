@@ -1,5 +1,6 @@
 import logging
 import typing
+from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
 import requests
@@ -14,6 +15,7 @@ from urllib3 import Retry
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
+from flagsmith.offline_handlers import BaseOfflineModeHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.utils.identities import generate_identities_data
 
@@ -22,7 +24,82 @@ logger = logging.getLogger(__name__)
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 
 
-class Flagsmith:
+class BaseFlagsmithClient(ABC):
+    @abstractmethod
+    def get_environment_flags(self) -> Flags:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_identity_flags(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> Flags:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_identity_segments(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> typing.List[Segment]:
+        raise NotImplementedError()
+
+
+class FromEnvironmentDocumentMixin:
+    def _get_environment_flags_from_document(self) -> Flags:
+        return Flags.from_feature_state_models(
+            feature_states=engine.get_environment_feature_states(self._environment),
+            analytics_processor=self._analytics_processor,
+            default_flag_handler=self.default_flag_handler,
+        )
+
+    def _get_identity_flags_from_document(
+        self, identifier: str, traits: typing.Dict[str, typing.Any]
+    ) -> Flags:
+        identity_model = self._build_identity_model(identifier, **traits)
+        feature_states = engine.get_identity_feature_states(
+            self._environment, identity_model
+        )
+        return Flags.from_feature_state_models(
+            feature_states=feature_states,
+            analytics_processor=self._analytics_processor,
+            identity_id=identity_model.composite_key,
+            default_flag_handler=self.default_flag_handler,
+        )
+
+    def _get_identity_segments_from_document(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> typing.List[Segment]:
+        """
+        Get a list of segments that the given identity is in.
+
+        :param identifier: a unique identifier for the identity in the current
+            environment, e.g. email address, username, uuid
+        :param traits: a dictionary of traits to add / update on the identity in
+            Flagsmith, e.g. {"num_orders": 10}
+        :return: list of Segment objects that the identity is part of.
+        """
+
+        traits = traits or {}
+        identity_model = self._build_identity_model(identifier, **traits)
+        segment_models = get_identity_segments(self._environment, identity_model)
+        return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
+
+    def _build_identity_model(self, identifier: str, **traits):
+        if not self._environment:
+            raise FlagsmithClientError(
+                "Unable to build identity model when no local environment present."
+            )
+
+        trait_models = [
+            TraitModel(trait_key=key, trait_value=value)
+            for key, value in traits.items()
+        ]
+        return IdentityModel(
+            identifier=identifier,
+            environment_api_key=self._environment.api_key,
+            identity_traits=trait_models,
+        )
+
+
+class Flagsmith(FromEnvironmentDocumentMixin, BaseFlagsmithClient):
     """A Flagsmith client.
 
     Provides an interface for interacting with the Flagsmith http API.
@@ -39,8 +116,8 @@ class Flagsmith:
 
     def __init__(
         self,
-        environment_key: str,
-        api_url: str = DEFAULT_API_URL,
+        environment_key: str = None,
+        api_url: str = None,
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
@@ -69,6 +146,7 @@ class Flagsmith:
             requested
         :param proxies: as per https://requests.readthedocs.io/en/latest/api/#requests.Session.proxies
         """
+
         self.session = requests.Session()
         self.session.headers.update(
             **{"X-Environment-Key": environment_key}, **(custom_headers or {})
@@ -158,10 +236,7 @@ class Flagsmith:
                 "Local evaluation required to obtain identity segments."
             )
 
-        traits = traits or {}
-        identity_model = self._build_identity_model(identifier, **traits)
-        segment_models = get_identity_segments(self._environment, identity_model)
-        return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
+        return self._get_identity_segments_from_document(identifier, traits)
 
     def update_environment(self):
         self._environment = self._get_environment_from_api()
@@ -169,27 +244,6 @@ class Flagsmith:
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
         return build_environment_model(environment_data)
-
-    def _get_environment_flags_from_document(self) -> Flags:
-        return Flags.from_feature_state_models(
-            feature_states=engine.get_environment_feature_states(self._environment),
-            analytics_processor=self._analytics_processor,
-            default_flag_handler=self.default_flag_handler,
-        )
-
-    def _get_identity_flags_from_document(
-        self, identifier: str, traits: typing.Dict[str, typing.Any]
-    ) -> Flags:
-        identity_model = self._build_identity_model(identifier, **traits)
-        feature_states = engine.get_identity_feature_states(
-            self._environment, identity_model
-        )
-        return Flags.from_feature_state_models(
-            feature_states=feature_states,
-            analytics_processor=self._analytics_processor,
-            identity_id=identity_model.composite_key,
-            default_flag_handler=self.default_flag_handler,
-        )
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
@@ -241,22 +295,49 @@ class Flagsmith:
                 "Unable to get valid response from Flagsmith API."
             ) from e
 
-    def _build_identity_model(self, identifier: str, **traits):
-        if not self._environment:
-            raise FlagsmithClientError(
-                "Unable to build identity model when no local environment present."
-            )
-
-        trait_models = [
-            TraitModel(trait_key=key, trait_value=value)
-            for key, value in traits.items()
-        ]
-        return IdentityModel(
-            identifier=identifier,
-            environment_api_key=self._environment.api_key,
-            identity_traits=trait_models,
-        )
-
     def __del__(self):
         if hasattr(self, "environment_data_polling_manager_thread"):
             self.environment_data_polling_manager_thread.stop()
+
+
+class OfflineFlagsmith(FromEnvironmentDocumentMixin, BaseFlagsmithClient):
+    def __init__(self, offline_handler: BaseOfflineModeHandler):
+        self._environment = offline_handler.get_environment()
+
+        self._analytics_processor = None
+        self.default_handler = None
+
+    def get_environment_flags(self):
+        """
+        Get all the default for flags for the current environment.
+
+        :return: Flags object holding all the flags for the current environment.
+        """
+        return self._get_environment_flags_from_document()
+
+    def get_identity_flags(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> Flags:
+        """
+        Get all the flags for the current environment for a given identity.
+
+        :param identifier: a unique identifier for the identity in the current
+            environment, e.g. email address, username, uuid
+        :param traits: a dictionary of traits to use for segment evaluations.
+        :return: Flags object holding all the flags for the given identity.
+        """
+        return self._get_identity_flags_from_document(identifier, traits)
+
+    def get_identity_segments(
+        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+    ) -> typing.List[Segment]:
+        """
+        Get a list of segments that the given identity is in.
+
+        :param identifier: a unique identifier for the identity in the current
+            environment, e.g. email address, username, uuid
+        :param traits: a dictionary of traits to use for segment evaluations.
+        :return: list of Segment objects that the identity is part of.
+        """
+
+        return self._get_identity_segments_from_document(identifier, traits)

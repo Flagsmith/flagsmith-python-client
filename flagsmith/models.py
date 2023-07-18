@@ -58,8 +58,8 @@ class Flags:
     def from_feature_state_models(
         cls,
         feature_states: typing.List[FeatureStateModel],
-        analytics_processor: AnalyticsProcessor,
-        default_flag_handler: typing.Callable,
+        analytics_processor: typing.Optional[AnalyticsProcessor],
+        default_flag_handler: typing.Optional[typing.Callable],
         identity_id: typing.Union[str, int] = None,
     ) -> "Flags":
         flags = {
@@ -79,8 +79,8 @@ class Flags:
     def from_api_flags(
         cls,
         api_flags: typing.List[dict],
-        analytics_processor: AnalyticsProcessor,
-        default_flag_handler: typing.Callable,
+        analytics_processor: typing.Optional[AnalyticsProcessor],
+        default_flag_handler: typing.Optional[typing.Callable],
     ) -> "Flags":
         flags = {
             flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
