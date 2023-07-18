@@ -74,6 +74,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
 ):
     # Given
     flagsmith._environment = environment_model
+    flagsmith.enable_local_evaluation = True
 
     # When
     all_flags = flagsmith.get_environment_flags().all_flags()
@@ -140,6 +141,7 @@ def test_get_identity_flags_uses_local_environment_when_available(
 ):
     # Given
     flagsmith._environment = environment_model
+    flagsmith.enable_local_evaluation = True
     mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
     feature_state = FeatureStateModel(
@@ -434,3 +436,41 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
 
     assert identity_flags.is_feature_enabled("some_feature") is True
     assert identity_flags.get_feature_value("some_feature") == "some-value"
+
+
+def test_cannot_use_offline_mode_without_offline_handler():
+    with pytest.raises(ValueError) as e:
+        # When
+        Flagsmith(offline_mode=True, offline_handler=None)
+
+    # Then
+    assert (
+        e.exconly()
+        == "ValueError: offline_handler must be provided to use offline mode."
+    )
+
+
+def test_cannot_use_default_handler_and_offline_handler(mocker):
+    # When
+    with pytest.raises(ValueError) as e:
+        Flagsmith(
+            offline_handler=mocker.MagicMock(spec=BaseOfflineHandler),
+            default_flag_handler=lambda flag_name: DefaultFlag(
+                enabled=True, value="foo"
+            ),
+        )
+
+    # Then
+    assert (
+        e.exconly()
+        == "ValueError: Cannot use both default_flag_handler and offline_handler."
+    )
+
+
+def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key():
+    # When
+    with pytest.raises(ValueError) as e:
+        Flagsmith()
+
+    # Then
+    assert e.exconly() == "ValueError: environment_key is required."

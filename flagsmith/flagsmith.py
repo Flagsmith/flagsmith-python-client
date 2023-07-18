@@ -80,6 +80,7 @@ class Flagsmith:
         """
 
         self.offline_mode = offline_mode
+        self.enable_local_evaluation = enable_local_evaluation
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
         self._analytics_processor = None
@@ -117,7 +118,7 @@ class Flagsmith:
             self.identities_url = f"{self.api_url}identities/"
             self.environment_url = f"{self.api_url}environment-document/"
 
-            if enable_local_evaluation:
+            if self.enable_local_evaluation:
                 if not environment_key.startswith("ser."):
                     raise ValueError(
                         "In order to use local evaluation, please generate a server key "
@@ -144,7 +145,7 @@ class Flagsmith:
 
         :return: Flags object holding all the flags for the current environment.
         """
-        if self._environment:
+        if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_environment_flags_from_document()
         return self._get_environment_flags_from_api()
 
@@ -163,7 +164,7 @@ class Flagsmith:
         :return: Flags object holding all the flags for the given identity.
         """
         traits = traits or {}
-        if self._environment:
+        if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(identifier, traits)
 
