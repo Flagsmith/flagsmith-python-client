@@ -14,6 +14,7 @@ from urllib3 import Retry
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
+from flagsmith.offline_handlers import BaseOfflineModeHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.utils.identities import generate_identities_data
 
@@ -39,8 +40,8 @@ class Flagsmith:
 
     def __init__(
         self,
-        environment_key: str,
-        api_url: str = DEFAULT_API_URL,
+        environment_key: str = None,
+        api_url: str = None,
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
@@ -49,6 +50,8 @@ class Flagsmith:
         enable_analytics: bool = False,
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
         proxies: typing.Dict[str, str] = None,
+        offline_mode: bool = False,
+        offline_handler: BaseOfflineModeHandler = None,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface
@@ -69,37 +72,45 @@ class Flagsmith:
             requested
         :param proxies: as per https://requests.readthedocs.io/en/latest/api/#requests.Session.proxies
         """
-        self.session = requests.Session()
-        self.session.headers.update(
-            **{"X-Environment-Key": environment_key}, **(custom_headers or {})
-        )
-        self.session.proxies.update(proxies or {})
-        retries = retries or Retry(total=3, backoff_factor=0.1)
-
-        self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
-        self.request_timeout_seconds = request_timeout_seconds
-        self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
-
-        self.environment_flags_url = f"{self.api_url}flags/"
-        self.identities_url = f"{self.api_url}identities/"
-        self.environment_url = f"{self.api_url}environment-document/"
-
-        self._environment = None
-        if enable_local_evaluation:
-            if not environment_key.startswith("ser."):
-                raise ValueError(
-                    "In order to use local evaluation, please generate a server key "
-                    "in the environment settings page."
-                )
-
-            self.environment_data_polling_manager_thread = (
-                EnvironmentDataPollingManager(
-                    main=self,
-                    refresh_interval_seconds=environment_refresh_interval_seconds,
-                    daemon=True,  # noqa
-                )
+        if offline_mode:
+            self.offline_mode = True
+            self.offline_handler = offline_handler
+            self.update_environment()
+        elif not (environment_key and api_url):
+            raise ValueError("environment_key and api_url are required.")
+        else:
+            self.offline_mode = False
+            self.session = requests.Session()
+            self.session.headers.update(
+                **{"X-Environment-Key": environment_key}, **(custom_headers or {})
             )
-            self.environment_data_polling_manager_thread.start()
+            self.session.proxies.update(proxies or {})
+            retries = retries or Retry(total=3, backoff_factor=0.1)
+
+            self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
+            self.request_timeout_seconds = request_timeout_seconds
+            self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
+
+            self.environment_flags_url = f"{self.api_url}flags/"
+            self.identities_url = f"{self.api_url}identities/"
+            self.environment_url = f"{self.api_url}environment-document/"
+
+            self._environment = None
+            if enable_local_evaluation:
+                if not environment_key.startswith("ser."):
+                    raise ValueError(
+                        "In order to use local evaluation, please generate a server key "
+                        "in the environment settings page."
+                    )
+
+                self.environment_data_polling_manager_thread = (
+                    EnvironmentDataPollingManager(
+                        main=self,
+                        refresh_interval_seconds=environment_refresh_interval_seconds,
+                        daemon=True,  # noqa
+                    )
+                )
+                self.environment_data_polling_manager_thread.start()
 
         self._analytics_processor = (
             AnalyticsProcessor(
@@ -164,7 +175,10 @@ class Flagsmith:
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self):
-        self._environment = self._get_environment_from_api()
+        if self.offline_mode:
+            self._environment = self.offline_handler.get_environment()
+        else:
+            self._environment = self._get_environment_from_api()
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")

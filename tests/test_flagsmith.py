@@ -1,5 +1,6 @@
 import json
 import uuid
+from unittest.mock import mock_open, patch
 
 import pytest
 import requests
@@ -8,7 +9,8 @@ from flag_engine.features.models import FeatureModel, FeatureStateModel
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
-from flagsmith.models import DefaultFlag
+from flagsmith.models import DefaultFlag, Flags
+from flagsmith.offline_handlers import LocalFileHandler
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
@@ -378,3 +380,25 @@ def test_initialise_flagsmith_with_proxies():
 
     # Then
     assert flagsmith.session.proxies == proxies
+
+
+def test_offline_mode(environment_json: str) -> None:
+    # Given
+    environment_document_file_path = "some/file/path/environment.json"
+
+    # When
+    with patch("builtins.open", mock_open(read_data=environment_json)) as mock_file:
+        flagsmith = Flagsmith(
+            offline_mode=True,
+            offline_handler=LocalFileHandler(environment_document_file_path),
+        )
+
+        # Then
+        mock_file.assert_called_once_with(environment_document_file_path)
+
+        # and we can request the flags from the client successfully
+        environment_flags: Flags = flagsmith.get_environment_flags()
+        assert environment_flags.is_feature_enabled("some_feature") is True
+
+        identity_flags: Flags = flagsmith.get_identity_flags("identity")
+        assert identity_flags.is_feature_enabled("some_feature") is True
