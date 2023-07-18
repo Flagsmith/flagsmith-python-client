@@ -1,6 +1,6 @@
 import json
+import typing
 import uuid
-from unittest.mock import mock_open, patch
 
 import pytest
 import requests
@@ -10,7 +10,11 @@ from flag_engine.features.models import FeatureModel, FeatureStateModel
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
 from flagsmith.models import DefaultFlag, Flags
-from flagsmith.offline_handlers import LocalFileHandler
+from flagsmith.offline_handlers import BaseOfflineHandler
+
+if typing.TYPE_CHECKING:
+    from flag_engine.environments.models import EnvironmentModel
+    from pytest_mock import MockerFixture
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
@@ -382,23 +386,51 @@ def test_initialise_flagsmith_with_proxies():
     assert flagsmith.session.proxies == proxies
 
 
-def test_offline_mode(environment_json: str) -> None:
+def test_offline_mode(environment_model: "EnvironmentModel") -> None:
     # Given
-    environment_document_file_path = "some/file/path/environment.json"
+    class DummyOfflineHandler(BaseOfflineHandler):
+        def get_environment(self) -> "EnvironmentModel":
+            return environment_model
 
     # When
-    with patch("builtins.open", mock_open(read_data=environment_json)) as mock_file:
-        flagsmith = Flagsmith(
-            offline_mode=True,
-            offline_handler=LocalFileHandler(environment_document_file_path),
-        )
+    flagsmith = Flagsmith(offline_mode=True, offline_handler=DummyOfflineHandler())
 
-        # Then
-        mock_file.assert_called_once_with(environment_document_file_path)
+    # Then
+    # we can request the flags from the client successfully
+    environment_flags: Flags = flagsmith.get_environment_flags()
+    assert environment_flags.is_feature_enabled("some_feature") is True
 
-        # and we can request the flags from the client successfully
-        environment_flags: Flags = flagsmith.get_environment_flags()
-        assert environment_flags.is_feature_enabled("some_feature") is True
+    identity_flags: Flags = flagsmith.get_identity_flags("identity")
+    assert identity_flags.is_feature_enabled("some_feature") is True
 
-        identity_flags: Flags = flagsmith.get_identity_flags("identity")
-        assert identity_flags.is_feature_enabled("some_feature") is True
+
+@responses.activate()
+def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
+    mocker: "MockerFixture", environment_model: "EnvironmentModel"
+) -> None:
+    # Given
+    api_url = "http://some.flagsmith.com/api/v1/"
+    mock_offline_handler = mocker.MagicMock(spec=BaseOfflineHandler)
+    mock_offline_handler.get_environment.return_value = environment_model
+
+    flagsmith = Flagsmith(
+        environment_key="some-key",
+        api_url=api_url,
+        offline_handler=mock_offline_handler,
+    )
+
+    responses.add(flagsmith.environment_flags_url, status=500)
+    responses.add(flagsmith.identities_url, status=500)
+
+    # When
+    environment_flags = flagsmith.get_environment_flags()
+    identity_flags = flagsmith.get_identity_flags("identity", traits={})
+
+    # Then
+    mock_offline_handler.get_environment.assert_called_once_with()
+
+    assert environment_flags.is_feature_enabled("some_feature") is True
+    assert environment_flags.get_feature_value("some_feature") == "some-value"
+
+    assert identity_flags.is_feature_enabled("some_feature") is True
+    assert identity_flags.get_feature_value("some_feature") == "some-value"

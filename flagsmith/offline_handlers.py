@@ -5,13 +5,13 @@ from flag_engine.environments.builders import build_environment_model
 from flag_engine.environments.models import EnvironmentModel
 
 
-class BaseOfflineModeHandler(ABC):
+class BaseOfflineHandler(ABC):
     @abstractmethod
     def get_environment(self) -> EnvironmentModel:
         raise NotImplementedError()
 
 
-class LocalFileHandler(BaseOfflineModeHandler):
+class LocalFileHandler(BaseOfflineHandler):
     def __init__(self, environment_document_path: str):
         with open(environment_document_path) as environment_document:
             self.environment = build_environment_model(

@@ -14,7 +14,7 @@ from urllib3 import Retry
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
-from flagsmith.offline_handlers import BaseOfflineModeHandler
+from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.utils.identities import generate_identities_data
 
@@ -51,10 +51,11 @@ class Flagsmith:
         default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
         proxies: typing.Dict[str, str] = None,
         offline_mode: bool = False,
-        offline_handler: BaseOfflineModeHandler = None,
+        offline_handler: BaseOfflineHandler = None,
     ):
         """
-        :param environment_key: The environment key obtained from Flagsmith interface
+        :param environment_key: The environment key obtained from Flagsmith interface.
+            Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
         :param custom_headers: Additional headers to add to requests made to the
             Flagsmith API
@@ -68,18 +69,37 @@ class Flagsmith:
         :param enable_analytics: if enabled, sends additional requests to the Flagsmith
             API to power flag analytics charts
         :param default_flag_handler: callable which will be used in the case where
-            flags cannot be retrieved from the API or a non existent feature is
+            flags cannot be retrieved from the API or a non-existent feature is
             requested
         :param proxies: as per https://requests.readthedocs.io/en/latest/api/#requests.Session.proxies
+        :param offline_mode: sets the client into offline mode. Relies on offline_handler for
+            evaluating flags.
+        :param offline_handler: provide a handler for offline logic. Used to get environment
+            document from another source when in offline_mode. Works in place of
+            default_flag_handler if offline_mode is not set and using remote evaluation.
         """
-        if offline_mode:
-            self.offline_mode = True
-            self.offline_handler = offline_handler
-            self.update_environment()
-        elif not (environment_key and api_url):
-            raise ValueError("environment_key and api_url are required.")
-        else:
-            self.offline_mode = False
+
+        self.offline_mode = offline_mode
+        self.offline_handler = offline_handler
+        self.default_flag_handler = default_flag_handler
+        self._analytics_processor = None
+        self._environment = None
+
+        # argument validation
+        if offline_mode and not offline_handler:
+            raise ValueError("offline_handler must be provided to use offline mode.")
+        elif default_flag_handler and offline_handler:
+            raise ValueError(
+                "Cannot use both default_flag_handler and offline_handler."
+            )
+
+        if self.offline_handler:
+            self._environment = self.offline_handler.get_environment()
+
+        if not self.offline_mode:
+            if not environment_key:
+                raise ValueError("environment_key is required.")
+
             self.session = requests.Session()
             self.session.headers.update(
                 **{"X-Environment-Key": environment_key}, **(custom_headers or {})
@@ -87,7 +107,9 @@ class Flagsmith:
             self.session.proxies.update(proxies or {})
             retries = retries or Retry(total=3, backoff_factor=0.1)
 
+            api_url = api_url or DEFAULT_API_URL
             self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
+
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
@@ -95,7 +117,6 @@ class Flagsmith:
             self.identities_url = f"{self.api_url}identities/"
             self.environment_url = f"{self.api_url}environment-document/"
 
-            self._environment = None
             if enable_local_evaluation:
                 if not environment_key.startswith("ser."):
                     raise ValueError(
@@ -112,15 +133,10 @@ class Flagsmith:
                 )
                 self.environment_data_polling_manager_thread.start()
 
-        self._analytics_processor = (
-            AnalyticsProcessor(
-                environment_key, self.api_url, timeout=self.request_timeout_seconds
-            )
-            if enable_analytics
-            else None
-        )
-
-        self.default_flag_handler = default_flag_handler
+            if enable_analytics:
+                self._analytics_processor = AnalyticsProcessor(
+                    environment_key, self.api_url, timeout=self.request_timeout_seconds
+                )
 
     def get_environment_flags(self) -> Flags:
         """
@@ -175,10 +191,7 @@ class Flagsmith:
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self):
-        if self.offline_mode:
-            self._environment = self.offline_handler.get_environment()
-        else:
-            self._environment = self._get_environment_from_api()
+        self._environment = self._get_environment_from_api()
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
@@ -216,7 +229,9 @@ class Flagsmith:
                 default_flag_handler=self.default_flag_handler,
             )
         except FlagsmithAPIError:
-            if self.default_flag_handler:
+            if self.offline_handler:
+                return self._get_environment_flags_from_document()
+            elif self.default_flag_handler:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
@@ -234,7 +249,9 @@ class Flagsmith:
                 default_flag_handler=self.default_flag_handler,
             )
         except FlagsmithAPIError:
-            if self.default_flag_handler:
+            if self.offline_handler:
+                return self._get_identity_flags_from_document(identifier, traits)
+            elif self.default_flag_handler:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
