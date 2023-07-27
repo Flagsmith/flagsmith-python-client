@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flagsmith"
-version = "3.2.2"
+version = "3.3.0"
 description = "Flagsmith Python SDK"
 authors = ["Flagsmith <support@flagsmith.com>"]
 license = "BSD3"
