@@ -3,6 +3,8 @@ import threading
 import time
 import typing
 
+import requests
+
 from flagsmith.exceptions import FlagsmithAPIError
 
 if typing.TYPE_CHECKING:
@@ -28,7 +30,7 @@ class EnvironmentDataPollingManager(threading.Thread):
         while not self._stop_event.is_set():
             try:
                 self.main.update_environment()
-            except FlagsmithAPIError:
+            except (FlagsmithAPIError, requests.RequestException):
                 logging.exception("Failed to update environment")
             time.sleep(self.refresh_interval_seconds)
 
