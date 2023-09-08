@@ -59,9 +59,7 @@ def test_polling_manager_is_resilient_to_api_errors(mocker, server_api_key):
 def test_polling_manager_is_resilient_to_request_exceptions(mocker, server_api_key):
     # Given
     session_mock = mocker.patch("requests.Session")
-    session_mock.get.return_value = mock.MagicMock(
-        side_effect=requests.RequestException()
-    )
+    session_mock.get.side_effect = requests.RequestException()
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
