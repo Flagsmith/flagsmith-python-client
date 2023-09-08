@@ -31,7 +31,7 @@ class EnvironmentDataPollingManager(threading.Thread):
             try:
                 self.main.update_environment()
             except (FlagsmithAPIError, requests.RequestException):
-                logging.exception("Failed to update environment")
+                logger.exception("Failed to update environment")
             time.sleep(self.refresh_interval_seconds)
 
     def stop(self) -> None:
