@@ -1,9 +1,16 @@
+import logging
 import threading
 import time
 import typing
 
+import requests
+
+from flagsmith.exceptions import FlagsmithAPIError
+
 if typing.TYPE_CHECKING:
     from flagsmith import Flagsmith
+
+logger = logging.getLogger(__name__)
 
 
 class EnvironmentDataPollingManager(threading.Thread):
@@ -21,7 +28,10 @@ class EnvironmentDataPollingManager(threading.Thread):
 
     def run(self) -> None:
         while not self._stop_event.is_set():
-            self.main.update_environment()
+            try:
+                self.main.update_environment()
+            except (FlagsmithAPIError, requests.RequestException):
+                logger.exception("Failed to update environment")
             time.sleep(self.refresh_interval_seconds)
 
     def stop(self) -> None:
