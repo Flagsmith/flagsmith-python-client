@@ -4,7 +4,6 @@ from json import JSONDecodeError
 
 import requests
 from flag_engine import engine
-from flag_engine.environments.builders import build_environment_model
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel, TraitModel
 from flag_engine.segments.evaluator import get_identity_segments
@@ -196,7 +195,7 @@ class Flagsmith:
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
-        return build_environment_model(environment_data)
+        return EnvironmentModel.model_validate(environment_data)
 
     def _get_environment_flags_from_document(self) -> Flags:
         return Flags.from_feature_state_models(
