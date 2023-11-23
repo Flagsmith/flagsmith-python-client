@@ -1,21 +1,19 @@
 [tool.poetry]
 name = "flagsmith"
-version = "3.4.0"
+version = "3.5.0"
 description = "Flagsmith Python SDK"
 authors = ["Flagsmith <support@flagsmith.com>"]
 license = "BSD3"
 readme = "Readme.md"
 keywords = ["feature", "flag", "flagsmith", "remote", "config"]
 documentation = "https://docs.flagsmith.com"
-packages = [
-    {include = "flagsmith"},
-]
+packages = [{ include = "flagsmith" }]
 
 [tool.poetry.dependencies]
 python = ">=3.7.0,<4"
 requests = "^2.27.1"
 requests-futures = "^1.0.0"
-flagsmith-flag-engine = "^4.0.0"
+flagsmith-flag-engine = "^5.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.0"

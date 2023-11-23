@@ -4,7 +4,7 @@ import random
 import string
 
 import pytest
-from flag_engine.environments.builders import build_environment_model
+from flag_engine.environments.models import EnvironmentModel
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
@@ -61,8 +61,8 @@ def local_eval_flagsmith(server_api_key, environment_json, mocker):
 
 
 @pytest.fixture()
-def environment_model(environment_json):
-    return build_environment_model(json.loads(environment_json))
+def environment_model(environment_json: str) -> EnvironmentModel:
+    return EnvironmentModel.model_validate_json(environment_json)
 
 
 @pytest.fixture()
