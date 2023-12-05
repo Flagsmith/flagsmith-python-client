@@ -19,7 +19,7 @@ from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
+DEFAULT_API_URL: typing.Final = "https://edge.api.flagsmith.com/api/v1/"
 
 
 class Flagsmith:
@@ -39,18 +39,20 @@ class Flagsmith:
 
     def __init__(
         self,
-        environment_key: str = None,
-        api_url: str = None,
-        custom_headers: typing.Dict[str, typing.Any] = None,
-        request_timeout_seconds: int = None,
+        default_flag_handler: typing.Optional[
+            typing.Callable[[str], DefaultFlag]
+        ] = None,
+        environment_key: typing.Optional[str] = None,
+        api_url: typing.Optional[str] = None,
+        custom_headers: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
+        request_timeout_seconds: int = 3,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
-        retries: Retry = None,
+        retries: typing.Optional[Retry] = None,
         enable_analytics: bool = False,
-        default_flag_handler: typing.Callable[[str], DefaultFlag] = None,
-        proxies: typing.Dict[str, str] = None,
+        proxies: typing.Optional[typing.Dict[str, str]] = None,
         offline_mode: bool = False,
-        offline_handler: BaseOfflineHandler = None,
+        offline_handler: typing.Optional[BaseOfflineHandler] = None,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
@@ -82,8 +84,8 @@ class Flagsmith:
         self.enable_local_evaluation = enable_local_evaluation
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
-        self._analytics_processor = None
-        self._environment = None
+        self._analytics_processor: AnalyticsProcessor
+        self._environment: EnvironmentModel
 
         # argument validation
         if offline_mode and not offline_handler:
@@ -149,7 +151,9 @@ class Flagsmith:
         return self._get_environment_flags_from_api()
 
     def get_identity_flags(
-        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+        self,
+        identifier: str,
+        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
         """
         Get all the flags for the current environment for a given identity. Will also
@@ -168,7 +172,9 @@ class Flagsmith:
         return self._get_identity_flags_from_api(identifier, traits)
 
     def get_identity_segments(
-        self, identifier: str, traits: typing.Dict[str, typing.Any] = None
+        self,
+        identifier: str,
+        traits: typing.Optional[typing.Mapping[str, typing.Any]] = None,
     ) -> typing.List[Segment]:
         """
         Get a list of segments that the given identity is in.
@@ -190,7 +196,7 @@ class Flagsmith:
         segment_models = get_identity_segments(self._environment, identity_model)
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
-    def update_environment(self):
+    def update_environment(self) -> None:
         self._environment = self._get_environment_from_api()
 
     def _get_environment_from_api(self) -> EnvironmentModel:
@@ -255,7 +261,12 @@ class Flagsmith:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
-    def _get_json_response(self, url: str, method: str, body: dict = None):
+    def _get_json_response(
+        self,
+        url: str,
+        method: str,
+        body: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+    ) -> typing.Any:
         try:
             request_method = getattr(self.session, method.lower())
             response = request_method(
@@ -272,7 +283,9 @@ class Flagsmith:
                 "Unable to get valid response from Flagsmith API."
             ) from e
 
-    def _build_identity_model(self, identifier: str, **traits):
+    def _build_identity_model(
+        self, identifier: str, **traits: typing.Mapping[str, typing.Any]
+    ) -> IdentityModel:
         if not self._environment:
             raise FlagsmithClientError(
                 "Unable to build identity model when no local environment present."
@@ -288,6 +301,6 @@ class Flagsmith:
             identity_traits=trait_models,
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "environment_data_polling_manager_thread"):
             self.environment_data_polling_manager_thread.stop()

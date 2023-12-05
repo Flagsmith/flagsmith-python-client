@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import threading
 import time
@@ -14,12 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class EnvironmentDataPollingManager(threading.Thread):
-    def __init__(
+    def __init__(  # type: ignore
         self,
         *args,
-        main: "Flagsmith",
+        main: Flagsmith,
         refresh_interval_seconds: typing.Union[int, float] = 10,
-        **kwargs
+        **kwargs,
     ):
         super(EnvironmentDataPollingManager, self).__init__(*args, **kwargs)
         self._stop_event = threading.Event()
@@ -37,5 +39,5 @@ class EnvironmentDataPollingManager(threading.Thread):
     def stop(self) -> None:
         self._stop_event.set()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._stop_event.set()
