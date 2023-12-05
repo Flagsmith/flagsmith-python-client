@@ -74,7 +74,7 @@ class Flags:
     def from_feature_state_models(
         cls,
         feature_states: typing.Sequence[FeatureStateModel],
-        analytics_processor: AnalyticsProcessor,
+        analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
         identity_id: typing.Optional[typing.Union[str, int]] = None,
     ) -> Flags:
@@ -95,7 +95,7 @@ class Flags:
     def from_api_flags(
         cls,
         api_flags: typing.List[typing.Mapping[str, typing.Any]],
-        analytics_processor: AnalyticsProcessor,
+        analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:
         flags = {

@@ -84,8 +84,8 @@ class Flagsmith:
         self.enable_local_evaluation = enable_local_evaluation
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
-        self._analytics_processor: AnalyticsProcessor
-        self._environment: EnvironmentModel
+        self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
+        self._environment: typing.Optional[EnvironmentModel] = None
 
         # argument validation
         if offline_mode and not offline_handler:
