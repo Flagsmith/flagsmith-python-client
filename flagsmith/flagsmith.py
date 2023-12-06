@@ -5,9 +5,13 @@ from json import JSONDecodeError
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
-from flag_engine.identities.models import IdentityModel, TraitModel
+from flag_engine.identities.models import (  # type: ignore
+    IdentityModel,
+    TraitModel,
+)
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
+from typing_extensions import TypeGuard
 from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
@@ -20,6 +24,10 @@ from flagsmith.utils.identities import generate_identities_data
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL: typing.Final = "https://edge.api.flagsmith.com/api/v1/"
+
+
+def is_environment_model(obj: typing.Any) -> TypeGuard[EnvironmentModel]:
+    return isinstance(obj, EnvironmentModel)
 
 
 class Flagsmith:
@@ -204,6 +212,8 @@ class Flagsmith:
         return EnvironmentModel.model_validate(environment_data)
 
     def _get_environment_flags_from_document(self) -> Flags:
+        if not is_environment_model(self._environment):
+            raise TypeError("Environment should not be 'None'")
         return Flags.from_feature_state_models(
             feature_states=engine.get_environment_feature_states(self._environment),
             analytics_processor=self._analytics_processor,
@@ -214,6 +224,8 @@ class Flagsmith:
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
         identity_model = self._build_identity_model(identifier, **traits)
+        if not is_environment_model(self._environment):
+            raise TypeError("Environment should not be 'None'")
         feature_states = engine.get_identity_feature_states(
             self._environment, identity_model
         )
