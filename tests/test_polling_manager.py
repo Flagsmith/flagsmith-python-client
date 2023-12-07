@@ -2,12 +2,13 @@ import time
 from unittest import mock
 
 import requests
+from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 
 
-def test_polling_manager_calls_update_environment_on_start():
+def test_polling_manager_calls_update_environment_on_start() -> None:
     # Given
     flagsmith = mock.MagicMock()
     polling_manager = EnvironmentDataPollingManager(
@@ -22,7 +23,7 @@ def test_polling_manager_calls_update_environment_on_start():
     polling_manager.stop()
 
 
-def test_polling_manager_calls_update_environment_on_each_refresh():
+def test_polling_manager_calls_update_environment_on_each_refresh() -> None:
     # Given
     flagsmith = mock.MagicMock()
     polling_manager = EnvironmentDataPollingManager(
@@ -40,7 +41,9 @@ def test_polling_manager_calls_update_environment_on_each_refresh():
     polling_manager.stop()
 
 
-def test_polling_manager_is_resilient_to_api_errors(mocker, server_api_key):
+def test_polling_manager_is_resilient_to_api_errors(
+    mocker: MockerFixture, server_api_key: str
+) -> None:
     # Given
     session_mock = mocker.patch("requests.Session")
     session_mock.get.return_value = mock.MagicMock(status_code=500)
@@ -56,7 +59,9 @@ def test_polling_manager_is_resilient_to_api_errors(mocker, server_api_key):
     polling_manager.stop()
 
 
-def test_polling_manager_is_resilient_to_request_exceptions(mocker, server_api_key):
+def test_polling_manager_is_resilient_to_request_exceptions(
+    mocker: MockerFixture, server_api_key: str
+) -> None:
     # Given
     session_mock = mocker.patch("requests.Session")
     session_mock.get.side_effect = requests.RequestException()

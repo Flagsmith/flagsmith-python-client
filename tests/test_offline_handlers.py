@@ -5,7 +5,7 @@ from flag_engine.environments.models import EnvironmentModel
 from flagsmith.offline_handlers import LocalFileHandler
 
 
-def test_local_file_handler(environment_json):
+def test_local_file_handler(environment_json: str) -> None:
     with patch("builtins.open", mock_open(read_data=environment_json)) as mock_file:
         # Given
         environment_document_file_path = "/some/path/environment.json"

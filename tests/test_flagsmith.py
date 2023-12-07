@@ -5,19 +5,19 @@ import uuid
 import pytest
 import requests
 import responses
+from flag_engine.environments.models import EnvironmentModel
 from flag_engine.features.models import FeatureModel, FeatureStateModel
+from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
 from flagsmith.models import DefaultFlag, Flags
 from flagsmith.offline_handlers import BaseOfflineHandler
 
-if typing.TYPE_CHECKING:
-    from flag_engine.environments.models import EnvironmentModel
-    from pytest_mock import MockerFixture
 
-
-def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
+def test_flagsmith_starts_polling_manager_on_init_if_enabled(
+    mocker: MockerFixture, server_api_key: str
+) -> None:
     # Given
     mock_polling_manager = mocker.MagicMock()
     mocker.patch(
@@ -34,8 +34,8 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_
 
 @responses.activate()
 def test_update_environment_sets_environment(
-    flagsmith, environment_json, environment_model
-):
+    flagsmith: Flagsmith, environment_json: str, environment_model: EnvironmentModel
+) -> None:
     # Given
     responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
     assert flagsmith._environment is None
@@ -50,8 +50,8 @@ def test_update_environment_sets_environment(
 
 @responses.activate()
 def test_get_environment_flags_calls_api_when_no_local_environment(
-    api_key, flagsmith, flags_json
-):
+    api_key: str, flagsmith: Flagsmith, flags_json: str
+) -> None:
     # Given
     responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
 
@@ -70,8 +70,8 @@ def test_get_environment_flags_calls_api_when_no_local_environment(
 
 @responses.activate()
 def test_get_environment_flags_uses_local_environment_when_available(
-    flagsmith, environment_model
-):
+    flagsmith: Flagsmith, environment_model: EnvironmentModel
+) -> None:
     # Given
     flagsmith._environment = environment_model
     flagsmith.enable_local_evaluation = True
@@ -89,8 +89,8 @@ def test_get_environment_flags_uses_local_environment_when_available(
 
 @responses.activate()
 def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
-    flagsmith, identities_json
-):
+    flagsmith: Flagsmith, identities_json: str
+) -> None:
     # Given
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
     identifier = "identifier"
@@ -99,9 +99,10 @@ def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
     identity_flags = flagsmith.get_identity_flags(identifier=identifier).all_flags()
 
     # Then
-    assert responses.calls[0].request.body.decode() == json.dumps(
-        {"identifier": identifier, "traits": []}
-    )
+    body = responses.calls[0].request.body
+    if isinstance(body, bytes):
+        body = body.decode()
+    assert body == json.dumps({"identifier": identifier, "traits": []})
 
     # Taken from hard coded values in tests/data/identities.json
     assert identity_flags[0].enabled is True
@@ -111,8 +112,8 @@ def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
 
 @responses.activate()
 def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
-    flagsmith, identities_json
-):
+    flagsmith: Flagsmith, identities_json: str
+) -> None:
     # Given
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
     identifier = "identifier"
@@ -122,7 +123,10 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
     identity_flags = flagsmith.get_identity_flags(identifier=identifier, traits=traits)
 
     # Then
-    assert responses.calls[0].request.body.decode() == json.dumps(
+    body = responses.calls[0].request.body
+    if isinstance(body, bytes):
+        body = body.decode()
+    assert body == json.dumps(
         {
             "identifier": identifier,
             "traits": [{"trait_key": k, "trait_value": v} for k, v in traits.items()],
@@ -137,8 +141,8 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
 
 @responses.activate()
 def test_get_identity_flags_uses_local_environment_when_available(
-    flagsmith, environment_model, mocker
-):
+    flagsmith: Flagsmith, environment_model: EnvironmentModel, mocker: MockerFixture
+) -> None:
     # Given
     flagsmith._environment = environment_model
     flagsmith.enable_local_evaluation = True
@@ -162,7 +166,9 @@ def test_get_identity_flags_uses_local_environment_when_available(
     assert identity_flags[0].value == feature_state.get_value()
 
 
-def test_request_connection_error_raises_flagsmith_api_error(mocker, api_key):
+def test_request_connection_error_raises_flagsmith_api_error(
+    mocker: MockerFixture, api_key: str
+) -> None:
     """
     Test the behaviour when session.<method> raises a ConnectionError. Note that this
     does not account for the fact that we are using retries. Since this is a standard
@@ -187,7 +193,7 @@ def test_request_connection_error_raises_flagsmith_api_error(mocker, api_key):
 
 
 @responses.activate()
-def test_non_200_response_raises_flagsmith_api_error(flagsmith):
+def test_non_200_response_raises_flagsmith_api_error(flagsmith: Flagsmith) -> None:
     # Given
     responses.add(url=flagsmith.environment_flags_url, method="GET", status=400)
 
@@ -200,7 +206,7 @@ def test_non_200_response_raises_flagsmith_api_error(flagsmith):
 
 
 @responses.activate()
-def test_default_flag_is_used_when_no_environment_flags_returned(api_key):
+def test_default_flag_is_used_when_no_environment_flags_returned(api_key: str) -> None:
     # Given
     feature_name = "some_feature"
 
@@ -231,7 +237,9 @@ def test_default_flag_is_used_when_no_environment_flags_returned(api_key):
 
 
 @responses.activate()
-def test_default_flag_is_not_used_when_environment_flags_returned(api_key, flags_json):
+def test_default_flag_is_not_used_when_environment_flags_returned(
+    api_key: str, flags_json: str
+) -> None:
     # Given
     feature_name = "some_feature"
 
@@ -260,7 +268,7 @@ def test_default_flag_is_not_used_when_environment_flags_returned(api_key, flags
 
 
 @responses.activate()
-def test_default_flag_is_used_when_no_identity_flags_returned(api_key):
+def test_default_flag_is_used_when_no_identity_flags_returned(api_key: str) -> None:
     # Given
     feature_name = "some_feature"
 
@@ -275,7 +283,10 @@ def test_default_flag_is_used_when_no_identity_flags_returned(api_key):
     )
 
     # and we mock the API to return an empty list of flags
-    response_data = {"flags": [], "traits": []}
+    response_data: typing.Mapping[str, typing.Sequence[typing.Any]] = {
+        "flags": [],
+        "traits": [],
+    }
     responses.add(
         url=flagsmith.identities_url, method="POST", body=json.dumps(response_data)
     )
@@ -293,8 +304,8 @@ def test_default_flag_is_used_when_no_identity_flags_returned(api_key):
 
 @responses.activate()
 def test_default_flag_is_not_used_when_identity_flags_returned(
-    api_key, identities_json
-):
+    api_key: str, identities_json: str
+) -> None:
     # Given
     feature_name = "some_feature"
 
@@ -322,7 +333,9 @@ def test_default_flag_is_not_used_when_identity_flags_returned(
     assert flag.value == "some-value"  # hard coded value in tests/data/identities.json
 
 
-def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(mocker):
+def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(
+    mocker: MockerFixture,
+) -> None:
     # Given
     # a default flag and associated handler
     default_flag = DefaultFlag(True, "some-default-value")
@@ -346,7 +359,9 @@ def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(mock
     assert flags.get_flag("some-feature") == default_flag
 
 
-def test_get_identity_segments_no_traits(local_eval_flagsmith, environment_model):
+def test_get_identity_segments_no_traits(
+    local_eval_flagsmith: Flagsmith, environment_model: EnvironmentModel
+) -> None:
     # Given
     identifier = "identifier"
 
@@ -358,8 +373,8 @@ def test_get_identity_segments_no_traits(local_eval_flagsmith, environment_model
 
 
 def test_get_identity_segments_with_valid_trait(
-    local_eval_flagsmith, environment_model
-):
+    local_eval_flagsmith: Flagsmith, environment_model: EnvironmentModel
+) -> None:
     # Given
     identifier = "identifier"
     traits = {"foo": "bar"}  # obtained from data/environment.json
@@ -372,12 +387,12 @@ def test_get_identity_segments_with_valid_trait(
     assert segments[0].name == "Test segment"  # obtained from data/environment.json
 
 
-def test_local_evaluation_requires_server_key():
+def test_local_evaluation_requires_server_key() -> None:
     with pytest.raises(ValueError):
         Flagsmith(environment_key="not-a-server-key", enable_local_evaluation=True)
 
 
-def test_initialise_flagsmith_with_proxies():
+def test_initialise_flagsmith_with_proxies() -> None:
     # Given
     proxies = {"https": "https://my.proxy.com/proxy-me"}
 
@@ -388,10 +403,10 @@ def test_initialise_flagsmith_with_proxies():
     assert flagsmith.session.proxies == proxies
 
 
-def test_offline_mode(environment_model: "EnvironmentModel") -> None:
+def test_offline_mode(environment_model: EnvironmentModel) -> None:
     # Given
     class DummyOfflineHandler(BaseOfflineHandler):
-        def get_environment(self) -> "EnvironmentModel":
+        def get_environment(self) -> EnvironmentModel:
             return environment_model
 
     # When
@@ -408,7 +423,7 @@ def test_offline_mode(environment_model: "EnvironmentModel") -> None:
 
 @responses.activate()
 def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
-    mocker: "MockerFixture", environment_model: "EnvironmentModel"
+    mocker: MockerFixture, environment_model: EnvironmentModel
 ) -> None:
     # Given
     api_url = "http://some.flagsmith.com/api/v1/"
@@ -420,9 +435,8 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
         api_url=api_url,
         offline_handler=mock_offline_handler,
     )
-
-    responses.add(flagsmith.environment_flags_url, status=500)
-    responses.add(flagsmith.identities_url, status=500)
+    responses.add("GET", flagsmith.environment_flags_url, status=500)
+    responses.add("GET", flagsmith.identities_url, status=500)
 
     # When
     environment_flags = flagsmith.get_environment_flags()
@@ -438,7 +452,7 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
     assert identity_flags.get_feature_value("some_feature") == "some-value"
 
 
-def test_cannot_use_offline_mode_without_offline_handler():
+def test_cannot_use_offline_mode_without_offline_handler() -> None:
     with pytest.raises(ValueError) as e:
         # When
         Flagsmith(offline_mode=True, offline_handler=None)
@@ -450,7 +464,7 @@ def test_cannot_use_offline_mode_without_offline_handler():
     )
 
 
-def test_cannot_use_default_handler_and_offline_handler(mocker):
+def test_cannot_use_default_handler_and_offline_handler(mocker: MockerFixture) -> None:
     # When
     with pytest.raises(ValueError) as e:
         Flagsmith(
@@ -467,7 +481,7 @@ def test_cannot_use_default_handler_and_offline_handler(mocker):
     )
 
 
-def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key():
+def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key() -> None:
     # When
     with pytest.raises(ValueError) as e:
         Flagsmith()
