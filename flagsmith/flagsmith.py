@@ -5,7 +5,7 @@ from json import JSONDecodeError
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
-from flag_engine.identities.models import (  # type: ignore
+from flag_engine.identities.models import (  # type: ignore[attr-defined]
     IdentityModel,
     TraitModel,
 )
@@ -30,6 +30,22 @@ def is_environment_model(obj: typing.Any) -> TypeGuard[EnvironmentModel]:
     return isinstance(obj, EnvironmentModel)
 
 
+T = typing.TypeVar("T")
+
+
+def check_obj_of_type(
+    obj: typing.Any, validation_type: typing.Type[T], raise_error: bool = False
+) -> TypeGuard[T]:
+    """
+    Generic Type Guard, that checks for a type and raises Type Error
+    """
+    if isinstance(obj, validation_type):
+        return True
+    if raise_error:
+        raise TypeError(f"Object should be {validation_type} not '{type(obj)}'")
+    return False
+
+
 class Flagsmith:
     """A Flagsmith client.
 
@@ -47,9 +63,6 @@ class Flagsmith:
 
     def __init__(
         self,
-        default_flag_handler: typing.Optional[
-            typing.Callable[[str], DefaultFlag]
-        ] = None,
         environment_key: typing.Optional[str] = None,
         api_url: typing.Optional[str] = None,
         custom_headers: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
@@ -58,6 +71,9 @@ class Flagsmith:
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
         enable_analytics: bool = False,
+        default_flag_handler: typing.Optional[
+            typing.Callable[[str], DefaultFlag]
+        ] = None,
         proxies: typing.Optional[typing.Dict[str, str]] = None,
         offline_mode: bool = False,
         offline_handler: typing.Optional[BaseOfflineHandler] = None,
@@ -211,24 +227,22 @@ class Flagsmith:
         environment_data = self._get_json_response(self.environment_url, method="GET")
         return EnvironmentModel.model_validate(environment_data)
 
-    def _get_environment_flags_from_document(self) -> Flags:
-        if not is_environment_model(self._environment):
-            raise TypeError("Environment should not be 'None'")
-        return Flags.from_feature_state_models(
-            feature_states=engine.get_environment_feature_states(self._environment),
-            analytics_processor=self._analytics_processor,
-            default_flag_handler=self.default_flag_handler,
-        )
+    def _get_environment_flags_from_document(self) -> Flags:  # type: ignore[return]
+        if check_obj_of_type(self._environment, EnvironmentModel, raise_error=True):
+            return Flags.from_feature_state_models(
+                feature_states=engine.get_environment_feature_states(self._environment),
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
 
     def _get_identity_flags_from_document(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
         identity_model = self._build_identity_model(identifier, **traits)
-        if not is_environment_model(self._environment):
-            raise TypeError("Environment should not be 'None'")
-        feature_states = engine.get_identity_feature_states(
-            self._environment, identity_model
-        )
+        if check_obj_of_type(self._environment, EnvironmentModel, raise_error=True):
+            feature_states = engine.get_identity_feature_states(
+                self._environment, identity_model
+            )
         return Flags.from_feature_state_models(
             feature_states=feature_states,
             analytics_processor=self._analytics_processor,
