@@ -101,6 +101,7 @@ def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
     # Then
     body = responses.calls[0].request.body
     if isinstance(body, bytes):
+        # Decode 'body' from bytes to string if it is in bytes format.
         body = body.decode()
     assert body == json.dumps({"identifier": identifier, "traits": []})
 
@@ -125,6 +126,7 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
     # Then
     body = responses.calls[0].request.body
     if isinstance(body, bytes):
+        # Decode 'body' from bytes to string if it is in bytes format.
         body = body.decode()
     assert body == json.dumps(
         {
