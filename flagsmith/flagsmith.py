@@ -23,7 +23,7 @@ from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_URL: typing.Final = "https://edge.api.flagsmith.com/api/v1/"
+DEFAULT_API_URL: typing.Final[str] = "https://edge.api.flagsmith.com/api/v1/"
 
 
 def is_environment_model(obj: typing.Any) -> TypeGuard[EnvironmentModel]:
