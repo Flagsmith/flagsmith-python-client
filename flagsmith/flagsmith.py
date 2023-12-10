@@ -5,10 +5,8 @@ from json import JSONDecodeError
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
-from flag_engine.identities.models import (  # type: ignore[attr-defined]
-    IdentityModel,
-    TraitModel,
-)
+from flag_engine.identities.models import IdentityModel
+from flag_engine.identities.traits.models import TraitModel
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
 from typing_extensions import TypeGuard
