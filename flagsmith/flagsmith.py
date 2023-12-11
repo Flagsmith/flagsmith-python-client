@@ -9,7 +9,6 @@ from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
-from typing_extensions import TypeGuard
 from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
@@ -22,26 +21,6 @@ from flagsmith.utils.identities import generate_identities_data
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL: typing.Final[str] = "https://edge.api.flagsmith.com/api/v1/"
-
-
-def is_environment_model(obj: typing.Any) -> TypeGuard[EnvironmentModel]:
-    return isinstance(obj, EnvironmentModel)
-
-
-T = typing.TypeVar("T")
-
-
-def check_obj_of_type(
-    obj: typing.Any, validation_type: typing.Type[T], raise_error: bool = False
-) -> TypeGuard[T]:
-    """
-    Generic Type Guard, that checks for a type and raises Type Error
-    """
-    if isinstance(obj, validation_type):
-        return True
-    if raise_error:
-        raise TypeError(f"Object should be {validation_type} not '{type(obj)}'")
-    return False
 
 
 class Flagsmith:
@@ -225,8 +204,8 @@ class Flagsmith:
         environment_data = self._get_json_response(self.environment_url, method="GET")
         return EnvironmentModel.model_validate(environment_data)
 
-    def _get_environment_flags_from_document(self) -> Flags:  # type: ignore[return]
-        if check_obj_of_type(self._environment, EnvironmentModel, raise_error=True):
+    def _get_environment_flags_from_document(self) -> Flags:
+        if self._environment:
             return Flags.from_feature_state_models(
                 feature_states=engine.get_environment_feature_states(self._environment),
                 analytics_processor=self._analytics_processor,
@@ -237,16 +216,16 @@ class Flagsmith:
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
         identity_model = self._build_identity_model(identifier, **traits)
-        if check_obj_of_type(self._environment, EnvironmentModel, raise_error=True):
+        if self._environment:
             feature_states = engine.get_identity_feature_states(
                 self._environment, identity_model
             )
-        return Flags.from_feature_state_models(
-            feature_states=feature_states,
-            analytics_processor=self._analytics_processor,
-            identity_id=identity_model.composite_key,
-            default_flag_handler=self.default_flag_handler,
-        )
+            return Flags.from_feature_state_models(
+                feature_states=feature_states,
+                analytics_processor=self._analytics_processor,
+                identity_id=identity_model.composite_key,
+                default_flag_handler=self.default_flag_handler,
+            )
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:

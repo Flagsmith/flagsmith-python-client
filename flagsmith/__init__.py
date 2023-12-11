@@ -1,3 +1,3 @@
-from .flagsmith import Flagsmith  # noqa
+from .flagsmith import Flagsmith
 
 __all__ = ["Flagsmith"]
