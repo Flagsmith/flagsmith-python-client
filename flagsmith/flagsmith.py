@@ -205,27 +205,30 @@ class Flagsmith:
         return EnvironmentModel.model_validate(environment_data)
 
     def _get_environment_flags_from_document(self) -> Flags:
-        if self._environment:
-            return Flags.from_feature_state_models(
-                feature_states=engine.get_environment_feature_states(self._environment),
-                analytics_processor=self._analytics_processor,
-                default_flag_handler=self.default_flag_handler,
-            )
+        if self._environment is None:
+            raise TypeError("No environment present")
+        return Flags.from_feature_state_models(
+            feature_states=engine.get_environment_feature_states(self._environment),
+            analytics_processor=self._analytics_processor,
+            default_flag_handler=self.default_flag_handler,
+        )
+
 
     def _get_identity_flags_from_document(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
         identity_model = self._build_identity_model(identifier, **traits)
-        if self._environment:
-            feature_states = engine.get_identity_feature_states(
+        if self._environment is None:
+            raise TypeError("No environment present")
+        feature_states = engine.get_identity_feature_states(
                 self._environment, identity_model
-            )
-            return Flags.from_feature_state_models(
-                feature_states=feature_states,
-                analytics_processor=self._analytics_processor,
-                identity_id=identity_model.composite_key,
-                default_flag_handler=self.default_flag_handler,
-            )
+        )
+        return Flags.from_feature_state_models(
+            feature_states=feature_states,
+            analytics_processor=self._analytics_processor,
+            identity_id=identity_model.composite_key,
+            default_flag_handler=self.default_flag_handler,
+        )
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
