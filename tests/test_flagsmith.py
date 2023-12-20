@@ -1,4 +1,5 @@
 import json
+import time
 import typing
 import uuid
 
@@ -512,3 +513,30 @@ def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
             enable_local_evaluation=False,
             enable_realtime_updates=True,
         )
+
+
+@responses.activate()
+def test_flagsmith_client_get_identity_flags__local_evaluation__returns_expected(
+    environment_json: str,
+    server_api_key: str,
+) -> None:
+    # Given
+    identifier = "overridden-id"
+
+    api_url = "https://mocked.flagsmith.com/api/v1/"
+    environment_document_url = f"{api_url}environment-document/"
+    responses.add(method="GET", url=environment_document_url, body=environment_json)
+
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        api_url=api_url,
+        enable_local_evaluation=True,
+    )
+    time.sleep(0.1)
+
+    # When
+    flag = flagsmith.get_identity_flags(identifier).get_flag("some_feature")
+
+    # Then
+    assert flag.enabled is False
+    assert flag.value == "some-overridden-value"

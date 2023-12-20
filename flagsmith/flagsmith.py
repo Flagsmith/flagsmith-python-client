@@ -7,7 +7,9 @@ import pytz
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
-from flag_engine.identities.models import IdentityModel, TraitModel
+from flag_engine.identities.models import IdentityModel
+from flag_engine.identities.traits.models import TraitModel
+from flag_engine.identities.traits.types import TraitValue
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
@@ -94,6 +96,7 @@ class Flagsmith:
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor = None
         self._environment = None
+        self._identity_overrides_by_identifier: typing.Dict[str, IdentityModel] = {}
 
         # argument validation
         if offline_mode and not offline_handler:
@@ -248,12 +251,21 @@ class Flagsmith:
             )
 
         traits = traits or {}
-        identity_model = self._build_identity_model(identifier, **traits)
+        identity_model = self._get_identity_model(identifier, **traits)
         segment_models = get_identity_segments(self._environment, identity_model)
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self):
         self._environment = self._get_environment_from_api()
+        self._update_overrides()
+
+    def _update_overrides(self) -> None:
+        if not self._environment:
+            return
+        if overrides := self._environment.identity_overrides:
+            self._identity_overrides_by_identifier = {
+                identity.identifier: identity for identity in overrides
+            }
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
@@ -269,7 +281,7 @@ class Flagsmith:
     def _get_identity_flags_from_document(
         self, identifier: str, traits: typing.Dict[str, typing.Any]
     ) -> Flags:
-        identity_model = self._build_identity_model(identifier, **traits)
+        identity_model = self._get_identity_model(identifier, **traits)
         feature_states = engine.get_identity_feature_states(
             self._environment, identity_model
         )
@@ -334,7 +346,11 @@ class Flagsmith:
                 "Unable to get valid response from Flagsmith API."
             ) from e
 
-    def _build_identity_model(self, identifier: str, **traits):
+    def _get_identity_model(
+        self,
+        identifier: str,
+        **traits: TraitValue,
+    ) -> IdentityModel:
         if not self._environment:
             raise FlagsmithClientError(
                 "Unable to build identity model when no local environment present."
@@ -344,6 +360,11 @@ class Flagsmith:
             TraitModel(trait_key=key, trait_value=value)
             for key, value in traits.items()
         ]
+
+        if identity := self._identity_overrides_by_identifier.get(identifier):
+            identity.update_traits(trait_models)
+            return identity
+
         return IdentityModel(
             identifier=identifier,
             environment_api_key=self._environment.api_key,

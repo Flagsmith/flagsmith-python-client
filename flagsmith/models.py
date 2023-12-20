@@ -10,20 +10,19 @@ from flagsmith.exceptions import FlagsmithClientError
 @dataclass
 class BaseFlag:
     enabled: bool
-    value: typing.Union[str, int, float, bool, type(None)]
-    is_default: bool
+    value: typing.Union[str, int, float, bool, None]
 
 
+@dataclass
 class DefaultFlag(BaseFlag):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, is_default=True, **kwargs)
+    is_default: bool = field(default=True)
 
 
+@dataclass
 class Flag(BaseFlag):
-    def __init__(self, *args, feature_id: int, feature_name: str, **kwargs):
-        super().__init__(*args, is_default=False, **kwargs)
-        self.feature_id = feature_id
-        self.feature_name = feature_name
+    feature_id: int
+    feature_name: str
+    is_default: bool = field(default=False)
 
     @classmethod
     def from_feature_state_model(
