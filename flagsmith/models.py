@@ -23,9 +23,7 @@ class BaseFlagType(typing.TypedDict):
 
 
 class DefaultFlag(BaseFlag):
-    def __init__(self, *args: typing.Any, **kwargs: typing.Any):
-        kwargs.setdefault("is_default", True)
-        super().__init__(*args, **kwargs)
+    is_default: bool = field(default=True)
 
 
 class Flag(BaseFlag):
