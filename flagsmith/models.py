@@ -29,17 +29,9 @@ class DefaultFlag(BaseFlag):
 
 
 class Flag(BaseFlag):
-    def __init__(
-        self,
-        *args: typing.Any,
-        feature_id: int,
-        feature_name: str,
-        **kwargs: typing.Any,
-    ):
-        kwargs.setdefault("is_default", False)
-        super().__init__(*args, **kwargs)
-        self.feature_id = feature_id
-        self.feature_name = feature_name
+    is_default: bool = field(default=True)
+    feature_id: int
+    feature_name: str
 
     @classmethod
     def from_feature_state_model(
