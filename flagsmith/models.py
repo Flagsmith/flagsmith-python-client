@@ -31,7 +31,7 @@ class DefaultFlag(BaseFlag):
 class Flag(BaseFlag):
     feature_id: int
     feature_name: str
-    is_default: bool = field(kw_only=True, default=True)
+    is_default: bool = field(kw_only=True, default=False)
 
     @classmethod
     def from_feature_state_model(
