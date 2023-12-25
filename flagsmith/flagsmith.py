@@ -7,6 +7,7 @@ from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
+from flag_engine.identities.traits.types import TraitValue
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
@@ -42,7 +43,7 @@ class Flagsmith:
         self,
         environment_key: typing.Optional[str] = None,
         api_url: typing.Optional[str] = None,
-        custom_headers: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
+        custom_headers: typing.Optional[typing.MutableMapping[str, str]] = None,
         request_timeout_seconds: int = 3,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
@@ -154,7 +155,7 @@ class Flagsmith:
     def get_identity_flags(
         self,
         identifier: str,
-        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        traits: typing.Optional[typing.Mapping[str, TraitValue]] = None,
     ) -> Flags:
         """
         Get all the flags for the current environment for a given identity. Will also
@@ -175,7 +176,7 @@ class Flagsmith:
     def get_identity_segments(
         self,
         identifier: str,
-        traits: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+        traits: typing.Optional[typing.Mapping[str, TraitValue]] = None,
     ) -> typing.List[Segment]:
         """
         Get a list of segments that the given identity is in.
@@ -213,15 +214,14 @@ class Flagsmith:
             default_flag_handler=self.default_flag_handler,
         )
 
-
     def _get_identity_flags_from_document(
-        self, identifier: str, traits: typing.Dict[str, typing.Any]
+        self, identifier: str, traits: typing.Mapping[str, TraitValue]
     ) -> Flags:
         identity_model = self._build_identity_model(identifier, **traits)
         if self._environment is None:
             raise TypeError("No environment present")
         feature_states = engine.get_identity_feature_states(
-                self._environment, identity_model
+            self._environment, identity_model
         )
         return Flags.from_feature_state_models(
             feature_states=feature_states,
@@ -248,7 +248,7 @@ class Flagsmith:
             raise
 
     def _get_identity_flags_from_api(
-        self, identifier: str, traits: typing.Dict[str, typing.Any]
+        self, identifier: str, traits: typing.Mapping[str, typing.Any]
     ) -> Flags:
         try:
             data = generate_identities_data(identifier, traits)
@@ -290,7 +290,7 @@ class Flagsmith:
             ) from e
 
     def _build_identity_model(
-        self, identifier: str, **traits: typing.Mapping[str, typing.Any]
+        self, identifier: str, **traits: TraitValue
     ) -> IdentityModel:
         if not self._environment:
             raise FlagsmithClientError(
