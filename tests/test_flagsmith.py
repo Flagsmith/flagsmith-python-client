@@ -421,8 +421,8 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
         offline_handler=mock_offline_handler,
     )
 
-    responses.add(flagsmith.environment_flags_url, status=500)
-    responses.add(flagsmith.identities_url, status=500)
+    responses.get(flagsmith.environment_flags_url, status=500)
+    responses.get(flagsmith.identities_url, status=500)
 
     # When
     environment_flags = flagsmith.get_environment_flags()

@@ -4,6 +4,7 @@ import random
 import string
 
 import pytest
+import responses
 from flag_engine.environments.models import EnvironmentModel
 
 from flagsmith import Flagsmith
@@ -41,7 +42,7 @@ def environment_json():
 
 
 @pytest.fixture()
-def local_eval_flagsmith(server_api_key, environment_json, mocker):
+def requests_session_response_ok(mocker, environment_json):
     mock_session = mocker.MagicMock()
     mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
 
@@ -49,6 +50,11 @@ def local_eval_flagsmith(server_api_key, environment_json, mocker):
     mock_environment_document_response.json.return_value = json.loads(environment_json)
     mock_session.get.return_value = mock_environment_document_response
 
+    return mock_session
+
+
+@pytest.fixture()
+def local_eval_flagsmith(requests_session_response_ok, server_api_key):
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
@@ -75,3 +81,9 @@ def flags_json():
 def identities_json():
     with open(os.path.join(DATA_DIR, "identities.json"), "rt") as f:
         yield f.read()
+
+
+@pytest.fixture
+def mocked_responses():
+    with responses.RequestsMock() as rsps:
+        yield rsps

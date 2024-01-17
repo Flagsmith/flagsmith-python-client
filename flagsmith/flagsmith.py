@@ -1,6 +1,8 @@
 import logging
 import typing
-from json import JSONDecodeError
+import json
+from datetime import datetime
+import pytz
 
 import requests
 from flag_engine import engine
@@ -15,11 +17,13 @@ from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
+from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
+DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
 
 
 class Flagsmith:
@@ -41,6 +45,7 @@ class Flagsmith:
         self,
         environment_key: str = None,
         api_url: str = None,
+        realtime_api_url: str = None,
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
@@ -51,11 +56,13 @@ class Flagsmith:
         proxies: typing.Dict[str, str] = None,
         offline_mode: bool = False,
         offline_handler: BaseOfflineHandler = None,
+        use_stream: bool = False,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
             Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
+        :param realtime_api_url: Override the URL of the Flagsmith real-time API
         :param custom_headers: Additional headers to add to requests made to the
             Flagsmith API
         :param request_timeout_seconds: Number of seconds to wait for a request to
@@ -76,12 +83,14 @@ class Flagsmith:
         :param offline_handler: provide a handler for offline logic. Used to get environment
             document from another source when in offline_mode. Works in place of
             default_flag_handler if offline_mode is not set and using remote evaluation.
+        :param use_stream: Use real-time functionality via SSE as opposed to polling the API
         """
 
         self.offline_mode = offline_mode
         self.enable_local_evaluation = enable_local_evaluation
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
+        self.use_stream = use_stream
         self._analytics_processor = None
         self._environment = None
 
@@ -110,6 +119,13 @@ class Flagsmith:
             api_url = api_url or DEFAULT_API_URL
             self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
 
+            realtime_api_url = realtime_api_url or DEFAULT_REALTIME_API_URL
+            self.realtime_api_url = (
+                realtime_api_url
+                if realtime_api_url.endswith("/")
+                else f"{realtime_api_url}/"
+            )
+
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
@@ -124,19 +140,44 @@ class Flagsmith:
                         "in the environment settings page."
                     )
 
-                self.environment_data_polling_manager_thread = (
-                    EnvironmentDataPollingManager(
+                if self.use_stream:
+                    self.update_environment()
+                    stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
+
+                    self.event_stream_thread = EventStreamManager(
+                        stream_url=stream_url,
+                        on_event=self.handle_stream_event,
+                        daemon=True,  # noqa
+                    )
+
+                    self.event_stream_thread.start()
+
+                else:
+                    self.environment_data_polling_manager_thread = EnvironmentDataPollingManager(
                         main=self,
                         refresh_interval_seconds=environment_refresh_interval_seconds,
                         daemon=True,  # noqa
                     )
-                )
-                self.environment_data_polling_manager_thread.start()
+                    self.environment_data_polling_manager_thread.start()
 
             if enable_analytics:
                 self._analytics_processor = AnalyticsProcessor(
                     environment_key, self.api_url, timeout=self.request_timeout_seconds
                 )
+
+    def handle_stream_event(self, event):
+        event_data = json.loads(event.data)
+        stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
+
+        if stream_updated_at.tzinfo is None:
+            stream_updated_at = pytz.utc.localize(stream_updated_at)
+
+        environment_updated_at = self._environment.updated_at
+        if environment_updated_at.tzinfo is None:
+            environment_updated_at = pytz.utc.localize(environment_updated_at)
+
+        if stream_updated_at > environment_updated_at:
+            self.update_environment()
 
     def get_environment_flags(self) -> Flags:
         """
@@ -267,7 +308,7 @@ class Flagsmith:
                     response.status_code,
                 )
             return response.json()
-        except (requests.ConnectionError, JSONDecodeError) as e:
+        except (requests.ConnectionError, json.JSONDecodeError) as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
             ) from e
@@ -291,3 +332,6 @@ class Flagsmith:
     def __del__(self):
         if hasattr(self, "environment_data_polling_manager_thread"):
             self.environment_data_polling_manager_thread.stop()
+
+        if hasattr(self, "event_stream_thread"):
+            self.event_stream_thread.stop()
