@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 import requests
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
