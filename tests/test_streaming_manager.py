@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from unittest.mock import MagicMock, Mock
 
+import pytest
 import requests
 
 from flagsmith import Flagsmith
@@ -134,3 +135,48 @@ def test_environment_does_not_update_on_same_event(server_api_key, mocker):
     )
 
     flagsmith.update_environment.assert_not_called()
+
+
+def test_invalid_json_payload(server_api_key, mocker):
+    mocker.patch("flagsmith.Flagsmith.update_environment")
+    flagsmith = Flagsmith(environment_key=server_api_key)
+
+    with pytest.raises(FlagsmithAPIError):
+        flagsmith.handle_stream_event(
+            event=Mock(
+                data='{"updated_at": test}\n\n',
+            )
+        )
+
+    with pytest.raises(FlagsmithAPIError):
+        flagsmith.handle_stream_event(
+            event=Mock(
+                data="{{test}}\n\n",
+            )
+        )
+
+    with pytest.raises(FlagsmithAPIError):
+        flagsmith.handle_stream_event(
+            event=Mock(
+                data="test",
+            )
+        )
+
+
+def test_invalid_timestamp_in_payload(server_api_key, mocker):
+    mocker.patch("flagsmith.Flagsmith.update_environment")
+    flagsmith = Flagsmith(environment_key=server_api_key)
+
+    with pytest.raises(FlagsmithAPIError):
+        flagsmith.handle_stream_event(
+            event=Mock(
+                data='{"updated_at": "test"}\n\n',
+            )
+        )
+
+    with pytest.raises(FlagsmithAPIError):
+        flagsmith.handle_stream_event(
+            event=Mock(
+                data='{"test": "test"}\n\n',
+            )
+        )

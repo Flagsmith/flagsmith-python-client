@@ -166,8 +166,17 @@ class Flagsmith:
                 )
 
     def handle_stream_event(self, event):
-        event_data = json.loads(event.data)
-        stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
+        try:
+            event_data = json.loads(event.data)
+        except json.JSONDecodeError as e:
+            raise FlagsmithAPIError("Unable to get valid json from event data.") from e
+
+        try:
+            stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
+        except TypeError as e:
+            raise FlagsmithAPIError(
+                "Unable to get valid timestamp from event data."
+            ) from e
 
         if stream_updated_at.tzinfo is None:
             stream_updated_at = pytz.utc.localize(stream_updated_at)
