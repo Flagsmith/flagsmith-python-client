@@ -1,6 +1,7 @@
-import threading
-import requests
 import logging
+import threading
+
+import requests
 import sseclient
 
 from flagsmith.exceptions import FlagsmithAPIError

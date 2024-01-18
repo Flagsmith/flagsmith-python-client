@@ -1,9 +1,9 @@
+import json
 import logging
 import typing
-import json
 from datetime import datetime
-import pytz
 
+import pytz
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
