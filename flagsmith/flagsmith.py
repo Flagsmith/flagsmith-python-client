@@ -88,6 +88,7 @@ class Flagsmith:
 
         self.offline_mode = offline_mode
         self.enable_local_evaluation = enable_local_evaluation
+        self.environment_refresh_interval_seconds = environment_refresh_interval_seconds
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
@@ -102,7 +103,7 @@ class Flagsmith:
                 "Cannot use both default_flag_handler and offline_handler."
             )
 
-        if self.enable_realtime_updates and not self.enable_local_evaluation:
+        if enable_realtime_updates and not enable_local_evaluation:
             raise ValueError(
                 "Can only use realtime updates when running in local evaluation mode."
             )
@@ -145,30 +146,36 @@ class Flagsmith:
                         "in the environment settings page."
                     )
 
-                if self.enable_realtime_updates:
-                    self.update_environment()
-                    stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
-
-                    self.event_stream_thread = EventStreamManager(
-                        stream_url=stream_url,
-                        on_event=self.handle_stream_event,
-                        daemon=True,  # noqa
-                    )
-
-                    self.event_stream_thread.start()
-
-                else:
-                    self.environment_data_polling_manager_thread = EnvironmentDataPollingManager(
-                        main=self,
-                        refresh_interval_seconds=environment_refresh_interval_seconds,
-                        daemon=True,  # noqa
-                    )
-                    self.environment_data_polling_manager_thread.start()
+                self.initialise_local_evaluation()
 
             if enable_analytics:
                 self._analytics_processor = AnalyticsProcessor(
                     environment_key, self.api_url, timeout=self.request_timeout_seconds
                 )
+
+    def initialise_local_evaluation(self):
+        if self.enable_realtime_updates:
+            self.update_environment()
+            stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
+
+            self.event_stream_thread = EventStreamManager(
+                stream_url=stream_url,
+                on_event=self.handle_stream_event,
+                daemon=True,  # noqa
+            )
+
+            self.event_stream_thread.start()
+
+        else:
+            self.environment_data_polling_manager_thread = (
+                EnvironmentDataPollingManager(
+                    main=self,
+                    refresh_interval_seconds=self.environment_refresh_interval_seconds,
+                    daemon=True,  # noqa
+                )
+            )
+
+            self.environment_data_polling_manager_thread.start()
 
     def handle_stream_event(self, event):
         try:
