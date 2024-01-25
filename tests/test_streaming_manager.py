@@ -19,16 +19,27 @@ def test_stream_not_used_by_default(requests_session_response_ok, server_api_key
     assert hasattr(flagsmith, "event_stream_thread") is False
 
 
-def test_stream_used_when_use_stream_is_true(
+def test_stream_used_when_enable_realtime_updates_is_true(
     requests_session_response_ok, server_api_key
 ):
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
-        use_stream=True,
+        enable_realtime_updates=True,
     )
 
     assert hasattr(flagsmith, "event_stream_thread") is True
+
+
+def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
+    requests_session_response_ok, server_api_key
+):
+    with pytest.raises(ValueError):
+        Flagsmith(
+            environment_key=server_api_key,
+            enable_local_evaluation=False,
+            enable_realtime_updates=True,
+        )
 
 
 def test_stream_manager_handles_timeout(mocked_responses):

@@ -56,7 +56,7 @@ class Flagsmith:
         proxies: typing.Dict[str, str] = None,
         offline_mode: bool = False,
         offline_handler: BaseOfflineHandler = None,
-        use_stream: bool = False,
+        enable_realtime_updates: bool = False,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
@@ -83,14 +83,14 @@ class Flagsmith:
         :param offline_handler: provide a handler for offline logic. Used to get environment
             document from another source when in offline_mode. Works in place of
             default_flag_handler if offline_mode is not set and using remote evaluation.
-        :param use_stream: Use real-time functionality via SSE as opposed to polling the API
+        :param enable_realtime_updates: Use real-time functionality via SSE as opposed to polling the API
         """
 
         self.offline_mode = offline_mode
         self.enable_local_evaluation = enable_local_evaluation
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
-        self.use_stream = use_stream
+        self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor = None
         self._environment = None
 
@@ -100,6 +100,11 @@ class Flagsmith:
         elif default_flag_handler and offline_handler:
             raise ValueError(
                 "Cannot use both default_flag_handler and offline_handler."
+            )
+
+        if self.enable_realtime_updates and not self.enable_local_evaluation:
+            raise ValueError(
+                "Can only use realtime updates when running in local evaluation mode."
             )
 
         if self.offline_handler:
@@ -140,7 +145,7 @@ class Flagsmith:
                         "in the environment settings page."
                     )
 
-                if self.use_stream:
+                if self.enable_realtime_updates:
                     self.update_environment()
                     stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
 
