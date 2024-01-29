@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Callable, Generator, Protocol, cast
+from typing import Callable, Generator, Optional, Protocol, cast
 
 import requests
 import sseclient
@@ -20,7 +20,7 @@ class EventStreamManager(threading.Thread):
         *args,
         stream_url: str,
         on_event: Callable[[StreamEvent], None],
-        request_timeout_seconds: int | None = None,
+        request_timeout_seconds: Optional[int] = None,
         **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
