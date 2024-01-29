@@ -2,15 +2,20 @@ import json
 import os
 import random
 import string
+from typing import Generator, TypeAlias
 
 import pytest
 import responses
 from flag_engine.environments.models import EnvironmentModel
+from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
+
+SetupFixture: TypeAlias = None
 
 
 @pytest.fixture()
@@ -42,7 +47,9 @@ def environment_json():
 
 
 @pytest.fixture()
-def requests_session_response_ok(mocker, environment_json):
+def requests_session_response_ok(
+    mocker: Generator[MockerFixture, None, None], environment_json: str
+) -> SetupFixture:
     mock_session = mocker.MagicMock()
     mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
 
@@ -50,11 +57,11 @@ def requests_session_response_ok(mocker, environment_json):
     mock_environment_document_response.json.return_value = json.loads(environment_json)
     mock_session.get.return_value = mock_environment_document_response
 
-    return mock_session
-
 
 @pytest.fixture()
-def local_eval_flagsmith(requests_session_response_ok, server_api_key):
+def local_eval_flagsmith(
+    requests_session_response_ok: SetupFixture, server_api_key: str
+) -> Generator[Flagsmith, None, None]:
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
@@ -84,6 +91,6 @@ def identities_json():
 
 
 @pytest.fixture
-def mocked_responses():
+def mocked_responses() -> Generator["responses.RequestsMock", None, None]:
     with responses.RequestsMock() as rsps:
         yield rsps

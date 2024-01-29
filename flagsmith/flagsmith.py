@@ -17,7 +17,7 @@ from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
-from flagsmith.streaming_manager import EventStreamManager
+from flagsmith.streaming_manager import EventStreamManager, StreamEvent
 from flagsmith.utils.identities import generate_identities_data
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class Flagsmith:
         self,
         environment_key: str = None,
         api_url: str = None,
-        realtime_api_url: str = None,
+        realtime_api_url: typing.Optional[str] = None,
         custom_headers: typing.Dict[str, typing.Any] = None,
         request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
@@ -146,14 +146,14 @@ class Flagsmith:
                         "in the environment settings page."
                     )
 
-                self.initialise_local_evaluation()
+                self._initialise_local_evaluation()
 
             if enable_analytics:
                 self._analytics_processor = AnalyticsProcessor(
                     environment_key, self.api_url, timeout=self.request_timeout_seconds
                 )
 
-    def initialise_local_evaluation(self):
+    def _initialise_local_evaluation(self) -> None:
         if self.enable_realtime_updates:
             self.update_environment()
             stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
@@ -177,7 +177,7 @@ class Flagsmith:
 
             self.environment_data_polling_manager_thread.start()
 
-    def handle_stream_event(self, event):
+    def handle_stream_event(self, event: StreamEvent) -> None:
         try:
             event_data = json.loads(event.data)
         except json.JSONDecodeError as e:

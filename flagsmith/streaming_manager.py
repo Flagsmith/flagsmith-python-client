@@ -1,5 +1,6 @@
 import logging
 import threading
+from typing import Callable, Generator, Protocol, cast
 
 import requests
 import sseclient
@@ -9,10 +10,19 @@ from flagsmith.exceptions import FlagsmithAPIError
 logger = logging.getLogger(__name__)
 
 
+class StreamEvent(Protocol):
+    data: str
+
+
 class EventStreamManager(threading.Thread):
     def __init__(
-        self, *args, stream_url, on_event, request_timeout_seconds=None, **kwargs
-    ):
+        self,
+        *args,
+        stream_url: str,
+        on_event: Callable[[StreamEvent], None],
+        request_timeout_seconds: int | None = None,
+        **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
         self.stream_url = stream_url
@@ -28,7 +38,9 @@ class EventStreamManager(threading.Thread):
                     headers={"Accept": "application/json, text/event-stream"},
                     timeout=self.request_timeout_seconds,
                 ) as response:
-                    sse_client = sseclient.SSEClient(response)
+                    sse_client = sseclient.SSEClient(
+                        cast(Generator[bytes, None, None], response)
+                    )
                     for event in sse_client.events():
                         self.on_event(event)
 
@@ -41,5 +53,5 @@ class EventStreamManager(threading.Thread):
     def stop(self) -> None:
         self._stop_event.set()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._stop_event.set()

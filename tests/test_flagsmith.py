@@ -16,6 +16,8 @@ if typing.TYPE_CHECKING:
     from flag_engine.environments.models import EnvironmentModel
     from pytest_mock import MockerFixture
 
+from .conftest import SetupFixture
+
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
     # Given
@@ -474,3 +476,41 @@ def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key():
 
     # Then
     assert e.exconly() == "ValueError: environment_key is required."
+
+
+def test_stream_not_used_by_default(
+    requests_session_response_ok: SetupFixture, server_api_key: str
+) -> None:
+    # When
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+    )
+
+    # Then
+    assert hasattr(flagsmith, "event_stream_thread") is False
+
+
+def test_stream_used_when_enable_realtime_updates_is_true(
+    requests_session_response_ok: SetupFixture, server_api_key: str
+) -> None:
+    # When
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        enable_realtime_updates=True,
+    )
+
+    # Then
+    assert hasattr(flagsmith, "event_stream_thread") is True
+
+
+def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
+    requests_session_response_ok: SetupFixture, server_api_key: str
+) -> None:
+    with pytest.raises(ValueError):
+        Flagsmith(
+            environment_key=server_api_key,
+            enable_local_evaluation=False,
+            enable_realtime_updates=True,
+        )

@@ -1,48 +1,21 @@
 import time
 from datetime import datetime
+from typing import Generator
 from unittest.mock import MagicMock, Mock
 
 import pytest
 import requests
+import responses
+from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
 from flagsmith.streaming_manager import EventStreamManager
 
 
-def test_stream_not_used_by_default(requests_session_response_ok, server_api_key):
-    flagsmith = Flagsmith(
-        environment_key=server_api_key,
-        enable_local_evaluation=True,
-    )
-
-    assert hasattr(flagsmith, "event_stream_thread") is False
-
-
-def test_stream_used_when_enable_realtime_updates_is_true(
-    requests_session_response_ok, server_api_key
-):
-    flagsmith = Flagsmith(
-        environment_key=server_api_key,
-        enable_local_evaluation=True,
-        enable_realtime_updates=True,
-    )
-
-    assert hasattr(flagsmith, "event_stream_thread") is True
-
-
-def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
-    requests_session_response_ok, server_api_key
-):
-    with pytest.raises(ValueError):
-        Flagsmith(
-            environment_key=server_api_key,
-            enable_local_evaluation=False,
-            enable_realtime_updates=True,
-        )
-
-
-def test_stream_manager_handles_timeout(mocked_responses):
+def test_stream_manager_handles_timeout(
+    mocked_responses: Generator["responses.RequestsMock", None, None]
+) -> None:
     stream_url = (
         "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"
     )
@@ -64,7 +37,10 @@ def test_stream_manager_handles_timeout(mocked_responses):
     streaming_manager.stop()
 
 
-def test_stream_manager_handles_request_exception(mocked_responses, caplog):
+def test_stream_manager_handles_request_exception(
+    mocked_responses: Generator["responses.RequestsMock", None, None],
+    caplog: Generator["pytest.LogCaptureFixture", None, None],
+) -> None:
     stream_url = (
         "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"
     )
@@ -91,7 +67,9 @@ def test_stream_manager_handles_request_exception(mocked_responses, caplog):
         assert record.message == "Error handling event stream"
 
 
-def test_environment_updates_on_recent_event(server_api_key, mocker):
+def test_environment_updates_on_recent_event(
+    server_api_key: str, mocker: MockerFixture
+) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 2)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1)
 
@@ -110,7 +88,9 @@ def test_environment_updates_on_recent_event(server_api_key, mocker):
     flagsmith.update_environment.assert_called_once()
 
 
-def test_environment_does_not_update_on_past_event(server_api_key, mocker):
+def test_environment_does_not_update_on_past_event(
+    server_api_key: str, mocker: MockerFixture
+) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 2)
 
@@ -129,7 +109,9 @@ def test_environment_does_not_update_on_past_event(server_api_key, mocker):
     flagsmith.update_environment.assert_not_called()
 
 
-def test_environment_does_not_update_on_same_event(server_api_key, mocker):
+def test_environment_does_not_update_on_same_event(
+    server_api_key: str, mocker: MockerFixture
+) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1)
 
@@ -148,7 +130,7 @@ def test_environment_does_not_update_on_same_event(server_api_key, mocker):
     flagsmith.update_environment.assert_not_called()
 
 
-def test_invalid_json_payload(server_api_key, mocker):
+def test_invalid_json_payload(server_api_key: str, mocker: MockerFixture) -> None:
     mocker.patch("flagsmith.Flagsmith.update_environment")
     flagsmith = Flagsmith(environment_key=server_api_key)
 
@@ -174,7 +156,9 @@ def test_invalid_json_payload(server_api_key, mocker):
         )
 
 
-def test_invalid_timestamp_in_payload(server_api_key, mocker):
+def test_invalid_timestamp_in_payload(
+    server_api_key: str, mocker: MockerFixture
+) -> None:
     mocker.patch("flagsmith.Flagsmith.update_environment")
     flagsmith = Flagsmith(environment_key=server_api_key)
 
