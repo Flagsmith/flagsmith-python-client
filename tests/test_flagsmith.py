@@ -16,8 +16,6 @@ if typing.TYPE_CHECKING:
     from flag_engine.environments.models import EnvironmentModel
     from pytest_mock import MockerFixture
 
-from .conftest import SetupFixture
-
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
     # Given
@@ -479,7 +477,7 @@ def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key():
 
 
 def test_stream_not_used_by_default(
-    requests_session_response_ok: SetupFixture, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str
 ) -> None:
     # When
     flagsmith = Flagsmith(
@@ -492,7 +490,7 @@ def test_stream_not_used_by_default(
 
 
 def test_stream_used_when_enable_realtime_updates_is_true(
-    requests_session_response_ok: SetupFixture, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str
 ) -> None:
     # When
     flagsmith = Flagsmith(
@@ -506,7 +504,7 @@ def test_stream_used_when_enable_realtime_updates_is_true(
 
 
 def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
-    requests_session_response_ok: SetupFixture, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str
 ) -> None:
     with pytest.raises(ValueError):
         Flagsmith(

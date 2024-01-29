@@ -2,7 +2,7 @@ import json
 import os
 import random
 import string
-from typing import Generator, TypeAlias
+from typing import Generator
 
 import pytest
 import responses
@@ -13,9 +13,6 @@ from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-
-
-SetupFixture: TypeAlias = None
 
 
 @pytest.fixture()
@@ -49,7 +46,7 @@ def environment_json():
 @pytest.fixture()
 def requests_session_response_ok(
     mocker: Generator[MockerFixture, None, None], environment_json: str
-) -> SetupFixture:
+) -> None:
     mock_session = mocker.MagicMock()
     mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
 
@@ -60,7 +57,7 @@ def requests_session_response_ok(
 
 @pytest.fixture()
 def local_eval_flagsmith(
-    requests_session_response_ok: SetupFixture, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str
 ) -> Generator[Flagsmith, None, None]:
     flagsmith = Flagsmith(
         environment_key=server_api_key,
