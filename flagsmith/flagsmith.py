@@ -161,7 +161,7 @@ class Flagsmith:
             self.event_stream_thread = EventStreamManager(
                 stream_url=stream_url,
                 on_event=self.handle_stream_event,
-                daemon=True,  # noqa
+                daemon=True,
             )
 
             self.event_stream_thread.start()
@@ -171,7 +171,7 @@ class Flagsmith:
                 EnvironmentDataPollingManager(
                     main=self,
                     refresh_interval_seconds=self.environment_refresh_interval_seconds,
-                    daemon=True,  # noqa
+                    daemon=True,
                 )
             )
 
