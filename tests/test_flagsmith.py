@@ -421,8 +421,8 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
         offline_handler=mock_offline_handler,
     )
 
-    responses.add(flagsmith.environment_flags_url, status=500)
-    responses.add(flagsmith.identities_url, status=500)
+    responses.get(flagsmith.environment_flags_url, status=500)
+    responses.get(flagsmith.identities_url, status=500)
 
     # When
     environment_flags = flagsmith.get_environment_flags()
@@ -474,3 +474,41 @@ def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key():
 
     # Then
     assert e.exconly() == "ValueError: environment_key is required."
+
+
+def test_stream_not_used_by_default(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    # When
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+    )
+
+    # Then
+    assert hasattr(flagsmith, "event_stream_thread") is False
+
+
+def test_stream_used_when_enable_realtime_updates_is_true(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    # When
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        enable_realtime_updates=True,
+    )
+
+    # Then
+    assert hasattr(flagsmith, "event_stream_thread") is True
+
+
+def test_error_raised_when_realtime_updates_is_true_and_local_evaluation_false(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    with pytest.raises(ValueError):
+        Flagsmith(
+            environment_key=server_api_key,
+            enable_local_evaluation=False,
+            enable_realtime_updates=True,
+        )
