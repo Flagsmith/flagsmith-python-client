@@ -86,7 +86,7 @@ class Flags:
     @classmethod
     def from_api_flags(
         cls,
-        api_flags: typing.List[typing.Mapping[str, typing.Any]],
+        api_flags: typing.Sequence[typing.Mapping[str, typing.Any]],
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:

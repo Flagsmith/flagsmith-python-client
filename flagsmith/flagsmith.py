@@ -17,11 +17,13 @@ from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
-from flagsmith.utils.identities import generate_identities_data
+from flagsmith.utils.identities import generate_identities_data, Identity
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL: typing.Final[str] = "https://edge.api.flagsmith.com/api/v1/"
+
+JsonType = typing.Union[None, int, str, bool, typing.List["JsonType"], typing.List[typing.Dict[str, "JsonType"]], typing.Dict[str, "JsonType"]]
 
 
 class Flagsmith:
@@ -232,11 +234,12 @@ class Flagsmith:
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
-            api_flags = self._get_json_response(
+            json_response = self._get_json_response(
                 url=self.environment_flags_url, method="GET"
             )
+            json_response = typing.cast(typing.Dict[str, typing.List[typing.Dict[str, JsonType]]], api_flags)
             return Flags.from_api_flags(
-                api_flags=api_flags,
+                api_flags=json_response["flags"],
                 analytics_processor=self._analytics_processor,
                 default_flag_handler=self.default_flag_handler,
             )
@@ -255,6 +258,7 @@ class Flagsmith:
             json_response = self._get_json_response(
                 url=self.identities_url, method="POST", body=data
             )
+            json_response = typing.cast(typing.Dict[str, typing.List[typing.Dict[str, JsonType]]], json_response)
             return Flags.from_api_flags(
                 api_flags=json_response["flags"],
                 analytics_processor=self._analytics_processor,
@@ -271,8 +275,8 @@ class Flagsmith:
         self,
         url: str,
         method: str,
-        body: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-    ) -> typing.Any:
+        body: typing.Optional[typing.Union[Identity, typing.Dict[str, JsonType]]] = None,
+    ) -> typing.Mapping[str, JsonType]:
         try:
             request_method = getattr(self.session, method.lower())
             response = request_method(
@@ -283,7 +287,8 @@ class Flagsmith:
                     "Invalid request made to Flagsmith API. Response status code: %d",
                     response.status_code,
                 )
-            return response.json()
+            ret: typing.Dict[str, JsonType] = response.json()
+            return ret
         except (requests.ConnectionError, JSONDecodeError) as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
