@@ -167,6 +167,9 @@ class Flagsmith:
             self.event_stream_thread.start()
 
         else:
+            # To ensure that the environment is set before allowing subsequent
+            # method calls, update the environment manually.
+            self.update_environment()
             self.environment_data_polling_manager_thread = (
                 EnvironmentDataPollingManager(
                     main=self,
