@@ -6,6 +6,7 @@ import pytest
 import requests
 import responses
 from flag_engine.features.models import FeatureModel, FeatureStateModel
+from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import FlagsmithAPIError
@@ -14,7 +15,6 @@ from flagsmith.offline_handlers import BaseOfflineHandler
 
 if typing.TYPE_CHECKING:
     from flag_engine.environments.models import EnvironmentModel
-    from pytest_mock import MockerFixture
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
