@@ -17,7 +17,11 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
-def test_flagsmith_starts_polling_manager_on_init_if_enabled(mocker, server_api_key):
+def test_flagsmith_starts_polling_manager_on_init_if_enabled(
+    mocker: MockerFixture,
+    server_api_key: str,
+    requests_session_response_ok: None,
+) -> None:
     # Given
     mock_polling_manager = mocker.MagicMock()
     mocker.patch(
@@ -408,7 +412,7 @@ def test_offline_mode(environment_model: "EnvironmentModel") -> None:
 
 @responses.activate()
 def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
-    mocker: "MockerFixture", environment_model: "EnvironmentModel"
+    mocker: MockerFixture, environment_model: "EnvironmentModel"
 ) -> None:
     # Given
     api_url = "http://some.flagsmith.com/api/v1/"
