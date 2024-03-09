@@ -10,7 +10,7 @@ documentation = "https://docs.flagsmith.com"
 packages = [{ include = "flagsmith" }]
 
 [tool.poetry.dependencies]
-python = ">=3.8.0,<4"
+python = ">=3.8.1,<4"
 requests = "^2.27.1"
 requests-futures = "^1.0.0"
 flagsmith-flag-engine = "^5.1.0"
