@@ -10,10 +10,12 @@ documentation = "https://docs.flagsmith.com"
 packages = [{ include = "flagsmith" }]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4"
+python = ">=3.8.0,<4"
 requests = "^2.27.1"
 requests-futures = "^1.0.0"
-flagsmith-flag-engine = "^5.0.0"
+flagsmith-flag-engine = "^5.1.0"
+sseclient-py = "^1.8.0"
+pytz = "^2023.4"
 
 [tool.poetry.group.dev]
 optional = true
@@ -28,10 +30,12 @@ flake8 = "^6.1.0"
 isort = "^5.12.0"
 mypy = "^1.7.1"
 types-requests = "^2.31.0.10"
+pytest-cov = "^4.1.0"
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 exclude = ["example/*"]
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

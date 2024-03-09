@@ -13,13 +13,6 @@ from flagsmith.exceptions import FlagsmithClientError
 class BaseFlag:
     enabled: bool
     value: typing.Union[str, int, float, bool, None]
-    is_default: bool
-
-
-class BaseFlagType(typing.TypedDict):
-    enabled: bool
-    value: typing.Union[str, int, float, bool, None]
-    is_default: bool
 
 
 @dataclass()
@@ -27,11 +20,11 @@ class DefaultFlag(BaseFlag):
     is_default: bool = field(default=True)
 
 
-@dataclass()
+@dataclass
 class Flag(BaseFlag):
     feature_id: int
     feature_name: str
-    is_default: bool = field(kw_only=True, default=False)
+    is_default: bool = field(default=False)
 
     @classmethod
     def from_feature_state_model(

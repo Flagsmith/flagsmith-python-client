@@ -53,5 +53,30 @@
             "enabled": true
         }
     ],
-    "updated_at": "2023-07-14 16:12:00.000000"
+    "updated_at": "2023-07-14 16:12:00.000000",
+    "identity_overrides": [
+        {
+            "identifier": "overridden-id",
+            "identity_uuid": "0f21cde8-63c5-4e50-baca-87897fa6cd01",
+            "created_date": "2019-08-27T14:53:45.698555Z",
+            "updated_at": "2023-07-14 16:12:00.000000",
+            "environment_api_key": "B62qaMZNwfiqT76p38ggrQ",
+            "identity_features": [
+                {
+                    "id": 1,
+                    "feature": {
+                        "id": 1,
+                        "name": "some_feature",
+                        "type": "STANDARD"
+                    },
+                    "featurestate_uuid": "1bddb9a5-7e59-42c6-9be9-625fa369749f",
+                    "feature_state_value": "some-overridden-value",
+                    "enabled": false,
+                    "environment": 1,
+                    "identity": null,
+                    "feature_segment": null
+                }
+            ]
+        }
+    ]
 }

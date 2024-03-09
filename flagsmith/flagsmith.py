@@ -1,7 +1,9 @@
+import json
 import logging
 import typing
-from json import JSONDecodeError
+from datetime import datetime
 
+import pytz
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
@@ -17,11 +19,13 @@ from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
+from flagsmith.streaming_manager import EventStreamManager, StreamEvent
 from flagsmith.utils.identities import Identity, generate_identities_data
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_URL: typing.Final[str] = "https://edge.api.flagsmith.com/api/v1/"
+DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
+DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
 
 JsonType = typing.Union[
     None,
@@ -32,7 +36,6 @@ JsonType = typing.Union[
     typing.List[typing.Dict[str, "JsonType"]],
     typing.Dict[str, "JsonType"],
 ]
-
 
 class Flagsmith:
     """A Flagsmith client.
@@ -51,10 +54,11 @@ class Flagsmith:
 
     def __init__(
         self,
-        environment_key: typing.Optional[str] = None,
-        api_url: typing.Optional[str] = None,
-        custom_headers: typing.Optional[typing.MutableMapping[str, str]] = None,
-        request_timeout_seconds: int = 3,
+        environment_key: str = None,
+        api_url: str = None,
+        realtime_api_url: typing.Optional[str] = None,
+        custom_headers: typing.Dict[str, typing.Any] = None,
+        request_timeout_seconds: int = None,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
@@ -64,12 +68,14 @@ class Flagsmith:
         ] = None,
         proxies: typing.Optional[typing.Dict[str, str]] = None,
         offline_mode: bool = False,
-        offline_handler: typing.Optional[BaseOfflineHandler] = None,
+        offline_handler: BaseOfflineHandler = None,
+        enable_realtime_updates: bool = False,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
             Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
+        :param realtime_api_url: Override the URL of the Flagsmith real-time API
         :param custom_headers: Additional headers to add to requests made to the
             Flagsmith API
         :param request_timeout_seconds: Number of seconds to wait for a request to
@@ -90,14 +96,18 @@ class Flagsmith:
         :param offline_handler: provide a handler for offline logic. Used to get environment
             document from another source when in offline_mode. Works in place of
             default_flag_handler if offline_mode is not set and using remote evaluation.
+        :param enable_realtime_updates: Use real-time functionality via SSE as opposed to polling the API
         """
 
         self.offline_mode = offline_mode
         self.enable_local_evaluation = enable_local_evaluation
+        self.environment_refresh_interval_seconds = environment_refresh_interval_seconds
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
+        self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
         self._environment: typing.Optional[EnvironmentModel] = None
+        self._identity_overrides_by_identifier: typing.Dict[str, IdentityModel] = {}
 
         # argument validation
         if offline_mode and not offline_handler:
@@ -105,6 +115,11 @@ class Flagsmith:
         elif default_flag_handler and offline_handler:
             raise ValueError(
                 "Cannot use both default_flag_handler and offline_handler."
+            )
+
+        if enable_realtime_updates and not enable_local_evaluation:
+            raise ValueError(
+                "Can only use realtime updates when running in local evaluation mode."
             )
 
         if self.offline_handler:
@@ -124,6 +139,13 @@ class Flagsmith:
             api_url = api_url or DEFAULT_API_URL
             self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
 
+            realtime_api_url = realtime_api_url or DEFAULT_REALTIME_API_URL
+            self.realtime_api_url = (
+                realtime_api_url
+                if realtime_api_url.endswith("/")
+                else f"{realtime_api_url}/"
+            )
+
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
@@ -138,19 +160,59 @@ class Flagsmith:
                         "in the environment settings page."
                     )
 
-                self.environment_data_polling_manager_thread = (
-                    EnvironmentDataPollingManager(
-                        main=self,
-                        refresh_interval_seconds=environment_refresh_interval_seconds,
-                        daemon=True,  # noqa
-                    )
-                )
-                self.environment_data_polling_manager_thread.start()
+                self._initialise_local_evaluation()
 
             if enable_analytics:
                 self._analytics_processor = AnalyticsProcessor(
                     environment_key, self.api_url, timeout=self.request_timeout_seconds
                 )
+
+    def _initialise_local_evaluation(self) -> None:
+        if self.enable_realtime_updates:
+            self.update_environment()
+            stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
+
+            self.event_stream_thread = EventStreamManager(
+                stream_url=stream_url,
+                on_event=self.handle_stream_event,
+                daemon=True,
+            )
+
+            self.event_stream_thread.start()
+
+        else:
+            self.environment_data_polling_manager_thread = (
+                EnvironmentDataPollingManager(
+                    main=self,
+                    refresh_interval_seconds=self.environment_refresh_interval_seconds,
+                    daemon=True,
+                )
+            )
+
+            self.environment_data_polling_manager_thread.start()
+
+    def handle_stream_event(self, event: StreamEvent) -> None:
+        try:
+            event_data = json.loads(event.data)
+        except json.JSONDecodeError as e:
+            raise FlagsmithAPIError("Unable to get valid json from event data.") from e
+
+        try:
+            stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
+        except TypeError as e:
+            raise FlagsmithAPIError(
+                "Unable to get valid timestamp from event data."
+            ) from e
+
+        if stream_updated_at.tzinfo is None:
+            stream_updated_at = pytz.utc.localize(stream_updated_at)
+
+        environment_updated_at = self._environment.updated_at
+        if environment_updated_at.tzinfo is None:
+            environment_updated_at = pytz.utc.localize(environment_updated_at)
+
+        if stream_updated_at > environment_updated_at:
+            self.update_environment()
 
     def get_environment_flags(self) -> Flags:
         """
@@ -204,12 +266,21 @@ class Flagsmith:
             )
 
         traits = traits or {}
-        identity_model = self._build_identity_model(identifier, **traits)
+        identity_model = self._get_identity_model(identifier, **traits)
         segment_models = get_identity_segments(self._environment, identity_model)
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self) -> None:
         self._environment = self._get_environment_from_api()
+        self._update_overrides()
+
+    def _update_overrides(self) -> None:
+        if not self._environment:
+            return
+        if overrides := self._environment.identity_overrides:
+            self._identity_overrides_by_identifier = {
+                identity.identifier: identity for identity in overrides
+            }
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
@@ -227,7 +298,7 @@ class Flagsmith:
     def _get_identity_flags_from_document(
         self, identifier: str, traits: typing.Mapping[str, TraitValue]
     ) -> Flags:
-        identity_model = self._build_identity_model(identifier, **traits)
+        identity_model = self._get_identity_model(identifier, **traits)
         if self._environment is None:
             raise TypeError("No environment present")
         feature_states = engine.get_identity_feature_states(
@@ -245,11 +316,8 @@ class Flagsmith:
             json_response = self._get_json_response(
                 url=self.environment_flags_url, method="GET"
             )
-            json_response = typing.cast(
-                typing.Dict[str, typing.List[typing.Dict[str, JsonType]]], json_response
-            )
             return Flags.from_api_flags(
-                api_flags=json_response["flags"],
+                api_flags=json_response,
                 analytics_processor=self._analytics_processor,
                 default_flag_handler=self.default_flag_handler,
             )
@@ -301,15 +369,16 @@ class Flagsmith:
                     "Invalid request made to Flagsmith API. Response status code: %d",
                     response.status_code,
                 )
-            ret: typing.Dict[str, JsonType] = response.json()
-            return ret
-        except (requests.ConnectionError, JSONDecodeError) as e:
+            return response.json()
+        except (requests.ConnectionError, json.JSONDecodeError) as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
             ) from e
 
-    def _build_identity_model(
-        self, identifier: str, **traits: TraitValue
+    def _get_identity_model(
+        self,
+        identifier: str,
+        **traits: TraitValue,
     ) -> IdentityModel:
         if not self._environment:
             raise FlagsmithClientError(
@@ -320,6 +389,11 @@ class Flagsmith:
             TraitModel(trait_key=key, trait_value=value)
             for key, value in traits.items()
         ]
+
+        if identity := self._identity_overrides_by_identifier.get(identifier):
+            identity.update_traits(trait_models)
+            return identity
+
         return IdentityModel(
             identifier=identifier,
             environment_api_key=self._environment.api_key,
@@ -329,3 +403,6 @@ class Flagsmith:
     def __del__(self) -> None:
         if hasattr(self, "environment_data_polling_manager_thread"):
             self.environment_data_polling_manager_thread.stop()
+
+        if hasattr(self, "event_stream_thread"):
+            self.event_stream_thread.stop()
