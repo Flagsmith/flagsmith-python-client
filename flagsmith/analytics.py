@@ -18,7 +18,7 @@ class AnalyticsProcessor:
     the Flagsmith SDK. Docs: https://docs.flagsmith.com/advanced-use/flag-analytics.
     """
 
-    def __init__(self, environment_key: str, base_api_url: str, timeout: int = 3):
+    def __init__(self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
         the Flagsmith API.
@@ -32,7 +32,7 @@ class AnalyticsProcessor:
         self.environment_key = environment_key
         self._last_flushed = datetime.now()
         self.analytics_data: typing.MutableMapping[str, typing.Any] = {}
-        self.timeout = timeout
+        self.timeout = timeout or 3
 
     def flush(self) -> None:
         """

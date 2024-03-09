@@ -122,12 +122,12 @@ class Flags:
         """
         return self.get_flag(feature_name).value
 
-    def get_flag(self, feature_name: str) -> BaseFlag:
+    def get_flag(self, feature_name: str) -> typing.Union[DefaultFlag, Flag]:
         """
         Get a specific flag given the feature name.
 
         :param feature_name: the name of the feature to retrieve the flag for.
-        :return: BaseFlag object.
+        :return: DefaultFlag | Flag object.
         :raises FlagsmithClientError: if feature doesn't exist
         """
         try:

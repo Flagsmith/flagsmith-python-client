@@ -1,5 +1,6 @@
 import logging
 import threading
+import typing
 from typing import Callable, Generator, Optional, Protocol, cast
 
 import requests
@@ -17,11 +18,11 @@ class StreamEvent(Protocol):
 class EventStreamManager(threading.Thread):
     def __init__(
         self,
-        *args,
+        *args: typing.Any,
         stream_url: str,
         on_event: Callable[[StreamEvent], None],
         request_timeout_seconds: Optional[int] = None,
-        **kwargs
+        **kwargs: typing.Any
     ) -> None:
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()

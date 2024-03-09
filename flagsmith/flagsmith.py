@@ -33,9 +33,10 @@ JsonType = typing.Union[
     str,
     bool,
     typing.List["JsonType"],
-    typing.List[typing.Dict[str, "JsonType"]],
+    typing.List[typing.Mapping[str, "JsonType"]],
     typing.Dict[str, "JsonType"],
 ]
+
 
 class Flagsmith:
     """A Flagsmith client.
@@ -54,11 +55,11 @@ class Flagsmith:
 
     def __init__(
         self,
-        environment_key: str = None,
-        api_url: str = None,
+        environment_key: typing.Optional[str] = None,
+        api_url: typing.Optional[str] = None,
         realtime_api_url: typing.Optional[str] = None,
-        custom_headers: typing.Dict[str, typing.Any] = None,
-        request_timeout_seconds: int = None,
+        custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        request_timeout_seconds: typing.Optional[int] = None,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
@@ -68,7 +69,7 @@ class Flagsmith:
         ] = None,
         proxies: typing.Optional[typing.Dict[str, str]] = None,
         offline_mode: bool = False,
-        offline_handler: BaseOfflineHandler = None,
+        offline_handler: typing.Optional[BaseOfflineHandler] = None,
         enable_realtime_updates: bool = False,
     ):
         """
@@ -170,6 +171,9 @@ class Flagsmith:
     def _initialise_local_evaluation(self) -> None:
         if self.enable_realtime_updates:
             self.update_environment()
+            if not self._environment:
+                raise ValueError("Unable to get environment from API key")
+
             stream_url = f"{self.realtime_api_url}sse/environments/{self._environment.api_key}/stream"
 
             self.event_stream_thread = EventStreamManager(
@@ -207,6 +211,8 @@ class Flagsmith:
         if stream_updated_at.tzinfo is None:
             stream_updated_at = pytz.utc.localize(stream_updated_at)
 
+        if not self._environment:
+            raise ValueError("Unable to access environment. Environment should not be null")
         environment_updated_at = self._environment.updated_at
         if environment_updated_at.tzinfo is None:
             environment_updated_at = pytz.utc.localize(environment_updated_at)
@@ -313,7 +319,7 @@ class Flagsmith:
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
-            json_response = self._get_json_response(
+            json_response: typing.List[typing.Mapping[str, JsonType]] = self._get_json_response(
                 url=self.environment_flags_url, method="GET"
             )
             return Flags.from_api_flags(
@@ -333,11 +339,8 @@ class Flagsmith:
     ) -> Flags:
         try:
             data = generate_identities_data(identifier, traits)
-            json_response = self._get_json_response(
+            json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = self._get_json_response(
                 url=self.identities_url, method="POST", body=data
-            )
-            json_response = typing.cast(
-                typing.Dict[str, typing.List[typing.Dict[str, JsonType]]], json_response
             )
             return Flags.from_api_flags(
                 api_flags=json_response["flags"],
@@ -358,7 +361,7 @@ class Flagsmith:
         body: typing.Optional[
             typing.Union[Identity, typing.Dict[str, JsonType]]
         ] = None,
-    ) -> typing.Mapping[str, JsonType]:
+    ) -> typing.Any:
         try:
             request_method = getattr(self.session, method.lower())
             response = request_method(
