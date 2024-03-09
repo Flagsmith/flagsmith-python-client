@@ -13,7 +13,7 @@ from flagsmith.streaming_manager import EventStreamManager
 
 
 def test_stream_manager_handles_timeout(
-    mocked_responses: responses.RequestsMock
+    mocked_responses: responses.RequestsMock,
 ) -> None:
     stream_url = (
         "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"

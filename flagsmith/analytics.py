@@ -18,7 +18,9 @@ class AnalyticsProcessor:
     the Flagsmith SDK. Docs: https://docs.flagsmith.com/advanced-use/flag-analytics.
     """
 
-    def __init__(self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3):
+    def __init__(
+        self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3
+    ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
         the Flagsmith API.

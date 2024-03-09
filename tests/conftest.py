@@ -45,9 +45,7 @@ def environment_json() -> typing.Generator[str, None, None]:
 
 
 @pytest.fixture()
-def requests_session_response_ok(
-    mocker: MockerFixture, environment_json: str
-) -> None:
+def requests_session_response_ok(mocker: MockerFixture, environment_json: str) -> None:
     mock_session = mocker.MagicMock()
     mocker.patch("flagsmith.flagsmith.requests.Session", return_value=mock_session)
 

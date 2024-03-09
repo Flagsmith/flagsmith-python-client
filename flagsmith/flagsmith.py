@@ -212,7 +212,9 @@ class Flagsmith:
             stream_updated_at = pytz.utc.localize(stream_updated_at)
 
         if not self._environment:
-            raise ValueError("Unable to access environment. Environment should not be null")
+            raise ValueError(
+                "Unable to access environment. Environment should not be null"
+            )
         environment_updated_at = self._environment.updated_at
         if environment_updated_at.tzinfo is None:
             environment_updated_at = pytz.utc.localize(environment_updated_at)
@@ -319,9 +321,9 @@ class Flagsmith:
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
-            json_response: typing.List[typing.Mapping[str, JsonType]] = self._get_json_response(
-                url=self.environment_flags_url, method="GET"
-            )
+            json_response: typing.List[
+                typing.Mapping[str, JsonType]
+            ] = self._get_json_response(url=self.environment_flags_url, method="GET")
             return Flags.from_api_flags(
                 api_flags=json_response,
                 analytics_processor=self._analytics_processor,
@@ -339,7 +341,9 @@ class Flagsmith:
     ) -> Flags:
         try:
             data = generate_identities_data(identifier, traits)
-            json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = self._get_json_response(
+            json_response: typing.Dict[
+                str, typing.List[typing.Dict[str, JsonType]]
+            ] = self._get_json_response(
                 url=self.identities_url, method="POST", body=data
             )
             return Flags.from_api_flags(
