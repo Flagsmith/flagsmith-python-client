@@ -4,7 +4,7 @@ import typing
 from typing import Callable, Generator, Optional, Protocol, cast
 
 import requests
-import sseclient  # type:ignore
+import sseclient
 
 from flagsmith.exceptions import FlagsmithAPIError
 
