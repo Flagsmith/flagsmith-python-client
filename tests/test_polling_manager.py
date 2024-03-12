@@ -2,6 +2,7 @@ import time
 from unittest import mock
 
 import requests
+import responses
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
@@ -41,21 +42,23 @@ def test_polling_manager_calls_update_environment_on_each_refresh():
     polling_manager.stop()
 
 
+@responses.activate()
 def test_polling_manager_is_resilient_to_api_errors(
+    flagsmith: Flagsmith,
+    environment_json: str,
     mocker: MockerFixture,
     server_api_key: str,
 ) -> None:
     # Given
-    session_mock = mocker.patch("requests.Session")
-    session_mock.get.return_value = mock.MagicMock(status_code=500)
-    # Sidestep update_environment since it breaks with the above.
-    mocker.patch("flagsmith.Flagsmith.update_environment")
-
+    responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
         environment_refresh_interval_seconds=0.1,
     )
+
+    session_mock = mocker.patch("requests.Session")
+    session_mock.get.return_value = mock.MagicMock(status_code=500)
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
     # Then
@@ -63,22 +66,23 @@ def test_polling_manager_is_resilient_to_api_errors(
     polling_manager.stop()
 
 
+@responses.activate()
 def test_polling_manager_is_resilient_to_request_exceptions(
+    flagsmith: Flagsmith,
+    environment_json: str,
     mocker: MockerFixture,
     server_api_key: str,
 ) -> None:
     # Given
-    session_mock = mocker.patch("requests.Session")
-    session_mock.get.side_effect = requests.RequestException()
-
-    # Sidestep update_environment since it breaks with the above.
-    mocker.patch("flagsmith.Flagsmith.update_environment")
-
+    responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
     flagsmith = Flagsmith(
         environment_key=server_api_key,
         enable_local_evaluation=True,
         environment_refresh_interval_seconds=0.1,
     )
+
+    session_mock = mocker.patch("requests.Session")
+    session_mock.get.side_effect = requests.RequestException()
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
     # Then
