@@ -60,7 +60,6 @@ def test_polling_manager_is_resilient_to_api_errors(
     responses.add(method="GET", url=flagsmith.environment_url, status=500)
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
-
     # Then
     assert polling_manager.is_alive()
     polling_manager.stop()
