@@ -57,9 +57,9 @@ def test_polling_manager_is_resilient_to_api_errors(
         environment_refresh_interval_seconds=0.1,
     )
 
-    session_mock = mocker.patch("requests.Session")
-    session_mock.get.return_value = mock.MagicMock(status_code=500)
+    responses.add(method="GET", url=flagsmith.environment_url, status=500)
     polling_manager = flagsmith.environment_data_polling_manager_thread
+
 
     # Then
     assert polling_manager.is_alive()
@@ -81,8 +81,12 @@ def test_polling_manager_is_resilient_to_request_exceptions(
         environment_refresh_interval_seconds=0.1,
     )
 
-    session_mock = mocker.patch("requests.Session")
-    session_mock.get.side_effect = requests.RequestException()
+    responses.add(
+        method="GET",
+        url=flagsmith.environment_url,
+        body=requests.RequestException("Some exception"),
+        status=500,
+    )
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
     # Then
