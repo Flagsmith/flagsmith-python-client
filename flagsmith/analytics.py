@@ -1,12 +1,13 @@
 import json
+import typing
 from datetime import datetime
 
-from requests_futures.sessions import FuturesSession
+from requests_futures.sessions import FuturesSession  # type: ignore
 
-ANALYTICS_ENDPOINT = "analytics/flags/"
+ANALYTICS_ENDPOINT: typing.Final[str] = "analytics/flags/"
 
 # Used to control how often we send data(in seconds)
-ANALYTICS_TIMER = 10
+ANALYTICS_TIMER: typing.Final[int] = 10
 
 session = FuturesSession(max_workers=4)
 
@@ -17,7 +18,9 @@ class AnalyticsProcessor:
     the Flagsmith SDK. Docs: https://docs.flagsmith.com/advanced-use/flag-analytics.
     """
 
-    def __init__(self, environment_key: str, base_api_url: str, timeout: int = 3):
+    def __init__(
+        self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3
+    ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
         the Flagsmith API.
@@ -30,10 +33,10 @@ class AnalyticsProcessor:
         self.analytics_endpoint = base_api_url + ANALYTICS_ENDPOINT
         self.environment_key = environment_key
         self._last_flushed = datetime.now()
-        self.analytics_data = {}
-        self.timeout = timeout
+        self.analytics_data: typing.MutableMapping[str, typing.Any] = {}
+        self.timeout = timeout or 3
 
-    def flush(self):
+    def flush(self) -> None:
         """
         Sends all the collected data to the api asynchronously and resets the timer
         """
@@ -53,7 +56,7 @@ class AnalyticsProcessor:
         self.analytics_data.clear()
         self._last_flushed = datetime.now()
 
-    def track_feature(self, feature_name: str):
+    def track_feature(self, feature_name: str) -> None:
         self.analytics_data[feature_name] = self.analytics_data.get(feature_name, 0) + 1
         if (datetime.now() - self._last_flushed).seconds > ANALYTICS_TIMER:
             self.flush()
