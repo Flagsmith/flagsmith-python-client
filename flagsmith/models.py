@@ -15,7 +15,7 @@ class BaseFlag:
     value: typing.Union[str, int, float, bool, None]
 
 
-@dataclass()
+@dataclass
 class DefaultFlag(BaseFlag):
     is_default: bool = field(default=True)
 
