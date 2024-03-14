@@ -17,7 +17,9 @@ from flagsmith.offline_handlers import BaseOfflineHandler
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
-    mocker: MockerFixture, server_api_key: str
+    mocker: MockerFixture,
+    server_api_key: str,
+    requests_session_response_ok: None,
 ) -> None:
     # Given
     mock_polling_manager = mocker.MagicMock()
