@@ -1,7 +1,10 @@
 name: Formatting and Tests
 
 on:
-  - pull_request
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   test:
