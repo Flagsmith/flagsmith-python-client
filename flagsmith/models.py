@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from dataclasses import dataclass, field
 
@@ -10,27 +12,26 @@ from flagsmith.exceptions import FlagsmithClientError
 @dataclass
 class BaseFlag:
     enabled: bool
-    value: typing.Union[str, int, float, bool, type(None)]
-    is_default: bool
+    value: typing.Union[str, int, float, bool, None]
 
 
+@dataclass
 class DefaultFlag(BaseFlag):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, is_default=True, **kwargs)
+    is_default: bool = field(default=True)
 
 
+@dataclass
 class Flag(BaseFlag):
-    def __init__(self, *args, feature_id: int, feature_name: str, **kwargs):
-        super().__init__(*args, is_default=False, **kwargs)
-        self.feature_id = feature_id
-        self.feature_name = feature_name
+    feature_id: int
+    feature_name: str
+    is_default: bool = field(default=False)
 
     @classmethod
     def from_feature_state_model(
         cls,
         feature_state_model: FeatureStateModel,
-        identity_id: typing.Union[str, int] = None,
-    ) -> "Flag":
+        identity_id: typing.Optional[typing.Union[str, int]] = None,
+    ) -> Flag:
         return Flag(
             enabled=feature_state_model.enabled,
             value=feature_state_model.get_value(identity_id=identity_id),
@@ -39,7 +40,7 @@ class Flag(BaseFlag):
         )
 
     @classmethod
-    def from_api_flag(cls, flag_data: dict) -> "Flag":
+    def from_api_flag(cls, flag_data: typing.Mapping[str, typing.Any]) -> Flag:
         return Flag(
             enabled=flag_data["enabled"],
             value=flag_data["feature_state_value"],
@@ -51,17 +52,17 @@ class Flag(BaseFlag):
 @dataclass
 class Flags:
     flags: typing.Dict[str, Flag] = field(default_factory=dict)
-    default_flag_handler: typing.Callable[[str], DefaultFlag] = None
-    _analytics_processor: AnalyticsProcessor = None
+    default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]] = None
+    _analytics_processor: typing.Optional[AnalyticsProcessor] = None
 
     @classmethod
     def from_feature_state_models(
         cls,
-        feature_states: typing.List[FeatureStateModel],
-        analytics_processor: AnalyticsProcessor,
-        default_flag_handler: typing.Callable,
-        identity_id: typing.Union[str, int] = None,
-    ) -> "Flags":
+        feature_states: typing.Sequence[FeatureStateModel],
+        analytics_processor: typing.Optional[AnalyticsProcessor],
+        default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
+        identity_id: typing.Optional[typing.Union[str, int]] = None,
+    ) -> Flags:
         flags = {
             feature_state.feature.name: Flag.from_feature_state_model(
                 feature_state, identity_id=identity_id
@@ -78,10 +79,10 @@ class Flags:
     @classmethod
     def from_api_flags(
         cls,
-        api_flags: typing.List[dict],
-        analytics_processor: AnalyticsProcessor,
-        default_flag_handler: typing.Callable,
-    ) -> "Flags":
+        api_flags: typing.Sequence[typing.Mapping[str, typing.Any]],
+        analytics_processor: typing.Optional[AnalyticsProcessor],
+        default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
+    ) -> Flags:
         flags = {
             flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
             for flag_data in api_flags
@@ -121,12 +122,12 @@ class Flags:
         """
         return self.get_flag(feature_name).value
 
-    def get_flag(self, feature_name: str) -> BaseFlag:
+    def get_flag(self, feature_name: str) -> typing.Union[DefaultFlag, Flag]:
         """
         Get a specific flag given the feature name.
 
         :param feature_name: the name of the feature to retrieve the flag for.
-        :return: BaseFlag object.
+        :return: DefaultFlag | Flag object.
         :raises FlagsmithClientError: if feature doesn't exist
         """
         try:

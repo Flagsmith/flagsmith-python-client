@@ -1,6 +1,5 @@
 import time
 from datetime import datetime
-from typing import Generator
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -14,7 +13,7 @@ from flagsmith.streaming_manager import EventStreamManager
 
 
 def test_stream_manager_handles_timeout(
-    mocked_responses: Generator["responses.RequestsMock", None, None]
+    mocked_responses: responses.RequestsMock,
 ) -> None:
     stream_url = (
         "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"
@@ -38,8 +37,8 @@ def test_stream_manager_handles_timeout(
 
 
 def test_stream_manager_handles_request_exception(
-    mocked_responses: Generator["responses.RequestsMock", None, None],
-    caplog: Generator["pytest.LogCaptureFixture", None, None],
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     stream_url = (
         "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"
@@ -78,13 +77,12 @@ def test_environment_updates_on_recent_event(
     flagsmith = Flagsmith(environment_key=server_api_key)
     flagsmith._environment = MagicMock()
     flagsmith._environment.updated_at = environment_updated_at
-
     flagsmith.handle_stream_event(
         event=Mock(
             data=f'{{"updated_at": {stream_updated_at.timestamp()}}}\n\n',
         )
     )
-
+    assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_called_once()
 
 
@@ -105,7 +103,7 @@ def test_environment_does_not_update_on_past_event(
             data=f'{{"updated_at": {stream_updated_at.timestamp()}}}\n\n',
         )
     )
-
+    assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_not_called()
 
 
@@ -126,7 +124,7 @@ def test_environment_does_not_update_on_same_event(
             data=f'{{"updated_at": {stream_updated_at.timestamp()}}}\n\n',
         )
     )
-
+    assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_not_called()
 
 

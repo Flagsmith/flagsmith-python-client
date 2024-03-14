@@ -9,7 +9,7 @@ from flagsmith import Flagsmith
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 
 
-def test_polling_manager_calls_update_environment_on_start():
+def test_polling_manager_calls_update_environment_on_start() -> None:
     # Given
     flagsmith = mock.MagicMock()
     polling_manager = EnvironmentDataPollingManager(
@@ -24,7 +24,7 @@ def test_polling_manager_calls_update_environment_on_start():
     polling_manager.stop()
 
 
-def test_polling_manager_calls_update_environment_on_each_refresh():
+def test_polling_manager_calls_update_environment_on_each_refresh() -> None:
     # Given
     flagsmith = mock.MagicMock()
     polling_manager = EnvironmentDataPollingManager(

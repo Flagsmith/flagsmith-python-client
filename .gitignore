@@ -14,3 +14,5 @@ flagsmith.egg-info/
 
 .envrc
 .tool-versions
+
+.coverage

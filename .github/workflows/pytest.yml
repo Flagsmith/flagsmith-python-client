@@ -1,12 +1,15 @@
-name: Formatting and Tests
+name: Linting and Tests
 
 on:
-  - pull_request
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: Pytest and Black formatting
+    name: Linting and Tests
 
     strategy:
       max-parallel: 4
@@ -28,13 +31,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install poetry
-          poetry install
+          poetry install --with dev
 
       - name: Check Formatting
         run: |
           poetry run black --check .
           poetry run flake8 .
           poetry run isort --check .
+
+      - name: Check Typing
+        run: poetry run mypy --strict .
 
       - name: Run Tests
         run: poetry run pytest

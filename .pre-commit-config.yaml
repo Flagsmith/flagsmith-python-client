@@ -1,17 +1,25 @@
 repos:
-  - repo: https://github.com/asottile/seed-isort-config
-    rev: v1.9.3
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
     hooks:
-      - id: seed-isort-config
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v4.3.21
+      - id: mypy
+        args: [--strict]
+        additional_dependencies:
+          [pydantic, pytest, pytest_mock, types-requests, flagsmith-flag-engine, responses, types-pytz, sseclient-py]
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: stable
+    rev: 23.7.0
     hooks:
       - id: black
         language_version: python3
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        name: flake8
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
