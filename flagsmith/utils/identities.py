@@ -13,7 +13,9 @@ def generate_identities_data(
 ) -> Identity:
     return {
         "identifier": identifier,
-        "traits": [{"trait_key": k, "trait_value": v} for k, v in traits.items()]
-        if traits
-        else [],
+        "traits": (
+            [{"trait_key": k, "trait_value": v} for k, v in traits.items()]
+            if traits
+            else []
+        ),
     }
