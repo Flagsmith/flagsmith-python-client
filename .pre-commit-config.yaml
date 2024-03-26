@@ -5,7 +5,7 @@ repos:
       - id: mypy
         args: [--strict]
         additional_dependencies:
-          [pydantic, pytest, pytest_mock, types-requests, flagsmith-flag-engine, responses, types-pytz, sseclient-py]
+          [pydantic, pytest, pytest_mock, types-requests, flagsmith-flag-engine, responses, sseclient-py]
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:

@@ -15,7 +15,6 @@ requests = "^2.27.1"
 requests-futures = "^1.0.0"
 flagsmith-flag-engine = "^5.1.0"
 sseclient-py = "^1.8.0"
-pytz = "^2023.4"
 
 [tool.poetry.group.dev]
 optional = true
@@ -31,7 +30,6 @@ isort = "^5.12.0"
 mypy = "^1.7.1"
 types-requests = "^2.31.0.10"
 pytest-cov = "^4.1.0"
-types-pytz = "^2024.1.0.20240203"
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
