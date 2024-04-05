@@ -1,9 +1,8 @@
 import json
 import logging
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
 
-import pytz
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
@@ -212,7 +211,7 @@ class Flagsmith:
             ) from e
 
         if stream_updated_at.tzinfo is None:
-            stream_updated_at = pytz.utc.localize(stream_updated_at)
+            stream_updated_at = stream_updated_at.astimezone(timezone.utc)
 
         if not self._environment:
             raise ValueError(
@@ -220,7 +219,7 @@ class Flagsmith:
             )
         environment_updated_at = self._environment.updated_at
         if environment_updated_at.tzinfo is None:
-            environment_updated_at = pytz.utc.localize(environment_updated_at)
+            environment_updated_at = environment_updated_at.astimezone(timezone.utc)
 
         if stream_updated_at > environment_updated_at:
             self.update_environment()
