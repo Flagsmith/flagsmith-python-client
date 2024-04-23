@@ -10,11 +10,11 @@ The SDK for Python applications for [https://www.flagsmith.com/](https://www.fla
 ## Adding to your project
 
 For full documentation visit
-[https://docs.flagsmith.com/clients/server-side](https://docs.flagsmith.com/clients/server-side).
+[https://docs.flagsmith.com/clients/server-side?language=python](https://docs.flagsmith.com/clients/server-side?language=python).
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/kyle-ssg/c36a03aebe492e45cbd3eefb21cb0486) for details on our code
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code
 of conduct, and the process for submitting pull requests
 
 ## Getting Help
