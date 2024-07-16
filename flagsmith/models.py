@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from flag_engine.features.models import FeatureStateModel
 
 from flagsmith.analytics import AnalyticsProcessor
-from flagsmith.exceptions import FlagsmithClientError
+from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
 
 
 @dataclass
@@ -135,7 +135,9 @@ class Flags:
         except KeyError:
             if self.default_flag_handler:
                 return self.default_flag_handler(feature_name)
-            raise FlagsmithClientError("Feature does not exist: %s" % feature_name)
+            raise FlagsmithFeatureDoesNotExistError(
+                "Feature does not exist: %s" % feature_name
+            )
 
         if self._analytics_processor and hasattr(flag, "feature_name"):
             self._analytics_processor.track_feature(flag.feature_name)

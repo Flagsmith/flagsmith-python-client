@@ -11,15 +11,16 @@ from flag_engine.features.models import FeatureModel, FeatureStateModel
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
-from flagsmith.exceptions import FlagsmithAPIError
+from flagsmith.exceptions import (
+    FlagsmithAPIError,
+    FlagsmithFeatureDoesNotExistError,
+)
 from flagsmith.models import DefaultFlag, Flags
 from flagsmith.offline_handlers import BaseOfflineHandler
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
-    mocker: MockerFixture,
-    server_api_key: str,
-    requests_session_response_ok: None,
+    mocker: MockerFixture, server_api_key: str, requests_session_response_ok: None
 ) -> None:
     # Given
     mock_polling_manager = mocker.MagicMock()
@@ -559,3 +560,20 @@ def test_flagsmith_client_get_identity_flags__local_evaluation__returns_expected
     # Then
     assert flag.enabled is False
     assert flag.value == "some-overridden-value"
+
+
+def test_custom_feature_error_raised_when_invalid_feature(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+    )
+
+    flags = flagsmith.get_environment_flags()
+
+    # Then
+    with pytest.raises(FlagsmithFeatureDoesNotExistError):
+        # When
+        flags.is_feature_enabled("non-existing-feature")
