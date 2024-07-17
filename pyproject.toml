@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "flagsmith"
-version = "3.6.0"
+version = "3.7.0"
 description = "Flagsmith Python SDK"
 authors = ["Flagsmith <support@flagsmith.com>"]
 license = "BSD3"
-readme = "Readme.md"
+readme = "README.md"
 keywords = ["feature", "flag", "flagsmith", "remote", "config"]
 documentation = "https://docs.flagsmith.com"
 packages = [{ include = "flagsmith" }]
