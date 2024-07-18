@@ -1,4 +1,4 @@
-name: Linting and Tests
+name: Run Tests
 
 on:
   pull_request:
@@ -9,7 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: Run Tests
 
     strategy:
       max-parallel: 4
