@@ -12,7 +12,7 @@ def generate_identity_data(
     transient: bool,
     transient_traits: typing.Optional[typing.List[str]],
 ) -> JsonType:
-    identity_data: typing.Dict[str, JsonType] = {"identifier": identifier}
+    identity_data: typing.Dict[str, JsonType] = {"identifier": identifier, "traits": []}
     if traits:
         traits_data: typing.List[JsonType] = []
         transient_trait_keys = set(transient_traits) if transient_traits else set()
