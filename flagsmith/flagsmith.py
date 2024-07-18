@@ -322,9 +322,9 @@ class Flagsmith:
 
     def _get_environment_flags_from_api(self) -> Flags:
         try:
-            json_response: typing.List[typing.Mapping[str, JsonType]] = (
-                self._get_json_response(url=self.environment_flags_url, method="GET")
-            )
+            json_response: typing.List[
+                typing.Mapping[str, JsonType]
+            ] = self._get_json_response(url=self.environment_flags_url, method="GET")
             return Flags.from_api_flags(
                 api_flags=json_response,
                 analytics_processor=self._analytics_processor,
@@ -349,12 +349,12 @@ class Flagsmith:
             identifier, traits, transient=transient, transient_traits=transient_traits
         )
         try:
-            json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = (
-                self._get_json_response(
-                    url=self.identities_url,
-                    method="POST",
-                    body=request_body,
-                )
+            json_response: typing.Dict[
+                str, typing.List[typing.Dict[str, JsonType]]
+            ] = self._get_json_response(
+                url=self.identities_url,
+                method="POST",
+                body=request_body,
             )
             return Flags.from_api_flags(
                 api_flags=json_response["flags"],
