@@ -6,6 +6,7 @@ import uuid
 import pytest
 import requests
 import responses
+from responses import matchers
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.features.models import FeatureModel, FeatureStateModel
 from pytest_mock import MockerFixture
@@ -170,6 +171,77 @@ def test_get_identity_flags_uses_local_environment_when_available(
     mock_engine.get_identity_feature_states.assert_called_once()
     assert identity_flags[0].enabled is feature_state.enabled
     assert identity_flags[0].value == feature_state.get_value()
+
+
+@responses.activate()
+def test_get_identity_flags__transient_identity__calls_expected(
+    flagsmith: Flagsmith,
+    identities_json: str,
+    environment_model: EnvironmentModel,
+    mocker: MockerFixture,
+) -> None:
+    # Given
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[matchers.json_params_matcher({"transient": True}, strict_match=False)],
+    )
+    flagsmith._environment = environment_model
+    flagsmith.enable_local_evaluation = True
+    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+
+    feature_state = FeatureStateModel(
+        feature=FeatureModel(id=1, name="some_feature", type="STANDARD"),
+        enabled=True,
+        featurestate_uuid=str(uuid.uuid4()),
+    )
+    mock_engine.get_identity_feature_states.return_value = [feature_state]
+
+    # When & Then
+    flagsmith.get_identity_flags(
+        "identifier",
+        traits={"some_trait": "some_value"},
+        transient=True,
+    ).all_flags()
+
+
+@responses.activate()
+def test_get_identity_flags__transient_traits__calls_expected(
+    flagsmith: Flagsmith,
+    identities_json: str,
+    environment_model: EnvironmentModel,
+    mocker: MockerFixture,
+) -> None:
+    # Given
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {"traits": [{"trait_key": "some_trait", "transient": True}]},
+                strict_match=False,
+            )
+        ],
+    )
+    flagsmith._environment = environment_model
+    flagsmith.enable_local_evaluation = True
+    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+
+    feature_state = FeatureStateModel(
+        feature=FeatureModel(id=1, name="some_feature", type="STANDARD"),
+        enabled=True,
+        featurestate_uuid=str(uuid.uuid4()),
+    )
+    mock_engine.get_identity_feature_states.return_value = [feature_state]
+
+    # When & Then
+    flagsmith.get_identity_flags(
+        "identifier",
+        traits={"some_trait": "some_value"},
+        transient_traits=["some_trait"],
+    ).all_flags()
 
 
 def test_request_connection_error_raises_flagsmith_api_error(

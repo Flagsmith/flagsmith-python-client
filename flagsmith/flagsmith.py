@@ -19,22 +19,13 @@ from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager, StreamEvent
-from flagsmith.utils.identities import Identity, generate_identities_data
+from flagsmith.types import JsonType
+from flagsmith.utils.identities import generate_identity_data
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
-
-JsonType = typing.Union[
-    None,
-    int,
-    str,
-    bool,
-    typing.List["JsonType"],
-    typing.List[typing.Mapping[str, "JsonType"]],
-    typing.Dict[str, "JsonType"],
-]
 
 
 class Flagsmith:
@@ -238,6 +229,9 @@ class Flagsmith:
         self,
         identifier: str,
         traits: typing.Optional[typing.Mapping[str, TraitValue]] = None,
+        *,
+        transient: bool = False,
+        transient_traits: typing.Optional[typing.List[str]] = None,
     ) -> Flags:
         """
         Get all the flags for the current environment for a given identity. Will also
@@ -247,13 +241,18 @@ class Flagsmith:
         :param identifier: a unique identifier for the identity in the current
             environment, e.g. email address, username, uuid
         :param traits: a dictionary of traits to add / update on the identity in
-            Flagsmith, e.g. {"num_orders": 10}
+            Flagsmith, e.g. `{"num_orders": 10}`
+        :param transient: if `True`, the identity won't get persisted
+        :param transient_traits: a list of trait keys that won't get persisted,
+            e.g. `["num_orders"]`
         :return: Flags object holding all the flags for the given identity.
         """
         traits = traits or {}
         if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
-        return self._get_identity_flags_from_api(identifier, traits)
+        return self._get_identity_flags_from_api(
+            identifier, traits, transient=transient, transient_traits=transient_traits
+        )
 
     def get_identity_segments(
         self,
@@ -339,13 +338,22 @@ class Flagsmith:
             raise
 
     def _get_identity_flags_from_api(
-        self, identifier: str, traits: typing.Mapping[str, typing.Any]
+        self,
+        identifier: str,
+        traits: typing.Mapping[str, typing.Any],
+        *,
+        transient: bool = False,
+        transient_traits: typing.Optional[typing.List[str]] = None,
     ) -> Flags:
+        request_body = generate_identity_data(
+            identifier, traits, transient=transient, transient_traits=transient_traits
+        )
         try:
-            data = generate_identities_data(identifier, traits)
             json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = (
                 self._get_json_response(
-                    url=self.identities_url, method="POST", body=data
+                    url=self.identities_url,
+                    method="POST",
+                    body=request_body,
                 )
             )
             return Flags.from_api_flags(
@@ -364,9 +372,7 @@ class Flagsmith:
         self,
         url: str,
         method: str,
-        body: typing.Optional[
-            typing.Union[Identity, typing.Dict[str, JsonType]]
-        ] = None,
+        body: typing.Optional[JsonType] = None,
     ) -> typing.Any:
         try:
             request_method = getattr(self.session, method.lower())
