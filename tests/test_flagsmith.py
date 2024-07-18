@@ -205,7 +205,7 @@ def test_get_identity_flags__transient_identity__calls_expected(
 
 
 @responses.activate()
-def test_get_identity_flags__transient_traits__calls_expected(
+def test_get_identity_flags__transient_trait_keys__calls_expected(
     flagsmith: Flagsmith,
     identities_json: str,
     environment_model: EnvironmentModel,
@@ -236,7 +236,7 @@ def test_get_identity_flags__transient_traits__calls_expected(
     flagsmith.get_identity_flags(
         "identifier",
         traits={"some_trait": "some_value"},
-        transient_traits=["some_trait"],
+        transient_trait_keys=["some_trait"],
     )
 
 

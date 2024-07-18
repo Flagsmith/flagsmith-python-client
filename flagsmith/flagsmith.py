@@ -231,7 +231,7 @@ class Flagsmith:
         traits: typing.Optional[typing.Mapping[str, TraitValue]] = None,
         *,
         transient: bool = False,
-        transient_traits: typing.Optional[typing.List[str]] = None,
+        transient_trait_keys: typing.Optional[typing.List[str]] = None,
     ) -> Flags:
         """
         Get all the flags for the current environment for a given identity. Will also
@@ -243,7 +243,7 @@ class Flagsmith:
         :param traits: a dictionary of traits to add / update on the identity in
             Flagsmith, e.g. `{"num_orders": 10}`
         :param transient: if `True`, the identity won't get persisted
-        :param transient_traits: a list of trait keys that won't get persisted,
+        :param transient_trait_keys: a list of trait keys that won't get persisted,
             e.g. `["num_orders"]`
         :return: Flags object holding all the flags for the given identity.
         """
@@ -251,7 +251,10 @@ class Flagsmith:
         if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(
-            identifier, traits, transient=transient, transient_traits=transient_traits
+            identifier,
+            traits,
+            transient=transient,
+            transient_trait_keys=transient_trait_keys,
         )
 
     def get_identity_segments(
@@ -343,10 +346,13 @@ class Flagsmith:
         traits: typing.Mapping[str, typing.Any],
         *,
         transient: bool = False,
-        transient_traits: typing.Optional[typing.List[str]] = None,
+        transient_trait_keys: typing.Optional[typing.List[str]] = None,
     ) -> Flags:
         request_body = generate_identity_data(
-            identifier, traits, transient=transient, transient_traits=transient_traits
+            identifier,
+            traits,
+            transient=transient,
+            transient_trait_keys=transient_trait_keys,
         )
         try:
             json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = (

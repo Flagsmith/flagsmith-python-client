@@ -10,18 +10,20 @@ def generate_identity_data(
     traits: typing.Optional[typing.Mapping[str, TraitValue]],
     *,
     transient: bool,
-    transient_traits: typing.Optional[typing.List[str]],
+    transient_trait_keys: typing.Optional[typing.List[str]],
 ) -> JsonType:
     identity_data: typing.Dict[str, JsonType] = {"identifier": identifier, "traits": []}
     if traits:
         traits_data: typing.List[JsonType] = []
-        transient_trait_keys = set(transient_traits) if transient_traits else set()
+        transient_trait_keys_set = (
+            set(transient_trait_keys) if transient_trait_keys else set()
+        )
         for trait_key, trait_value in traits.items():
             trait_data: typing.Dict[str, JsonType] = {
                 "trait_key": trait_key,
                 "trait_value": trait_value,
             }
-            if trait_key in transient_trait_keys:
+            if trait_key in transient_trait_keys_set:
                 trait_data["transient"] = True
             traits_data.append(trait_data)
         identity_data["traits"] = traits_data
