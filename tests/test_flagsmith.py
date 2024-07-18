@@ -6,10 +6,10 @@ import uuid
 import pytest
 import requests
 import responses
-from responses import matchers
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.features.models import FeatureModel, FeatureStateModel
 from pytest_mock import MockerFixture
+from responses import matchers
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import (
