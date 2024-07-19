@@ -1,14 +1,26 @@
 import typing
 
-_JsonScalarType = typing.Union[
+from flag_engine.identities.traits.types import TraitValue
+
+_JsonScalarType: typing.TypeAlias = typing.Union[
     int,
     str,
     float,
     bool,
     None,
 ]
-JsonType = typing.Union[
+JsonType: typing.TypeAlias = typing.Union[
     _JsonScalarType,
     typing.Dict[str, "JsonType"],
     typing.List["JsonType"],
+]
+
+
+class TraitConfig(typing.TypedDict):
+    value: TraitValue
+    transient: bool
+
+
+UserTraits: typing.TypeAlias = typing.Mapping[
+    str, typing.Union[TraitValue, TraitConfig]
 ]

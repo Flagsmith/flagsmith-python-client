@@ -1,32 +1,26 @@
 import typing
 
-from flag_engine.identities.traits.types import TraitValue
-
-from flagsmith.types import JsonType
+from flagsmith.types import JsonType, UserTraits
 
 
 def generate_identity_data(
     identifier: str,
-    traits: typing.Optional[typing.Mapping[str, TraitValue]],
+    traits: UserTraits,
     *,
     transient: bool,
-    transient_trait_keys: typing.Optional[typing.List[str]],
 ) -> JsonType:
-    identity_data: typing.Dict[str, JsonType] = {"identifier": identifier, "traits": []}
-    if traits:
-        traits_data: typing.List[JsonType] = []
-        transient_trait_keys_set = (
-            set(transient_trait_keys) if transient_trait_keys else set()
-        )
-        for trait_key, trait_value in traits.items():
-            trait_data: typing.Dict[str, JsonType] = {
-                "trait_key": trait_key,
-                "trait_value": trait_value,
-            }
-            if trait_key in transient_trait_keys_set:
+    identity_data: typing.Dict[str, JsonType] = {"identifier": identifier}
+    traits_data: typing.List[JsonType] = []
+    for trait_key, trait_value in traits.items():
+        trait_data: typing.Dict[str, JsonType] = {"trait_key": trait_key}
+        if isinstance(trait_value, dict):
+            trait_data["trait_value"] = trait_value["value"]
+            if trait_value.get("transient"):
                 trait_data["transient"] = True
-            traits_data.append(trait_data)
-        identity_data["traits"] = traits_data
+        else:
+            trait_data["trait_value"] = trait_value
+        traits_data.append(trait_data)
+    identity_data["traits"] = traits_data
     if transient:
         identity_data["transient"] = True
     return identity_data

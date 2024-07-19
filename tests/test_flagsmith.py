@@ -235,8 +235,7 @@ def test_get_identity_flags__transient_trait_keys__calls_expected(
     # When & Then
     flagsmith.get_identity_flags(
         "identifier",
-        traits={"some_trait": "some_value"},
-        transient_trait_keys=["some_trait"],
+        traits={"some_trait": {"value": "some_value", "transient": True}},
     )
 
 
