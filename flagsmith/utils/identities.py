@@ -1,11 +1,11 @@
 import typing
 
-from flagsmith.types import JsonType, UserTraits
+from flagsmith.types import JsonType, TraitMapping
 
 
 def generate_identity_data(
     identifier: str,
-    traits: UserTraits,
+    traits: TraitMapping,
     *,
     transient: bool,
 ) -> JsonType:

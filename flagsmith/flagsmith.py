@@ -19,7 +19,7 @@ from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager, StreamEvent
-from flagsmith.types import JsonType, TraitConfig, UserTraits
+from flagsmith.types import JsonType, TraitConfig, TraitMapping
 from flagsmith.utils.identities import generate_identity_data
 
 logger = logging.getLogger(__name__)
@@ -228,7 +228,7 @@ class Flagsmith:
     def get_identity_flags(
         self,
         identifier: str,
-        traits: typing.Optional[UserTraits] = None,
+        traits: typing.Optional[TraitMapping] = None,
         *,
         transient: bool = False,
     ) -> Flags:
@@ -306,7 +306,7 @@ class Flagsmith:
         )
 
     def _get_identity_flags_from_document(
-        self, identifier: str, traits: UserTraits
+        self, identifier: str, traits: TraitMapping
     ) -> Flags:
         identity_model = self._get_identity_model(identifier, **traits)
         if self._environment is None:
@@ -341,7 +341,7 @@ class Flagsmith:
     def _get_identity_flags_from_api(
         self,
         identifier: str,
-        traits: UserTraits,
+        traits: TraitMapping,
         *,
         transient: bool = False,
     ) -> Flags:

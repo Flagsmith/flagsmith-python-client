@@ -22,4 +22,4 @@ class TraitConfig(typing.TypedDict):
     transient: bool
 
 
-UserTraits: TypeAlias = typing.Mapping[str, typing.Union[TraitValue, TraitConfig]]
+TraitMapping: TypeAlias = typing.Mapping[str, typing.Union[TraitValue, TraitConfig]]
