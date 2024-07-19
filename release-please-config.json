@@ -1,0 +1,62 @@
+{
+    "bootstrap-sha": "fd2094131e5e4972a17be5a8efa4cb379cc821ee",
+    "packages": {
+        ".": {
+            "release-type": "simple",
+            "changelog-path": "CHANGELOG.md",
+            "bump-minor-pre-major": false,
+            "bump-patch-for-minor-pre-major": false,
+            "draft": false,
+            "prerelease": false,
+            "include-component-in-tag": false
+        }
+    },
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "changelog-sections": [
+        {
+            "type": "feat",
+            "hidden": false,
+            "section": "Features"
+        },
+        {
+            "type": "fix",
+            "hidden": false,
+            "section": "Bug Fixes"
+        },
+        {
+            "type": "ci",
+            "hidden": true,
+            "section": "CI"
+        },
+        {
+            "type": "docs",
+            "hidden": true,
+            "section": "Docs"
+        },
+        {
+            "type": "deps",
+            "hidden": true,
+            "section": "Dependency Updates"
+        },
+        {
+            "type": "perf",
+            "hidden": true,
+            "section": "Performance Improvements"
+        },
+        {
+            "type": "refactor",
+            "hidden": true,
+            "section": "Refactoring"
+        },
+        {
+            "type": "test",
+            "hidden": true,
+            "section": "Tests"
+        },
+        {
+            "type": "chore",
+            "hidden": true,
+            "section": "Other"
+        }
+    ]
+}
