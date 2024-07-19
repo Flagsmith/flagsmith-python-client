@@ -1,4 +1,4 @@
-name: Publish Pypi Package
+name: Publish PyPI Package
 
 on:
   push:
