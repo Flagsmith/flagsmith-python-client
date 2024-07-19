@@ -22,7 +22,7 @@ class EventStreamManager(threading.Thread):
         stream_url: str,
         on_event: Callable[[StreamEvent], None],
         request_timeout_seconds: Optional[int] = None,
-        **kwargs: typing.Any
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()

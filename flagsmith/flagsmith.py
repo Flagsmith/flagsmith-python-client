@@ -19,22 +19,13 @@ from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager, StreamEvent
-from flagsmith.utils.identities import Identity, generate_identities_data
+from flagsmith.types import JsonType, TraitConfig, TraitMapping
+from flagsmith.utils.identities import generate_identity_data
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
-
-JsonType = typing.Union[
-    None,
-    int,
-    str,
-    bool,
-    typing.List["JsonType"],
-    typing.List[typing.Mapping[str, "JsonType"]],
-    typing.Dict[str, "JsonType"],
-]
 
 
 class Flagsmith:
@@ -237,7 +228,9 @@ class Flagsmith:
     def get_identity_flags(
         self,
         identifier: str,
-        traits: typing.Optional[typing.Mapping[str, TraitValue]] = None,
+        traits: typing.Optional[TraitMapping] = None,
+        *,
+        transient: bool = False,
     ) -> Flags:
         """
         Get all the flags for the current environment for a given identity. Will also
@@ -247,13 +240,20 @@ class Flagsmith:
         :param identifier: a unique identifier for the identity in the current
             environment, e.g. email address, username, uuid
         :param traits: a dictionary of traits to add / update on the identity in
-            Flagsmith, e.g. {"num_orders": 10}
+            Flagsmith, e.g. `{"num_orders": 10}`. Envelope traits you don't want persisted
+            in a dictionary with `"transient"` and `"value"` keys, e.g.
+            `{"num_orders": 10, "color": {"value": "pink", "transient": True}}`.
+        :param transient: if `True`, the identity won't get persisted
         :return: Flags object holding all the flags for the given identity.
         """
         traits = traits or {}
         if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
-        return self._get_identity_flags_from_api(identifier, traits)
+        return self._get_identity_flags_from_api(
+            identifier,
+            traits,
+            transient=transient,
+        )
 
     def get_identity_segments(
         self,
@@ -306,7 +306,7 @@ class Flagsmith:
         )
 
     def _get_identity_flags_from_document(
-        self, identifier: str, traits: typing.Mapping[str, TraitValue]
+        self, identifier: str, traits: TraitMapping
     ) -> Flags:
         identity_model = self._get_identity_model(identifier, **traits)
         if self._environment is None:
@@ -339,13 +339,23 @@ class Flagsmith:
             raise
 
     def _get_identity_flags_from_api(
-        self, identifier: str, traits: typing.Mapping[str, typing.Any]
+        self,
+        identifier: str,
+        traits: TraitMapping,
+        *,
+        transient: bool = False,
     ) -> Flags:
+        request_body = generate_identity_data(
+            identifier,
+            traits,
+            transient=transient,
+        )
         try:
-            data = generate_identities_data(identifier, traits)
             json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = (
                 self._get_json_response(
-                    url=self.identities_url, method="POST", body=data
+                    url=self.identities_url,
+                    method="POST",
+                    body=request_body,
                 )
             )
             return Flags.from_api_flags(
@@ -364,9 +374,7 @@ class Flagsmith:
         self,
         url: str,
         method: str,
-        body: typing.Optional[
-            typing.Union[Identity, typing.Dict[str, JsonType]]
-        ] = None,
+        body: typing.Optional[JsonType] = None,
     ) -> typing.Any:
         try:
             request_method = getattr(self.session, method.lower())
@@ -387,7 +395,7 @@ class Flagsmith:
     def _get_identity_model(
         self,
         identifier: str,
-        **traits: TraitValue,
+        **traits: typing.Union[TraitValue, TraitConfig],
     ) -> IdentityModel:
         if not self._environment:
             raise FlagsmithClientError(
@@ -395,7 +403,10 @@ class Flagsmith:
             )
 
         trait_models = [
-            TraitModel(trait_key=key, trait_value=value)
+            TraitModel(
+                trait_key=key,
+                trait_value=value["value"] if isinstance(value, dict) else value,
+            )
             for key, value in traits.items()
         ]
 

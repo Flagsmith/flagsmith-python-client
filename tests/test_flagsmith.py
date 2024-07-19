@@ -9,6 +9,7 @@ import responses
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.features.models import FeatureModel, FeatureStateModel
 from pytest_mock import MockerFixture
+from responses import matchers
 
 from flagsmith import Flagsmith
 from flagsmith.exceptions import (
@@ -170,6 +171,72 @@ def test_get_identity_flags_uses_local_environment_when_available(
     mock_engine.get_identity_feature_states.assert_called_once()
     assert identity_flags[0].enabled is feature_state.enabled
     assert identity_flags[0].value == feature_state.get_value()
+
+
+@responses.activate()
+def test_get_identity_flags__transient_identity__calls_expected(
+    flagsmith: Flagsmith,
+    identities_json: str,
+) -> None:
+    # Given
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {
+                    "identifier": "identifier",
+                    "traits": [
+                        {"trait_key": "some_trait", "trait_value": "some_value"}
+                    ],
+                    "transient": True,
+                }
+            )
+        ],
+    )
+
+    # When & Then
+    flagsmith.get_identity_flags(
+        "identifier",
+        traits={"some_trait": "some_value"},
+        transient=True,
+    )
+
+
+@responses.activate()
+def test_get_identity_flags__transient_trait_keys__calls_expected(
+    flagsmith: Flagsmith,
+    identities_json: str,
+    environment_model: EnvironmentModel,
+    mocker: MockerFixture,
+) -> None:
+    # Given
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {
+                    "identifier": "identifier",
+                    "traits": [
+                        {
+                            "trait_key": "some_trait",
+                            "trait_value": "some_value",
+                            "transient": True,
+                        }
+                    ],
+                },
+            )
+        ],
+    )
+
+    # When & Then
+    flagsmith.get_identity_flags(
+        "identifier",
+        traits={"some_trait": {"value": "some_value", "transient": True}},
+    )
 
 
 def test_request_connection_error_raises_flagsmith_api_error(
