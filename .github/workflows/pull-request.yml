@@ -1,0 +1,42 @@
+name: Pull Request
+
+on:
+  pull_request:
+
+jobs:
+  conventional-commit:
+    name: Conventional Commit
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check PR Conventional Commit title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: | # mirrors changelog-sections in the /release-please-config.json
+            feat
+            fix
+            ci
+            docs
+            deps
+            refactor
+            test
+            chore
+      - name: Auto-label PR with Conventional Commit title
+        uses: kramen22/conventional-release-labels@v1
+        with:
+          type_labels: |
+            {
+              "feat": "feature",
+              "fix": "fix",
+              "ci": "ci-cd",
+              "docs": "docs",
+              "deps": "dependencies",
+              "perf": "performance",
+              "refactor": "refactor",
+              "test": "testing",
+              "chore": "chore"
+            }
+          ignored_types: '[]'
