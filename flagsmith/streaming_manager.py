@@ -1,14 +1,9 @@
-import logging
 import threading
 import typing
 from typing import Callable, Generator, Optional, Protocol, cast
 
 import requests
 import sseclient
-
-from flagsmith.exceptions import FlagsmithAPIError
-
-logger = logging.getLogger(__name__)
 
 
 class StreamEvent(Protocol):
@@ -47,9 +42,6 @@ class EventStreamManager(threading.Thread):
 
             except requests.exceptions.ReadTimeout:
                 pass
-
-            except (FlagsmithAPIError, requests.RequestException):
-                logger.exception("Error handling event stream")
 
     def stop(self) -> None:
         self._stop_event.set()

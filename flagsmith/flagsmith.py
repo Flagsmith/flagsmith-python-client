@@ -159,8 +159,10 @@ class Flagsmith:
                 )
 
     def _initialise_local_evaluation(self) -> None:
+        # To ensure that the environment is set before allowing subsequent
+        # method calls, update the environment manually.
+        self.update_environment()
         if self.enable_realtime_updates:
-            self.update_environment()
             if not self._environment:
                 raise ValueError("Unable to get environment from API key")
 
@@ -175,9 +177,6 @@ class Flagsmith:
             self.event_stream_thread.start()
 
         else:
-            # To ensure that the environment is set before allowing subsequent
-            # method calls, update the environment manually.
-            self.update_environment()
             self.environment_data_polling_manager_thread = (
                 EnvironmentDataPollingManager(
                     main=self,
@@ -281,7 +280,10 @@ class Flagsmith:
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self) -> None:
-        self._environment = self._get_environment_from_api()
+        try:
+            self._environment = self._get_environment_from_api()
+        except (FlagsmithAPIError, requests.RequestException):
+            logger.exception("Error updating environment")
         self._update_overrides()
 
     def _update_overrides(self) -> None:
