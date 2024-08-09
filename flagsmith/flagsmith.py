@@ -1,7 +1,7 @@
 import json
 import logging
 import typing
-from datetime import datetime, timezone
+from datetime import timezone
 
 import requests
 from flag_engine import engine
@@ -188,21 +188,6 @@ class Flagsmith:
             self.environment_data_polling_manager_thread.start()
 
     def handle_stream_event(self, event: StreamEvent) -> None:
-        try:
-            event_data = json.loads(event.data)
-        except json.JSONDecodeError as e:
-            raise FlagsmithAPIError("Unable to get valid json from event data.") from e
-
-        try:
-            stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
-        except TypeError as e:
-            raise FlagsmithAPIError(
-                "Unable to get valid timestamp from event data."
-            ) from e
-
-        if stream_updated_at.tzinfo is None:
-            stream_updated_at = stream_updated_at.astimezone(timezone.utc)
-
         if not self._environment:
             raise ValueError(
                 "Unable to access environment. Environment should not be null"
@@ -211,7 +196,7 @@ class Flagsmith:
         if environment_updated_at.tzinfo is None:
             environment_updated_at = environment_updated_at.astimezone(timezone.utc)
 
-        if stream_updated_at > environment_updated_at:
+        if event.updated_at > environment_updated_at:
             self.update_environment()
 
     def get_environment_flags(self) -> Flags:
