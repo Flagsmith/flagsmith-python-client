@@ -1,4 +1,3 @@
-import json
 import logging
 import typing
 from datetime import timezone
@@ -368,13 +367,9 @@ class Flagsmith:
             response = request_method(
                 url, json=body, timeout=self.request_timeout_seconds
             )
-            if response.status_code != 200:
-                raise FlagsmithAPIError(
-                    "Invalid request made to Flagsmith API. Response status code: %d",
-                    response.status_code,
-                )
+            response.raise_for_status()
             return response.json()
-        except (requests.ConnectionError, json.JSONDecodeError) as e:
+        except requests.RequestException as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
             ) from e

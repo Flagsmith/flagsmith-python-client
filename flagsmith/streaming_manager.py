@@ -42,11 +42,8 @@ class EventStreamManager(threading.Thread):
                     for event in sse_client.events():
                         self.on_event(StreamEvent.model_validate_json(event.data))
 
-            except requests.ReadTimeout:
-                logger.warning("Request timed out, retrying")
-
             except (requests.RequestException, pydantic.ValidationError):
-                logger.exception("Error reading event stream")
+                logger.exception("Error opening or reading from the event stream")
 
     def stop(self) -> None:
         self._stop_event.set()
