@@ -2,6 +2,7 @@ import logging
 import typing
 from datetime import timezone
 
+import pydantic
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
@@ -266,7 +267,7 @@ class Flagsmith:
     def update_environment(self) -> None:
         try:
             self._environment = self._get_environment_from_api()
-        except (FlagsmithAPIError, requests.RequestException):
+        except (FlagsmithAPIError, pydantic.ValidationError):
             logger.exception("Error updating environment")
         self._update_overrides()
 
