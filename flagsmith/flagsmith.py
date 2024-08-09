@@ -269,15 +269,11 @@ class Flagsmith:
             self._environment = self._get_environment_from_api()
         except (FlagsmithAPIError, pydantic.ValidationError):
             logger.exception("Error updating environment")
-        self._update_overrides()
-
-    def _update_overrides(self) -> None:
-        if not self._environment:
-            return
-        if overrides := self._environment.identity_overrides:
-            self._identity_overrides_by_identifier = {
-                identity.identifier: identity for identity in overrides
-            }
+        else:
+            if overrides := self._environment.identity_overrides:
+                self._identity_overrides_by_identifier = {
+                    identity.identifier: identity for identity in overrides
+                }
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
