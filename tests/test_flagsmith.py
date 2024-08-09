@@ -537,14 +537,14 @@ def test_offline_mode__local_evaluation__correct_fallback(
     mock_offline_handler = mocker.MagicMock(spec=BaseOfflineHandler)
     mock_offline_handler.get_environment.return_value = environment_model
 
+    responses.get(api_url + "environment-document/", status=500)
+
     flagsmith = Flagsmith(
         environment_key="ser.some-key",
         api_url=api_url,
         enable_local_evaluation=True,
         offline_handler=mock_offline_handler,
     )
-
-    responses.get(flagsmith.environment_url, status=500)
 
     # When
     environment_flags = flagsmith.get_environment_flags()
