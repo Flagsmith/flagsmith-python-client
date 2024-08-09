@@ -1,7 +1,7 @@
 import logging
 import threading
 import typing
-from typing import Callable, Generator, Optional, cast
+from typing import Callable, Optional
 
 import pydantic
 import requests
@@ -38,11 +38,7 @@ class EventStreamManager(threading.Thread):
                     headers={"Accept": "application/json, text/event-stream"},
                     timeout=self.request_timeout_seconds,
                 ) as response:
-                    iter_bytes = cast(
-                        Generator[bytes, None, None],
-                        response.iter_content(),
-                    )
-                    sse_client = sseclient.SSEClient(iter_bytes)
+                    sse_client = sseclient.SSEClient(chunk for chunk in response)
                     for event in sse_client.events():
                         self.on_event(StreamEvent.model_validate_json(event.data))
 
