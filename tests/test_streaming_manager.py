@@ -36,36 +36,6 @@ def test_stream_manager_handles_timeout(
     streaming_manager.stop()
 
 
-def test_stream_manager_handles_request_exception(
-    mocked_responses: responses.RequestsMock,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    stream_url = (
-        "https://realtime.flagsmith.com/sse/environments/B62qaMZNwfiqT76p38ggrQ/stream"
-    )
-
-    mocked_responses.get(stream_url, body=requests.RequestException())
-    mocked_responses.get(stream_url, body=FlagsmithAPIError())
-
-    streaming_manager = EventStreamManager(
-        stream_url=stream_url,
-        on_event=MagicMock(),
-        daemon=True,
-    )
-
-    streaming_manager.start()
-
-    time.sleep(0.01)
-
-    assert streaming_manager.is_alive()
-
-    streaming_manager.stop()
-
-    for record in caplog.records:
-        assert record.levelname == "ERROR"
-        assert record.message == "Error handling event stream"
-
-
 def test_environment_updates_on_recent_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:

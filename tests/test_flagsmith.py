@@ -526,6 +526,44 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
     assert identity_flags.get_feature_value("some_feature") == "some-value"
 
 
+@responses.activate()
+def test_offline_mode__local_evaluation__correct_fallback(
+    mocker: MockerFixture,
+    environment_model: EnvironmentModel,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    api_url = "http://some.flagsmith.com/api/v1/"
+    mock_offline_handler = mocker.MagicMock(spec=BaseOfflineHandler)
+    mock_offline_handler.get_environment.return_value = environment_model
+
+    flagsmith = Flagsmith(
+        environment_key="ser.some-key",
+        api_url=api_url,
+        enable_local_evaluation=True,
+        offline_handler=mock_offline_handler,
+    )
+
+    responses.get(flagsmith.environment_url, status=500)
+
+    # When
+    environment_flags = flagsmith.get_environment_flags()
+    identity_flags = flagsmith.get_identity_flags("identity", traits={})
+
+    # Then
+    mock_offline_handler.get_environment.assert_called_once_with()
+
+    assert environment_flags.is_feature_enabled("some_feature") is True
+    assert environment_flags.get_feature_value("some_feature") == "some-value"
+
+    assert identity_flags.is_feature_enabled("some_feature") is True
+    assert identity_flags.get_feature_value("some_feature") == "some-value"
+
+    [error_log_record] = caplog.records
+    assert error_log_record.levelname == "ERROR"
+    assert error_log_record.message == "Error updating environment"
+
+
 def test_cannot_use_offline_mode_without_offline_handler() -> None:
     with pytest.raises(ValueError) as e:
         # When
