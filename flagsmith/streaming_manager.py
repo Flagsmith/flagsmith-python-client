@@ -1,4 +1,3 @@
-import logging
 import threading
 import typing
 from typing import Callable, Optional
@@ -7,8 +6,8 @@ import pydantic
 import requests
 import sseclient
 
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 class StreamEvent(pydantic.BaseModel):
     updated_at: pydantic.AwareDatetime
