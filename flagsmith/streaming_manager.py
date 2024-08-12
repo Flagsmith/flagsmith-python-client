@@ -1,13 +1,17 @@
+import logging
 import threading
 import typing
-from typing import Callable, Generator, Optional, Protocol, cast
+from typing import Callable, Optional
 
+import pydantic
 import requests
 import sseclient
 
+logger = logging.getLogger(__name__)
 
-class StreamEvent(Protocol):
-    data: str
+
+class StreamEvent(pydantic.BaseModel):
+    updated_at: pydantic.AwareDatetime
 
 
 class EventStreamManager(threading.Thread):
@@ -34,14 +38,12 @@ class EventStreamManager(threading.Thread):
                     headers={"Accept": "application/json, text/event-stream"},
                     timeout=self.request_timeout_seconds,
                 ) as response:
-                    sse_client = sseclient.SSEClient(
-                        cast(Generator[bytes, None, None], response)
-                    )
+                    sse_client = sseclient.SSEClient(chunk for chunk in response)
                     for event in sse_client.events():
-                        self.on_event(event)
+                        self.on_event(StreamEvent.model_validate_json(event.data))
 
-            except requests.exceptions.ReadTimeout:
-                pass
+            except (requests.RequestException, pydantic.ValidationError):
+                logger.exception("Error opening or reading from the event stream")
 
     def stop(self) -> None:
         self._stop_event.set()

@@ -1,8 +1,8 @@
-import json
 import logging
 import typing
-from datetime import datetime, timezone
+from datetime import timezone
 
+import pydantic
 import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
@@ -188,21 +188,6 @@ class Flagsmith:
             self.environment_data_polling_manager_thread.start()
 
     def handle_stream_event(self, event: StreamEvent) -> None:
-        try:
-            event_data = json.loads(event.data)
-        except json.JSONDecodeError as e:
-            raise FlagsmithAPIError("Unable to get valid json from event data.") from e
-
-        try:
-            stream_updated_at = datetime.fromtimestamp(event_data.get("updated_at"))
-        except TypeError as e:
-            raise FlagsmithAPIError(
-                "Unable to get valid timestamp from event data."
-            ) from e
-
-        if stream_updated_at.tzinfo is None:
-            stream_updated_at = stream_updated_at.astimezone(timezone.utc)
-
         if not self._environment:
             raise ValueError(
                 "Unable to access environment. Environment should not be null"
@@ -211,7 +196,7 @@ class Flagsmith:
         if environment_updated_at.tzinfo is None:
             environment_updated_at = environment_updated_at.astimezone(timezone.utc)
 
-        if stream_updated_at > environment_updated_at:
+        if event.updated_at > environment_updated_at:
             self.update_environment()
 
     def get_environment_flags(self) -> Flags:
@@ -282,17 +267,13 @@ class Flagsmith:
     def update_environment(self) -> None:
         try:
             self._environment = self._get_environment_from_api()
-        except (FlagsmithAPIError, requests.RequestException):
+        except (FlagsmithAPIError, pydantic.ValidationError):
             logger.exception("Error updating environment")
-        self._update_overrides()
-
-    def _update_overrides(self) -> None:
-        if not self._environment:
-            return
-        if overrides := self._environment.identity_overrides:
-            self._identity_overrides_by_identifier = {
-                identity.identifier: identity for identity in overrides
-            }
+        else:
+            if overrides := self._environment.identity_overrides:
+                self._identity_overrides_by_identifier = {
+                    identity.identifier: identity for identity in overrides
+                }
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
@@ -383,13 +364,9 @@ class Flagsmith:
             response = request_method(
                 url, json=body, timeout=self.request_timeout_seconds
             )
-            if response.status_code != 200:
-                raise FlagsmithAPIError(
-                    "Invalid request made to Flagsmith API. Response status code: %d",
-                    response.status_code,
-                )
+            response.raise_for_status()
             return response.json()
-        except (requests.ConnectionError, json.JSONDecodeError) as e:
+        except requests.RequestException as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
             ) from e
