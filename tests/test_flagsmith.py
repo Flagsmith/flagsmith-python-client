@@ -3,6 +3,7 @@ import time
 import typing
 import uuid
 
+import freezegun
 import pytest
 import requests
 import responses
@@ -527,6 +528,7 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
 
 
 @responses.activate()
+@freezegun.freeze_time()
 def test_offline_mode__local_evaluation__correct_fallback(
     mocker: MockerFixture,
     environment_model: EnvironmentModel,
@@ -545,10 +547,6 @@ def test_offline_mode__local_evaluation__correct_fallback(
         enable_local_evaluation=True,
         offline_handler=mock_offline_handler,
     )
-
-    # We only verify local evaluation mode init phase here.
-    # Prevent additional API calls.
-    flagsmith.environment_data_polling_manager_thread.stop()
 
     # When
     environment_flags = flagsmith.get_environment_flags()
