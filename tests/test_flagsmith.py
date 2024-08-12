@@ -546,6 +546,10 @@ def test_offline_mode__local_evaluation__correct_fallback(
         offline_handler=mock_offline_handler,
     )
 
+    # We only verify local evaluation mode init phase here.
+    # Prevent additional API calls.
+    flagsmith.environment_data_polling_manager_thread.stop()
+
     # When
     environment_flags = flagsmith.get_environment_flags()
     identity_flags = flagsmith.get_identity_flags("identity", traits={})
