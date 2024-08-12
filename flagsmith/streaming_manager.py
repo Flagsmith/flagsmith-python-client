@@ -6,8 +6,8 @@ import pydantic
 import requests
 import sseclient
 
-
 logger = logging.getLogger(__name__)
+
 
 class StreamEvent(pydantic.BaseModel):
     updated_at: pydantic.AwareDatetime
