@@ -1,20 +1,5 @@
 # Changelog
 
-<a name="v3.7.0"></a>
-
-## [3.8.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.7.0...v3.8.0) (2024-08-12)
-
-### Features
-
-- Support transient identities and traits ([#93](https://github.com/Flagsmith/flagsmith-python-client/issues/93))
-  ([0a11db5](https://github.com/Flagsmith/flagsmith-python-client/commit/0a11db5a1010c177856716e6b90292651fa5889b))
-
-### Bug Fixes
-
-- Offline handler not used as fallback for local evaluation mode during init
-  ([#100](https://github.com/Flagsmith/flagsmith-python-client/issues/100))
-  ([6f6d595](https://github.com/Flagsmith/flagsmith-python-client/commit/6f6d5950bc3a6befd953dc1a24ef497a4a018c7b))
-
 ## [v3.7.0](https://github.com/Flagsmith/flagsmith-python-client/releases/tag/v3.7.0) - 17 Jul 2024
 
 ### What's Changed
