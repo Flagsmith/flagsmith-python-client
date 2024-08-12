@@ -2,6 +2,26 @@
 
 <a name="v3.7.0"></a>
 
+## [3.9.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.8.0...v3.9.0) (2024-08-12)
+
+
+### Features
+
+* Add indentity overrides to local evaluation mode ([#72](https://github.com/Flagsmith/flagsmith-python-client/issues/72)) ([f8fd387](https://github.com/Flagsmith/flagsmith-python-client/commit/f8fd38737e168d6c9c7710496ed3032ce7f70550))
+* **analytics-flags:** Add support for feature flag analytics  ([#9](https://github.com/Flagsmith/flagsmith-python-client/issues/9)) ([6317cdb](https://github.com/Flagsmith/flagsmith-python-client/commit/6317cdb433a31ddc64f8575d89675d5101e20a45))
+* Bump `flagsmith-flag-engine` to 5.0.0 ([#69](https://github.com/Flagsmith/flagsmith-python-client/issues/69)) ([96524b9](https://github.com/Flagsmith/flagsmith-python-client/commit/96524b93068137b8de9c6f5d28d2a49a50dbc425))
+* strict typing ([#70](https://github.com/Flagsmith/flagsmith-python-client/issues/70)) ([ed535de](https://github.com/Flagsmith/flagsmith-python-client/commit/ed535ded9ba4df12e9e9eddd9093a13db31219ec))
+* Support transient identities and traits ([#93](https://github.com/Flagsmith/flagsmith-python-client/issues/93)) ([0a11db5](https://github.com/Flagsmith/flagsmith-python-client/commit/0a11db5a1010c177856716e6b90292651fa5889b))
+
+
+### Bug Fixes
+
+* Add a custom exception for invalid features ([#86](https://github.com/Flagsmith/flagsmith-python-client/issues/86)) ([fd20941](https://github.com/Flagsmith/flagsmith-python-client/commit/fd2094131e5e4972a17be5a8efa4cb379cc821ee))
+* Flaky `test_offline_mode__local_evaluation__correct_fallback` ([#103](https://github.com/Flagsmith/flagsmith-python-client/issues/103)) ([a2136d7](https://github.com/Flagsmith/flagsmith-python-client/commit/a2136d7cb73e819da8a7a08ab98a3c7bfaa52df9))
+* Offline handler not used as fallback for local evaluation mode during init ([#100](https://github.com/Flagsmith/flagsmith-python-client/issues/100)) ([6f6d595](https://github.com/Flagsmith/flagsmith-python-client/commit/6f6d5950bc3a6befd953dc1a24ef497a4a018c7b))
+* Package version not bumped during automatic release ([#102](https://github.com/Flagsmith/flagsmith-python-client/issues/102)) ([840bc0e](https://github.com/Flagsmith/flagsmith-python-client/commit/840bc0e33803a66af2342ec7ff0053744ada603d))
+* Set the environment for local evaluation mode on init ([#76](https://github.com/Flagsmith/flagsmith-python-client/issues/76)) ([5fc5559](https://github.com/Flagsmith/flagsmith-python-client/commit/5fc5559858d35730275206af1c8c7ef60aa072b4))
+
 ## [3.8.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.7.0...v3.8.0) (2024-08-12)
 
 ### Features
