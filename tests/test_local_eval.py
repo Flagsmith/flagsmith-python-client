@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import cast
+from typing import Dict, Tuple, cast
 from unittest import mock
 
 import pytest
@@ -24,7 +24,7 @@ def is_migrated(request: pytest.FixtureRequest) -> bool:
 
 
 @pytest.fixture
-def identifiers() -> tuple[str, ...]:
+def identifiers() -> Tuple[str, ...]:
     return ("1", "2", "3", "4", "5")
 
 
@@ -81,7 +81,7 @@ def expected_flags_without_identity_overrides(
     environment_default_or_percentage_split_value_flag_mock: mock.Mock,
     mv_segment_override_value_flag_mock: mock.Mock,
     mv_value_flag_mock: mock.Mock,
-) -> dict[str, Flags]:
+) -> Dict[str, Flags]:
     return {
         # - [ ]  Identity 1:
         #   - [ ]  multivariate feature: % split
@@ -136,7 +136,7 @@ def expected_flags_with_identity_overrides(
     environment_default_or_percentage_split_value_flag_mock: mock.Mock,
     mv_segment_override_value_flag_mock: mock.Mock,
     mv_value_flag_mock: mock.Mock,
-) -> dict[str, Flags]:
+) -> Dict[str, Flags]:
     return {
         # - [ ]  Identity 1:
         #   - [ ]  multivariate feature: identity override
@@ -189,8 +189,8 @@ def expected_flags_with_identity_overrides(
 def get_local_and_remote_flags(
     api_key: str,
     api_url: str,
-    identifiers: tuple[str, ...],
-) -> tuple[dict[str, Flags], dict[str, Flags]]:
+    identifiers: Tuple[str, ...],
+) -> Tuple[Dict[str, Flags], Dict[str, Flags]]:
     local_eval_flagsmith = Flagsmith(
         environment_key=api_key,
         api_url=api_url,
@@ -200,8 +200,8 @@ def get_local_and_remote_flags(
         environment_key=api_key,
         api_url=api_url,
     )
-    local_flags: dict[str, Flags] = {}
-    remote_flags: dict[str, Flags] = {}
+    local_flags: Dict[str, Flags] = {}
+    remote_flags: Dict[str, Flags] = {}
 
     for identifier in identifiers:
         local_flags[identifier] = local_eval_flagsmith.get_identity_flags(identifier)
@@ -214,9 +214,9 @@ def test_local_eval__before_migration__identity_flags_expected(
     is_migrated: bool,
     api_key: str,
     api_url: str,
-    identifiers: tuple[str, ...],
-    expected_flags_without_identity_overrides: dict[str, Flags],
-    expected_flags_with_identity_overrides: dict[str, Flags],
+    identifiers: Tuple[str, ...],
+    expected_flags_without_identity_overrides: Dict[str, Flags],
+    expected_flags_with_identity_overrides: Dict[str, Flags],
 ) -> None:
     if is_migrated:
         pytest.xfail("should fail for migrated environments")
@@ -231,8 +231,8 @@ def test_local_eval__after_migration__identity_flags_expected(
     is_migrated: bool,
     api_key: str,
     api_url: str,
-    identifiers: tuple[str, ...],
-    expected_flags_with_identity_overrides: dict[str, Flags],
+    identifiers: Tuple[str, ...],
+    expected_flags_with_identity_overrides: Dict[str, Flags],
 ) -> None:
     if not is_migrated:
         pytest.xfail("should fail for unmigrated environments")
