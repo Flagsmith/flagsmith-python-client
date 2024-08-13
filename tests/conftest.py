@@ -90,3 +90,22 @@ def identities_json() -> typing.Generator[str, None, None]:
 def mocked_responses() -> Generator["responses.RequestsMock", None, None]:
     with responses.RequestsMock() as rsps:
         yield rsps
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--api-key",
+        default="ser.kyQEHYnTbJKnXdwLKdpVmh",
+        help="Server API key to use when testing",
+    )
+    parser.addoption(
+        "--api-url",
+        default="https://edge.bullet-train-staging.win/api/v1/",
+        help="API url to test against",
+    )
+    parser.addoption(
+        "--migrated",
+        default=False,
+        action="store_true",
+        help="Whether the project has been migrated to V2",
+    )
