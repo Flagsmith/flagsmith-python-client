@@ -142,6 +142,57 @@ def expected_flags_with_identity_overrides() -> Dict[str, Flags]:
     }
 
 
+@pytest.fixture
+def expected_flags_with_identity_overrides_for_local_eval() -> Dict[str, Flags]:
+    return {
+        # - [ ]  Identity 1:
+        #   - [ ]  multivariate feature: identity override
+        #   - [ ]  normal feature: identity override
+        "1": Flags(
+            {
+                "multivariate_feature": _get_flag_mock(value="b"),
+                "normal_feature": _get_flag_mock(value="overridden for 1"),
+            },
+        ),
+        # - [ ]  Identity 2:
+        #   - [ ]  multivariate feature: % split
+        #   - [ ]  normal feature: identity override
+        "2": Flags(
+            {
+                "multivariate_feature": _get_flag_mock(value="b"),
+                "normal_feature": _get_flag_mock(value="overridden for 2"),
+            },
+        ),
+        # - [ ]  Identity 3:
+        #   - [ ]  multivariate feature: environment default
+        #   - [ ]  normal feature: identity override
+        "3": Flags(
+            {
+                "multivariate_feature": _get_flag_mock(value="a"),
+                "normal_feature": _get_flag_mock(value="overridden for 3"),
+            },
+        ),
+        # - [ ]  Identity 4:
+        #   - [ ]  multivariate feature: environment default
+        #   - [ ]  normal feature: environment default / % split override
+        "4": Flags(
+            {
+                "multivariate_feature": _get_flag_mock(value="b"),
+                "normal_feature": _get_flag_mock(value='overridden by "split_segment"'),
+            },
+        ),
+        # - [ ]  Identity 5:
+        #   - [ ]  multivariate feature: % split
+        #   - [ ]  normal feature: environment default / % split override
+        "5": Flags(
+            {
+                "multivariate_feature": _get_flag_mock(value="b"),
+                "normal_feature": _get_flag_mock(value='overridden by "split_segment"'),
+            },
+        ),
+    }
+
+
 def get_local_and_remote_flags(
     api_key: str,
     api_url: str,
@@ -189,11 +240,12 @@ def test_local_eval__after_migration__identity_flags_expected(
     api_url: str,
     identifiers: Tuple[str, ...],
     expected_flags_with_identity_overrides: Dict[str, Flags],
+    expected_flags_with_identity_overrides_for_local_eval: Dict[str, Flags],
 ) -> None:
     if not is_migrated:
         pytest.xfail("should fail for unmigrated environments")
     local_flags, remote_flags = get_local_and_remote_flags(
         api_key=api_key, api_url=api_url, identifiers=identifiers
     )
-    assert local_flags == expected_flags_with_identity_overrides
-    assert remote_flags == local_flags
+    assert local_flags == expected_flags_with_identity_overrides_for_local_eval
+    assert remote_flags == expected_flags_with_identity_overrides
