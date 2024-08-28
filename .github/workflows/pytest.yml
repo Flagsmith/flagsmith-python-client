@@ -33,4 +33,4 @@ jobs:
           poetry install --with dev
 
       - name: Run Tests
-        run: poetry run pytest
+        run: poetry run pytest --migrated
