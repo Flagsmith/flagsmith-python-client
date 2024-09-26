@@ -3,8 +3,8 @@ import threading
 import typing
 from typing import Callable, Optional
 
+import httpx
 import pydantic
-import requests
 import sseclient
 
 logger = logging.getLogger(__name__)
@@ -32,17 +32,19 @@ class EventStreamManager(threading.Thread):
     def run(self) -> None:
         while not self._stop_event.is_set():
             try:
-                with requests.get(
+                with httpx.stream(
+                    "GET",
                     self.stream_url,
-                    stream=True,
                     headers={"Accept": "application/json, text/event-stream"},
                     timeout=self.request_timeout_seconds,
                 ) as response:
-                    sse_client = sseclient.SSEClient(chunk for chunk in response)
+                    sse_client = sseclient.SSEClient(
+                        chunk for chunk in response.iter_bytes()
+                    )
                     for event in sse_client.events():
                         self.on_event(StreamEvent.model_validate_json(event.data))
 
-            except (requests.RequestException, pydantic.ValidationError):
+            except (httpx.HTTPError, pydantic.ValidationError):
                 logger.exception("Error opening or reading from the event stream")
 
     def stop(self) -> None:

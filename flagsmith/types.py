@@ -12,8 +12,8 @@ _JsonScalarType: TypeAlias = typing.Union[
 ]
 JsonType: TypeAlias = typing.Union[
     _JsonScalarType,
-    typing.Dict[str, "JsonType"],
-    typing.List["JsonType"],
+    typing.Mapping[str, "JsonType"],
+    typing.Sequence["JsonType"],
 ]
 
 

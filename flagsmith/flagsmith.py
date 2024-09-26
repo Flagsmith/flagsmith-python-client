@@ -2,16 +2,14 @@ import logging
 import typing
 from datetime import timezone
 
+import httpx
 import pydantic
-import requests
 from flag_engine import engine
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
 from flag_engine.identities.traits.types import TraitValue
 from flag_engine.segments.evaluator import get_identity_segments
-from requests.adapters import HTTPAdapter
-from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
@@ -37,27 +35,25 @@ class Flagsmith:
 
       >>> from flagsmith import Flagsmith
       >>> flagsmith = Flagsmith(environment_key="<your API key>")
-      >>> environment_flags = flagsmith.get_environment_flags()
+      >>> environment_flags = await flagsmith.get_environment_flags()
       >>> feature_enabled = environment_flags.is_feature_enabled("foo")
       >>> identity_flags = flagsmith.get_identity_flags("identifier", {"foo": "bar"})
       >>> feature_enabled_for_identity = identity_flags.is_feature_enabled("foo")
     """
 
-    def __init__(
+    def __init__(  # noqa: C901
         self,
         environment_key: typing.Optional[str] = None,
         api_url: typing.Optional[str] = None,
         realtime_api_url: typing.Optional[str] = None,
-        custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        request_timeout_seconds: typing.Optional[int] = None,
+        client: httpx.Client | None = None,
+        aclient: httpx.AsyncClient | None = None,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
-        retries: typing.Optional[Retry] = None,
         enable_analytics: bool = False,
         default_flag_handler: typing.Optional[
             typing.Callable[[str], DefaultFlag]
         ] = None,
-        proxies: typing.Optional[typing.Dict[str, str]] = None,
         offline_mode: bool = False,
         offline_handler: typing.Optional[BaseOfflineHandler] = None,
         enable_realtime_updates: bool = False,
@@ -67,21 +63,15 @@ class Flagsmith:
             Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
         :param realtime_api_url: Override the URL of the Flagsmith real-time API
-        :param custom_headers: Additional headers to add to requests made to the
-            Flagsmith API
-        :param request_timeout_seconds: Number of seconds to wait for a request to
-            complete before terminating the request
+        :param client: a httpx.AsyncClient instance to use for HTTP requests
         :param enable_local_evaluation: Enables local evaluation of flags
         :param environment_refresh_interval_seconds: If using local evaluation,
             specify the interval period between refreshes of local environment data
-        :param retries: a urllib3.Retry object to use on all http requests to the
-            Flagsmith API
         :param enable_analytics: if enabled, sends additional requests to the Flagsmith
             API to power flag analytics charts
         :param default_flag_handler: callable which will be used in the case where
             flags cannot be retrieved from the API or a non-existent feature is
             requested
-        :param proxies: as per https://requests.readthedocs.io/en/latest/api/#requests.Session.proxies
         :param offline_mode: sets the client into offline mode. Relies on offline_handler for
             evaluating flags.
         :param offline_handler: provide a handler for offline logic. Used to get environment
@@ -120,12 +110,10 @@ class Flagsmith:
             if not environment_key:
                 raise ValueError("environment_key is required.")
 
-            self.session = requests.Session()
-            self.session.headers.update(
-                **{"X-Environment-Key": environment_key}, **(custom_headers or {})
-            )
-            self.session.proxies.update(proxies or {})
-            retries = retries or Retry(total=3, backoff_factor=0.1)
+            self._client = client or httpx.Client()
+            self._aclient = aclient or httpx.AsyncClient()
+            for c in (self._client, self._aclient):
+                c.headers.update({"X-Environment-Key": environment_key})
 
             api_url = api_url or DEFAULT_API_URL
             self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
@@ -136,9 +124,6 @@ class Flagsmith:
                 if realtime_api_url.endswith("/")
                 else f"{realtime_api_url}/"
             )
-
-            self.request_timeout_seconds = request_timeout_seconds
-            self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
             self.environment_flags_url = f"{self.api_url}flags/"
             self.identities_url = f"{self.api_url}identities/"
@@ -155,8 +140,12 @@ class Flagsmith:
 
             if enable_analytics:
                 self._analytics_processor = AnalyticsProcessor(
-                    environment_key, self.api_url, timeout=self.request_timeout_seconds
+                    daemon=True,
+                    environment_key=environment_key,
+                    base_api_url=self.api_url,
+                    client=self._client,
                 )
+                self._analytics_processor.start()
 
     def _initialise_local_evaluation(self) -> None:
         # To ensure that the environment is set before allowing subsequent
@@ -199,7 +188,7 @@ class Flagsmith:
         if event.updated_at > environment_updated_at:
             self.update_environment()
 
-    def get_environment_flags(self) -> Flags:
+    async def get_environment_flags(self) -> Flags:
         """
         Get all the default for flags for the current environment.
 
@@ -207,9 +196,9 @@ class Flagsmith:
         """
         if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_environment_flags_from_document()
-        return self._get_environment_flags_from_api()
+        return await self._get_environment_flags_from_api()
 
-    def get_identity_flags(
+    async def get_identity_flags(
         self,
         identifier: str,
         traits: typing.Optional[TraitMapping] = None,
@@ -233,7 +222,7 @@ class Flagsmith:
         traits = traits or {}
         if (self.offline_mode or self.enable_local_evaluation) and self._environment:
             return self._get_identity_flags_from_document(identifier, traits)
-        return self._get_identity_flags_from_api(
+        return await self._get_identity_flags_from_api(
             identifier,
             traits,
             transient=transient,
@@ -276,7 +265,13 @@ class Flagsmith:
                 }
 
     def _get_environment_from_api(self) -> EnvironmentModel:
-        environment_data = self._get_json_response(self.environment_url, method="GET")
+        try:
+            environment_data = self._client.get(self.environment_url).json()
+        except httpx.HTTPError as e:
+            raise FlagsmithAPIError(
+                "Unable to get valid response from Flagsmith API."
+            ) from e
+
         return EnvironmentModel.model_validate(environment_data)
 
     def _get_environment_flags_from_document(self) -> Flags:
@@ -304,10 +299,10 @@ class Flagsmith:
             default_flag_handler=self.default_flag_handler,
         )
 
-    def _get_environment_flags_from_api(self) -> Flags:
+    async def _get_environment_flags_from_api(self) -> Flags:
         try:
-            json_response: typing.List[typing.Mapping[str, JsonType]] = (
-                self._get_json_response(url=self.environment_flags_url, method="GET")
+            json_response = await self._get_json_response(
+                url=self.environment_flags_url, method="GET"
             )
             return Flags.from_api_flags(
                 api_flags=json_response,
@@ -321,7 +316,7 @@ class Flagsmith:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
-    def _get_identity_flags_from_api(
+    async def _get_identity_flags_from_api(
         self,
         identifier: str,
         traits: TraitMapping,
@@ -334,12 +329,10 @@ class Flagsmith:
             transient=transient,
         )
         try:
-            json_response: typing.Dict[str, typing.List[typing.Dict[str, JsonType]]] = (
-                self._get_json_response(
-                    url=self.identities_url,
-                    method="POST",
-                    body=request_body,
-                )
+            json_response = await self._get_json_response(
+                url=self.identities_url,
+                method="POST",
+                body=request_body,
             )
             return Flags.from_api_flags(
                 api_flags=json_response["flags"],
@@ -353,20 +346,27 @@ class Flagsmith:
                 return Flags(default_flag_handler=self.default_flag_handler)
             raise
 
-    def _get_json_response(
+    async def _get_json_response(
         self,
         url: str,
         method: str,
         body: typing.Optional[JsonType] = None,
     ) -> typing.Any:
         try:
-            request_method = getattr(self.session, method.lower())
-            response = request_method(
-                url, json=body, timeout=self.request_timeout_seconds
-            )
+            client = self._aclient
+            request_method = getattr(client, method.lower())
+
+            # TODO: can we simplify this? I had to split it out because
+            #  client.get (understandably) does not support the json
+            #  argument
+            kwargs: dict[str, typing.Any] = {"url": url}
+            if body is not None:
+                kwargs["json"] = body
+
+            response = await request_method(**kwargs)
             response.raise_for_status()
             return response.json()
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
             ) from e
@@ -405,3 +405,6 @@ class Flagsmith:
 
         if hasattr(self, "event_stream_thread"):
             self.event_stream_thread.stop()
+
+        if self._analytics_processor:
+            self._analytics_processor.stop()
