@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timedelta
 from unittest import mock
 
+from hamcrest import assert_that, is_, equal_to
+
 from flagsmith.analytics import ANALYTICS_TIMER, AnalyticsProcessor
 
 
@@ -10,10 +12,10 @@ def test_analytics_processor_track_feature_updates_analytics_data(
 ) -> None:
     # When
     analytics_processor.track_feature("my_feature")
-    assert analytics_processor.analytics_data["my_feature"] == 1
+    assert_that(analytics_processor.analytics_data["my_feature"], is_(1))
 
     analytics_processor.track_feature("my_feature")
-    assert analytics_processor.analytics_data["my_feature"] == 2
+    assert_that(analytics_processor.analytics_data["my_feature"], is_(2))
 
 
 def test_analytics_processor_flush_clears_analytics_data(
@@ -21,7 +23,7 @@ def test_analytics_processor_flush_clears_analytics_data(
 ) -> None:
     analytics_processor.track_feature("my_feature")
     analytics_processor.flush()
-    assert analytics_processor.analytics_data == {}
+    assert_that(analytics_processor.analytics_data, equal_to({}))
 
 
 def test_analytics_processor_flush_post_request_data_match_ananlytics_data(
@@ -36,7 +38,10 @@ def test_analytics_processor_flush_post_request_data_match_ananlytics_data(
     # Then
     session.post.assert_called()
     post_call = session.mock_calls[0]
-    assert {"my_feature_1": 1, "my_feature_2": 1} == json.loads(post_call[2]["data"])
+    assert_that(
+        json.loads(post_call[2]["data"]),
+        equal_to({"my_feature_1": 1, "my_feature_2": 1}),
+    )
 
 
 def test_analytics_processor_flush_early_exit_if_analytics_data_is_empty(

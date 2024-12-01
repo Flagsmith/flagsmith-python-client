@@ -3,6 +3,7 @@ from unittest import mock
 
 import requests
 import responses
+from hamcrest import assert_that, is_, equal_to
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
@@ -38,7 +39,7 @@ def test_polling_manager_calls_update_environment_on_each_refresh() -> None:
     # Then
     # 3 calls to update_environment should be made, one when the thread starts and 2
     # for each subsequent refresh
-    assert flagsmith.update_environment.call_count == 3
+    assert_that(flagsmith.update_environment.call_count, equal_to(3))
     polling_manager.stop()
 
 
@@ -61,7 +62,7 @@ def test_polling_manager_is_resilient_to_api_errors(
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
     # Then
-    assert polling_manager.is_alive()
+    assert_that(polling_manager.is_alive(), is_(True))
     polling_manager.stop()
 
 
@@ -89,5 +90,5 @@ def test_polling_manager_is_resilient_to_request_exceptions(
     polling_manager = flagsmith.environment_data_polling_manager_thread
 
     # Then
-    assert polling_manager.is_alive()
+    assert_that(polling_manager.is_alive(), is_(True))
     polling_manager.stop()

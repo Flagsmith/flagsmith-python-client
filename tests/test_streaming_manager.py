@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 
 import requests
 import responses
+from hamcrest import assert_that, is_
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
@@ -29,7 +30,7 @@ def test_stream_manager_handles_timeout(
 
     time.sleep(0.01)
 
-    assert streaming_manager.is_alive()
+    assert_that(streaming_manager.is_alive(), is_(True))
 
     streaming_manager.stop()
 
