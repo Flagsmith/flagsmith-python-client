@@ -3,7 +3,7 @@ from unittest import mock
 
 import requests
 import responses
-from hamcrest import assert_that, is_, equal_to
+from hamcrest import assert_that, equal_to, is_
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
