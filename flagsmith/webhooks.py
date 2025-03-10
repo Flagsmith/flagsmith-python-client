@@ -1,9 +1,10 @@
 import hashlib
 import hmac
+from typing import Union
 
 
 def generate_signature(
-    request_body: str | bytes,
+    request_body: Union[str, bytes],
     shared_secret: str,
 ) -> str:
     """Generates a signature for a webhook request body using HMAC-SHA256.
@@ -25,7 +26,7 @@ def generate_signature(
 
 
 def verify_signature(
-    request_body: str | bytes,
+    request_body: Union[str, bytes],
     received_signature: str,
     shared_secret: str,
 ) -> bool:
