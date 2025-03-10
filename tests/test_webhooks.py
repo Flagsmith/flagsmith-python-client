@@ -3,7 +3,7 @@ import json
 from flagsmith.webhooks import generate_signature, verify_signature
 
 
-def test_generate_signature():
+def test_generate_signature() -> None:
     # Given
     request_body = json.dumps({"data": {"foo": 123}})
     shared_secret = "shh"
@@ -16,7 +16,7 @@ def test_generate_signature():
     assert len(signature) == 64  # SHA-256 hex digest is 64 characters
 
 
-def test_verify_signature_valid():
+def test_verify_signature_valid() -> None:
     # Given
     request_body = json.dumps({"data": {"foo": 123}})
     shared_secret = "shh"
@@ -38,7 +38,7 @@ def test_verify_signature_valid():
     )
 
 
-def test_verify_signature_invalid():
+def test_verify_signature_invalid() -> None:
     # Given
     request_body = json.dumps({"event": "flag_updated", "data": {"id": 123}})
 
