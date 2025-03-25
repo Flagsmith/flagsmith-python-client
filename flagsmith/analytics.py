@@ -1,25 +1,28 @@
-import json
+import threading
+import time
 import typing
-from datetime import datetime
 
-from requests_futures.sessions import FuturesSession  # type: ignore
+import httpx
 
 ANALYTICS_ENDPOINT: typing.Final[str] = "analytics/flags/"
 
 # Used to control how often we send data(in seconds)
 ANALYTICS_TIMER: typing.Final[int] = 10
 
-session = FuturesSession(max_workers=4)
 
-
-class AnalyticsProcessor:
+class AnalyticsProcessor(threading.Thread):
     """
     AnalyticsProcessor is used to track how often individual Flags are evaluated within
     the Flagsmith SDK. Docs: https://docs.flagsmith.com/advanced-use/flag-analytics.
     """
 
     def __init__(
-        self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3
+        self,
+        *args: typing.Any,
+        environment_key: str,
+        base_api_url: str,
+        client: httpx.Client | None = None,
+        **kwargs: typing.Any,
     ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
@@ -30,11 +33,16 @@ class AnalyticsProcessor:
         :param timeout: used to tell requests to stop waiting for a response after a
             given number of seconds
         """
+        super().__init__(*args, **kwargs)
+
         self.analytics_endpoint = base_api_url + ANALYTICS_ENDPOINT
         self.environment_key = environment_key
-        self._last_flushed = datetime.now()
         self.analytics_data: typing.MutableMapping[str, typing.Any] = {}
-        self.timeout = timeout or 3
+
+        self._client = client or httpx.Client()
+        self._client.headers.update({"X-Environment-Key": self.environment_key})
+
+        self._stop_event = threading.Event()
 
     def flush(self) -> None:
         """
@@ -43,10 +51,10 @@ class AnalyticsProcessor:
 
         if not self.analytics_data:
             return
-        session.post(
+
+        self._client.post(
             self.analytics_endpoint,
-            data=json.dumps(self.analytics_data),
-            timeout=self.timeout,
+            data=self.analytics_data,
             headers={
                 "X-Environment-Key": self.environment_key,
                 "Content-Type": "application/json",
@@ -54,9 +62,17 @@ class AnalyticsProcessor:
         )
 
         self.analytics_data.clear()
-        self._last_flushed = datetime.now()
 
     def track_feature(self, feature_name: str) -> None:
         self.analytics_data[feature_name] = self.analytics_data.get(feature_name, 0) + 1
-        if (datetime.now() - self._last_flushed).seconds > ANALYTICS_TIMER:
+
+    def run(self) -> None:
+        while not self._stop_event.is_set():
+            time.sleep(ANALYTICS_TIMER)
             self.flush()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def __del__(self) -> None:
+        self._stop_event.set()
