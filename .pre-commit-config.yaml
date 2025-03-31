@@ -27,3 +27,6 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
+
+ci:
+  autoupdate_commit_msg: 'ci: pre-commit autoupdate'
