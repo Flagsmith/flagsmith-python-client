@@ -7,7 +7,7 @@ on:
 
 env:
   tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-  artifact-name: flagsmith-common-${{ github.event.release.tag_name || github.ref_name }}
+  artifact-name: flagsmith-python-client-${{ github.event.release.tag_name || github.ref_name }}
 
 jobs:
   build:
