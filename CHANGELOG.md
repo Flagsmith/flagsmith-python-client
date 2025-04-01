@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.9.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.8.0...v3.9.0) (2025-04-01)
+
+### Features
+
+- Add utility functions for webhooks
+  ([3d8df11](https://github.com/Flagsmith/flagsmith-python-client/commit/3d8df11ddf4656c5f20c0f558e1d7a3af412b960))
+
 ## [3.8.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.7.0...v3.8.0) (2024-08-12)
 
 ### Features
