@@ -2,10 +2,10 @@
 
 ## [3.9.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.0...v3.9.1) (2025-04-29)
 
-
 ### Bug Fixes
 
-* Fix HTTP requests not timing out ([7d61a47](https://github.com/Flagsmith/flagsmith-python-client/commit/7d61a47d0e7ec500b77bec15403f655a159e01fa))
+- Fix HTTP requests not timing out
+  ([7d61a47](https://github.com/Flagsmith/flagsmith-python-client/commit/7d61a47d0e7ec500b77bec15403f655a159e01fa))
 
 ## [3.9.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.8.0...v3.9.0) (2025-04-01)
 
