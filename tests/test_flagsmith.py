@@ -278,6 +278,39 @@ def test_non_200_response_raises_flagsmith_api_error(flagsmith: Flagsmith) -> No
     # expected exception raised
 
 
+@pytest.mark.parametrize(
+    "settings, expected_timeout",
+    [
+        ({"request_timeout_seconds": 5}, 5),  # Arbitrary timeout
+        ({"request_timeout_seconds": None}, None),  # No timeout is forced
+        ({}, 10),  # Default timeout
+    ],
+)
+def test_request_times_out_according_to_setting(
+    mocker: MockerFixture,
+    api_key: str,
+    settings: typing.Dict[str, typing.Any],
+    expected_timeout: typing.Optional[int],
+) -> None:
+    # Given
+    session = mocker.patch("flagsmith.flagsmith.requests.Session").return_value
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_local_evaluation=False,
+        **settings,
+    )
+
+    # When
+    flagsmith.get_environment_flags()
+
+    # Then
+    session.get.assert_called_once_with(
+        "https://edge.api.flagsmith.com/api/v1/flags/",
+        json=None,
+        timeout=expected_timeout,
+    )
+
+
 @responses.activate()
 def test_default_flag_is_used_when_no_environment_flags_returned(api_key: str) -> None:
     # Given
