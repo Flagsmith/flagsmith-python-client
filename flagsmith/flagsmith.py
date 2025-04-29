@@ -49,7 +49,7 @@ class Flagsmith:
         api_url: typing.Optional[str] = None,
         realtime_api_url: typing.Optional[str] = None,
         custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        request_timeout_seconds: typing.Optional[int] = None,
+        request_timeout_seconds: typing.Optional[int] = 10,
         enable_local_evaluation: bool = False,
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
