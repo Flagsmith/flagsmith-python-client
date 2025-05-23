@@ -14,12 +14,11 @@ jobs:
           github-token: ${{ secrets.GH_TOKEN_ADD_TO_ENG_PROJECT }}
           script: |
             const issueId = context.payload.issue.node_id;
-            const projectId = '22';
 
             const mutation = `
               mutation {
                 addProjectV2ItemById(input: {
-                  projectId: "${projectId}",
+                  projectId: "${{ vars.ENGINEERING_PROJECT_ID }}",
                   contentId: "${issueId}"
                 }) {
                   item {
