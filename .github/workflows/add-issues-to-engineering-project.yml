@@ -1,0 +1,32 @@
+name: Add New Issue to Engineering Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add_issue_to_project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to project
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN_ADD_TO_ENG_PROJECT }}
+          script: |
+            const issueId = context.payload.issue.node_id;
+            const projectId = '22';
+
+            const mutation = `
+              mutation {
+                addProjectV2ItemById(input: {
+                  projectId: "${projectId}",
+                  contentId: "${issueId}"
+                }) {
+                  item {
+                    id
+                  }
+                }
+              }
+            `;
+
+            await github.graphql(mutation);
