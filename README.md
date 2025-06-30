@@ -1,5 +1,3 @@
-<img width="100%" src="https://github.com/Flagsmith/flagsmith/raw/main/static-files/hero.png"/>
-
 # Flagsmith Python SDK
 
 > Flagsmith allows you to manage feature flags and remote config across multiple projects, environments and
