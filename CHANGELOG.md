@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.9.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.1...v3.9.2) (2025-07-08)
+
+### CI
+
+- pre-commit autoupdate ([#128](https://github.com/Flagsmith/flagsmith-python-client/issues/128))
+  ([62c55a9](https://github.com/Flagsmith/flagsmith-python-client/commit/62c55a996c5b3929ff1a710b95d1289482d85cd3))
+
+### Docs
+
+- removing hero image from SDK readme ([#131](https://github.com/Flagsmith/flagsmith-python-client/issues/131))
+  ([80af1d8](https://github.com/Flagsmith/flagsmith-python-client/commit/80af1d8d4cc848029963d1f5fc55fe1e0feced0e))
+
+### Other
+
+- **actions:** Move project id to a var ([#126](https://github.com/Flagsmith/flagsmith-python-client/issues/126))
+  ([3bd7943](https://github.com/Flagsmith/flagsmith-python-client/commit/3bd7943439e880b270d7c1303f1606c9504cf402))
+- Add workflow to add new issues to engineering project
+  ([#124](https://github.com/Flagsmith/flagsmith-python-client/issues/124))
+  ([b67f9a6](https://github.com/Flagsmith/flagsmith-python-client/commit/b67f9a6c13467c12b476093362a8606b978f7456))
+- **ci:** show all sections in release please config
+  ([#132](https://github.com/Flagsmith/flagsmith-python-client/issues/132))
+  ([e684919](https://github.com/Flagsmith/flagsmith-python-client/commit/e684919ba7a8ab93de0fc8b7214d1e8abe664157))
+- **deps:** bump requests from 2.32.3 to 2.32.4
+  ([#129](https://github.com/Flagsmith/flagsmith-python-client/issues/129))
+  ([3019636](https://github.com/Flagsmith/flagsmith-python-client/commit/30196369bcfb55647f1456daee9e4f6da49963a7))
+- **deps:** update flagsmith-flag-engine ([#133](https://github.com/Flagsmith/flagsmith-python-client/issues/133))
+  ([bfcd454](https://github.com/Flagsmith/flagsmith-python-client/commit/bfcd454851a2b7b772e7937b94ccf4b1cdaba401))
+
 ## [3.9.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.0...v3.9.1) (2025-04-29)
 
 ### Bug Fixes
