@@ -25,37 +25,37 @@
         },
         {
             "type": "ci",
-            "hidden": true,
+            "hidden": false,
             "section": "CI"
         },
         {
             "type": "docs",
-            "hidden": true,
+            "hidden": false,
             "section": "Docs"
         },
         {
             "type": "deps",
-            "hidden": true,
+            "hidden": false,
             "section": "Dependency Updates"
         },
         {
             "type": "perf",
-            "hidden": true,
+            "hidden": false,
             "section": "Performance Improvements"
         },
         {
             "type": "refactor",
-            "hidden": true,
+            "hidden": false,
             "section": "Refactoring"
         },
         {
             "type": "test",
-            "hidden": true,
+            "hidden": false,
             "section": "Tests"
         },
         {
             "type": "chore",
-            "hidden": true,
+            "hidden": false,
             "section": "Other"
         }
     ]
