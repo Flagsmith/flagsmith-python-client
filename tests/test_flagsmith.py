@@ -611,23 +611,6 @@ def test_cannot_use_offline_mode_without_offline_handler() -> None:
     )
 
 
-def test_cannot_use_default_handler_and_offline_handler(mocker: MockerFixture) -> None:
-    # When
-    with pytest.raises(ValueError) as e:
-        Flagsmith(
-            offline_handler=mocker.MagicMock(spec=BaseOfflineHandler),
-            default_flag_handler=lambda flag_name: DefaultFlag(
-                enabled=True, value="foo"
-            ),
-        )
-
-    # Then
-    assert (
-        e.exconly()
-        == "ValueError: Cannot use both default_flag_handler and offline_handler."
-    )
-
-
 def test_cannot_create_flagsmith_client_in_remote_evaluation_without_api_key() -> None:
     # When
     with pytest.raises(ValueError) as e:
@@ -717,3 +700,32 @@ def test_custom_feature_error_raised_when_invalid_feature(
     with pytest.raises(FlagsmithFeatureDoesNotExistError):
         # When
         flags.is_feature_enabled("non-existing-feature")
+
+
+def test_using_default_handler_with_offline_handler_returns_default_if_flag_not_found(
+    environment_model: EnvironmentModel,
+) -> None:
+    # Given
+    class FakeOfflineHandler(BaseOfflineHandler):
+        def get_environment(self) -> EnvironmentModel:
+            return environment_model
+
+    def default_flag_handler(name: str) -> DefaultFlag:
+        return DefaultFlag(
+            enabled=False,
+            value=None,
+        )
+
+    client = Flagsmith(
+        offline_mode=True,
+        offline_handler=FakeOfflineHandler(),
+        default_flag_handler=default_flag_handler,
+    )
+
+    # When
+    default_flag = client.get_environment_flags().get_flag("missing_flag")
+
+    # Then
+    assert default_flag.enabled is False
+    assert default_flag.value is None
+    assert default_flag.is_default

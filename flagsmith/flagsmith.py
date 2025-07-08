@@ -103,10 +103,6 @@ class Flagsmith:
         # argument validation
         if offline_mode and not offline_handler:
             raise ValueError("offline_handler must be provided to use offline mode.")
-        elif default_flag_handler and offline_handler:
-            raise ValueError(
-                "Cannot use both default_flag_handler and offline_handler."
-            )
 
         if enable_realtime_updates and not enable_local_evaluation:
             raise ValueError(
