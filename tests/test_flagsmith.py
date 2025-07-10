@@ -11,7 +11,7 @@ from flag_engine.features.models import FeatureModel, FeatureStateModel
 from pytest_mock import MockerFixture
 from responses import matchers
 
-from flagsmith import Flagsmith
+from flagsmith import Flagsmith, __version__
 from flagsmith.exceptions import (
     FlagsmithAPIError,
     FlagsmithFeatureDoesNotExistError,
@@ -717,3 +717,96 @@ def test_custom_feature_error_raised_when_invalid_feature(
     with pytest.raises(FlagsmithFeatureDoesNotExistError):
         # When
         flags.is_feature_enabled("non-existing-feature")
+
+
+@pytest.fixture
+def default_headers() -> typing.Dict[str, str]:
+    return {
+        "User-Agent": f"flagsmith-python-client/{__version__} python-requests/2.32.4",
+        "Accept-Encoding": "gzip, deflate",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+    }
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected_headers",
+    [
+        (
+            {
+                "environment_key": "test-key",
+                "application_metadata": {"name": "test-app", "version": "1.0.0"},
+            },
+            {
+                "Flagsmith-Application-Name": "test-app",
+                "Flagsmith-Application-Version": "1.0.0",
+                "X-Environment-Key": "test-key",
+            },
+        ),
+        (
+            {
+                "environment_key": "test-key",
+                "application_metadata": {"name": "test-app"},
+            },
+            {
+                "Flagsmith-Application-Name": "test-app",
+                "X-Environment-Key": "test-key",
+            },
+        ),
+        (
+            {
+                "environment_key": "test-key",
+                "application_metadata": {"version": "1.0.0"},
+            },
+            {
+                "Flagsmith-Application-Version": "1.0.0",
+                "X-Environment-Key": "test-key",
+            },
+        ),
+        (
+            {
+                "environment_key": "test-key",
+                "application_metadata": {"version": "1.0.0"},
+                "custom_headers": {"X-Custom-Header": "CustomValue"},
+            },
+            {
+                "Flagsmith-Application-Version": "1.0.0",
+                "X-Environment-Key": "test-key",
+                "X-Custom-Header": "CustomValue",
+            },
+        ),
+        (
+            {
+                "environment_key": "test-key",
+                "application_metadata": None,
+                "custom_headers": {"X-Custom-Header": "CustomValue"},
+            },
+            {
+                "X-Environment-Key": "test-key",
+                "X-Custom-Header": "CustomValue",
+            },
+        ),
+        (
+            {"environment_key": "test-key"},
+            {
+                "X-Environment-Key": "test-key",
+            },
+        ),
+    ],
+)
+@responses.activate()
+def test_flagsmith__init__expected_headers_sent(
+    default_headers: typing.Dict[str, str],
+    kwargs: typing.Dict[str, typing.Any],
+    expected_headers: typing.Dict[str, str],
+) -> None:
+    # Given
+    flagsmith = Flagsmith(**kwargs)
+    responses.add(method="GET", url=flagsmith.environment_flags_url, body="{}")
+
+    # When
+    flagsmith.get_environment_flags()
+
+    # Then
+    headers = responses.calls[0].request.headers
+    assert headers == {**default_headers, **expected_headers}
