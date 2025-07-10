@@ -1,7 +1,7 @@
 import typing
 
 from flag_engine.identities.traits.types import TraitValue
-from typing_extensions import TypeAlias, NotRequired
+from typing_extensions import NotRequired, TypeAlias
 
 _JsonScalarType: TypeAlias = typing.Union[
     int,
