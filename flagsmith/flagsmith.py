@@ -11,6 +11,7 @@ from flag_engine.identities.traits.models import TraitModel
 from flag_engine.identities.traits.types import TraitValue
 from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
+from requests.utils import default_user_agent
 from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
@@ -19,13 +20,15 @@ from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager, StreamEvent
-from flagsmith.types import JsonType, TraitConfig, TraitMapping
+from flagsmith.types import ApplicationMetadata, JsonType, TraitConfig, TraitMapping
 from flagsmith.utils.identities import generate_identity_data
+from flagsmith.version import __version__
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
+DEFAULT_USER_AGENT = f"flagsmith-python-client/{__version__} " + default_user_agent()
 
 
 class Flagsmith:
@@ -61,6 +64,7 @@ class Flagsmith:
         offline_mode: bool = False,
         offline_handler: typing.Optional[BaseOfflineHandler] = None,
         enable_realtime_updates: bool = False,
+        application_metadata: typing.Optional[ApplicationMetadata] = None,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
@@ -88,6 +92,7 @@ class Flagsmith:
             document from another source when in offline_mode. Works in place of
             default_flag_handler if offline_mode is not set and using remote evaluation.
         :param enable_realtime_updates: Use real-time functionality via SSE as opposed to polling the API
+        :param application_metadata: Optional metadata about the client application.
         """
 
         self.offline_mode = offline_mode
@@ -122,7 +127,11 @@ class Flagsmith:
 
             self.session = requests.Session()
             self.session.headers.update(
-                **{"X-Environment-Key": environment_key}, **(custom_headers or {})
+                self._get_headers(
+                    environment_key=environment_key,
+                    application_metadata=application_metadata,
+                    custom_headers=custom_headers,
+                )
             )
             self.session.proxies.update(proxies or {})
             retries = retries or Retry(total=3, backoff_factor=0.1)
@@ -274,6 +283,24 @@ class Flagsmith:
                 self._identity_overrides_by_identifier = {
                     identity.identifier: identity for identity in overrides
                 }
+
+    def _get_headers(
+        self,
+        environment_key: str,
+        application_metadata: ApplicationMetadata,
+        custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> typing.Dict[str, str]:
+        headers = {
+            "X-Environment-Key": environment_key,
+            "User-Agent": DEFAULT_USER_AGENT,
+        }
+        if application_metadata:
+            if name := application_metadata.get("name"):
+                headers["Flagsmith-Application-Name"] = name
+            if version := application_metadata.get("version"):
+                headers["Flagsmith-Application-Version"] = version
+        headers.update(custom_headers or {})
+        return headers
 
     def _get_environment_from_api(self) -> EnvironmentModel:
         environment_data = self._get_json_response(self.environment_url, method="GET")
