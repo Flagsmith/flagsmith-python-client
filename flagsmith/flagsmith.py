@@ -292,8 +292,8 @@ class Flagsmith:
     def _get_headers(
         self,
         environment_key: str,
-        application_metadata: ApplicationMetadata,
-        custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        application_metadata: typing.Optional[ApplicationMetadata],
+        custom_headers: typing.Optional[typing.Dict[str, typing.Any]],
     ) -> typing.Dict[str, str]:
         headers = {
             "X-Environment-Key": environment_key,
