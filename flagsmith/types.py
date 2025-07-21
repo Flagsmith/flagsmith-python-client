@@ -1,7 +1,7 @@
 import typing
 
 from flag_engine.identities.traits.types import TraitValue
-from typing_extensions import TypeAlias
+from typing_extensions import NotRequired, TypeAlias
 
 _JsonScalarType: TypeAlias = typing.Union[
     int,
@@ -23,3 +23,8 @@ class TraitConfig(typing.TypedDict):
 
 
 TraitMapping: TypeAlias = typing.Mapping[str, typing.Union[TraitValue, TraitConfig]]
+
+
+class ApplicationMetadata(typing.TypedDict):
+    name: NotRequired[str]
+    version: NotRequired[str]

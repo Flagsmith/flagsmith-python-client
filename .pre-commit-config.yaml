@@ -1,11 +1,4 @@
 repos:
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
-    hooks:
-      - id: mypy
-        args: [--strict]
-        additional_dependencies:
-          [pydantic, pytest, pytest_mock, types-requests, flagsmith-flag-engine, responses, sseclient-py]
   - repo: https://github.com/PyCQA/isort
     rev: 6.0.1
     hooks:

@@ -32,5 +32,9 @@ jobs:
           pip install poetry
           poetry install --with dev
 
+      - name: Check for new typing errors
+        if: ${{ matrix.python-version != '3.8' }}
+        run: poetry run mypy --strict .
+
       - name: Run Tests
         run: poetry run pytest
