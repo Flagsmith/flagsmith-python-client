@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 import typing
 import uuid
@@ -722,7 +723,10 @@ def test_custom_feature_error_raised_when_invalid_feature(
 @pytest.fixture
 def default_headers() -> typing.Dict[str, str]:
     return {
-        "User-Agent": f"flagsmith-python-client/{__version__} python-requests/2.32.4",
+        "User-Agent": (
+            f"flagsmith-python-client/{__version__} python-requests/{requests.__version__} "
+            f"python/{sys.version_info.major}.{sys.version_info.minor}"
+        ),
         "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",

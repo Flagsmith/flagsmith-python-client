@@ -1,4 +1,5 @@
 import logging
+import sys
 import typing
 from datetime import timezone
 
@@ -33,7 +34,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
-DEFAULT_USER_AGENT = f"flagsmith-python-client/{__version__} " + default_user_agent()
+DEFAULT_USER_AGENT = (
+    f"flagsmith-python-client/{__version__} "
+    + default_user_agent()
+    + f" python/{sys.version_info.major}.{sys.version_info.minor}"
+)
 
 
 class Flagsmith:
