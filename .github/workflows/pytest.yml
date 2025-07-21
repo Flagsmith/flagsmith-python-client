@@ -32,13 +32,6 @@ jobs:
           pip install poetry
           poetry install --with dev
 
-      # mypy doesn't support Python 3.8, so we run it only for 3.9 and above.
-      # Still check for typing errors for Python 3.8 when running against one of the newer versions.
-      # See https://mypy.readthedocs.io/en/stable/changelog.html#drop-support-for-python-3-8.
-      - name: Check for new typing errors for Python 3.8
-        if: ${{ matrix.python-version == '3.9' }}
-        run: poetry run mypy --strict --python-version 3.8 .
-
       - name: Check for new typing errors
         if: ${{ matrix.python-version != '3.8' }}
         run: poetry run mypy --strict .
