@@ -720,19 +720,6 @@ def test_custom_feature_error_raised_when_invalid_feature(
         flags.is_feature_enabled("non-existing-feature")
 
 
-@pytest.fixture
-def default_headers() -> typing.Dict[str, str]:
-    return {
-        "User-Agent": (
-            f"flagsmith-python-client/{__version__} python-requests/{requests.__version__} "
-            f"python/{sys.version_info.major}.{sys.version_info.minor}"
-        ),
-        "Accept-Encoding": "gzip, deflate",
-        "Accept": "*/*",
-        "Connection": "keep-alive",
-    }
-
-
 @pytest.mark.parametrize(
     "kwargs,expected_headers",
     [
@@ -800,7 +787,6 @@ def default_headers() -> typing.Dict[str, str]:
 )
 @responses.activate()
 def test_flagsmith__init__expected_headers_sent(
-    default_headers: typing.Dict[str, str],
     kwargs: typing.Dict[str, typing.Any],
     expected_headers: typing.Dict[str, str],
 ) -> None:
@@ -813,4 +799,13 @@ def test_flagsmith__init__expected_headers_sent(
 
     # Then
     headers = responses.calls[0].request.headers
-    assert headers == {**default_headers, **expected_headers}
+    assert headers == {
+        "User-Agent": (
+            f"flagsmith-python-client/{__version__} python-requests/{requests.__version__} "
+            f"python/{sys.version_info.major}.{sys.version_info.minor}"
+        ),
+        "Accept-Encoding": "gzip, deflate",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        **expected_headers,
+    }
