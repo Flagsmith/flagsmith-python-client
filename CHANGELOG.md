@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.10.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.2...v3.10.0) (2025-08-06)
+
+
+### Features
+
+* Support SDK metrics ([#136](https://github.com/Flagsmith/flagsmith-python-client/issues/136)) ([441c46a](https://github.com/Flagsmith/flagsmith-python-client/commit/441c46a0ae72f1ecb8d6e0b4b82f24706c34f942))
+
+
+### Other
+
+* bump-flagsmith-engine-version ([#139](https://github.com/Flagsmith/flagsmith-python-client/issues/139)) ([2cd2435](https://github.com/Flagsmith/flagsmith-python-client/commit/2cd2435d4f3872ea399ebeacadaee8c943707a1a))
+
 ## [3.9.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.1...v3.9.2) (2025-07-08)
 
 ### CI
