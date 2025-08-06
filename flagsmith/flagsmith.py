@@ -280,7 +280,7 @@ class Flagsmith:
 
         traits = traits or {}
         identity_model = self._get_identity_model(identifier, **traits)
-        segment_models = get_identity_segments(self._environment, identity_model)
+        segment_models = get_identity_segments(identity_model, self._environment)
         return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
 
     def update_environment(self) -> None:
