@@ -13,7 +13,7 @@ packages = [{ include = "flagsmith" }]
 python = ">=3.8.1,<4"
 requests = "^2.32.3"
 requests-futures = "^1.0.1"
-flagsmith-flag-engine = "^6.0.2"
+flagsmith-flag-engine = { git = "https://github.com/flagsmith/flagsmith-engine", branch = "feat/v7-get-evaluation-result" }
 sseclient-py = "^1.8.0"
 pydantic = "^2"
 

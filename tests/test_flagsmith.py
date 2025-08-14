@@ -161,15 +161,26 @@ def test_get_identity_flags_uses_local_environment_when_available(
         enabled=True,
         featurestate_uuid=str(uuid.uuid4()),
     )
-    mock_engine.get_identity_feature_states.return_value = [feature_state]
+    mock_engine.get_evaluation_result.return_value = {
+        "flags": [
+            {
+                "name": "some_feature",
+                "enabled": True,
+                "value": None,
+                "feature_key": "1",
+            }
+        ],
+        "segments": [],
+    }
 
     # When
+    # Check expected identification
     identity_flags = flagsmith.get_identity_flags(
         "identifier", traits={"some_trait": "some_value"}
     ).all_flags()
 
     # Then
-    mock_engine.get_identity_feature_states.assert_called_once()
+    mock_engine.get_evaluation_result.assert_called_once()
     assert identity_flags[0].enabled is feature_state.enabled
     assert identity_flags[0].value == feature_state.get_value()
 

@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass, field
 
 from flag_engine.features.models import FeatureStateModel
-
+from flag_engine.result.types import EvaluationResult, FlagResult
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
 
@@ -40,6 +40,19 @@ class Flag(BaseFlag):
         )
 
     @classmethod
+    def from_evaluation_result(
+        cls,
+        flag: FlagResult,
+        identity_id: typing.Optional[typing.Union[str, int]] = None,
+    ) -> Flag:
+        return Flag(
+            enabled=flag["enabled"],
+            value=flag["value"],
+            feature_name=flag["name"],
+            feature_id=int(flag["feature_key"]),
+        )
+
+    @classmethod
     def from_api_flag(cls, flag_data: typing.Mapping[str, typing.Any]) -> Flag:
         return Flag(
             enabled=flag_data["enabled"],
@@ -72,6 +85,28 @@ class Flags:
 
         return cls(
             flags=flags,
+            default_flag_handler=default_flag_handler,
+            _analytics_processor=analytics_processor,
+        )
+
+    @classmethod
+    def from_evaluation_result(
+        cls,
+        evaluation_result: EvaluationResult,
+        analytics_processor: typing.Optional[AnalyticsProcessor],
+        default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
+        identity_id: typing.Optional[typing.Union[str, int]] = None,
+    ) -> Flags:
+        return cls(
+            flags={
+                flag["name"]: Flag(
+                    enabled=flag["enabled"],
+                    value=flag["value"],
+                    feature_name=flag["name"],
+                    feature_id=int(flag["feature_key"]),
+                )
+                for flag in evaluation_result["flags"]
+            },
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
         )
