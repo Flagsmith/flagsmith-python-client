@@ -10,7 +10,8 @@ from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
 from flag_engine.identities.traits.types import TraitValue
-from flag_engine.segments.evaluator import get_identity_segments
+from flag_engine.segments.evaluator import get_context_segments
+from flag_engine.context.mappers import map_environment_identity_to_context
 from requests.adapters import HTTPAdapter
 from requests.utils import default_user_agent
 from urllib3 import Retry
@@ -280,10 +281,16 @@ class Flagsmith:
 
         traits = traits or {}
         identity_model = self._get_identity_model(identifier, **traits)
-        segment_models = get_identity_segments(
-            environment=self._environment, identity=identity_model
+        context = map_environment_identity_to_context(
+            environment=self._environment,
+            identity=identity_model,
+            override_traits=None,
         )
-        return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
+        segments = get_context_segments(
+            context=context,
+            segments=self._environment.project.segments,
+        )
+        return [Segment(id=sm.id, name=sm.name) for sm in segments]
 
     def update_environment(self) -> None:
         try:
