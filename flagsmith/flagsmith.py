@@ -6,7 +6,6 @@ from datetime import timezone
 import pydantic
 import requests
 from flag_engine import engine
-from flagsmith.mappers import map_environment_identity_to_context
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
@@ -17,6 +16,7 @@ from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
+from flagsmith.mappers import map_environment_identity_to_context
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import BaseOfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager

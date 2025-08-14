@@ -3,8 +3,8 @@ from collections import defaultdict
 
 from flag_engine.context.types import (
     EvaluationContext,
-    SegmentContext,
     FeatureContext,
+    SegmentContext,
     SegmentRule,
 )
 from flag_engine.environments.models import EnvironmentModel
@@ -151,8 +151,7 @@ def map_feature_states_to_feature_contexts(
             MultivariateFeatureStateValueModel
         ]
         if (
-            multivariate_feature_state_values
-            := feature_state.multivariate_feature_state_values
+            multivariate_feature_state_values := feature_state.multivariate_feature_state_values
         ):
             feature_ctx_data["variants"] = [
                 {
