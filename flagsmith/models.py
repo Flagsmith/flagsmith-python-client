@@ -3,7 +3,6 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, field
 
-from flag_engine.features.models import FeatureStateModel
 from flag_engine.result.types import EvaluationResult, FlagResult
 
 from flagsmith.analytics import AnalyticsProcessor
