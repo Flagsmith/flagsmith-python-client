@@ -1,7 +1,7 @@
 import typing
 
 import pytest
-from flag_engine.segments.evaluator import EvaluationResult, FlagResult
+from flag_engine.result.types import EvaluationResult, FlagResult
 
 from flagsmith.models import Flag, Flags
 
