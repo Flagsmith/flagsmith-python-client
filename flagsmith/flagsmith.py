@@ -6,11 +6,11 @@ from datetime import timezone
 import pydantic
 import requests
 from flag_engine import engine
+from flag_engine.context.mappers import map_environment_identity_to_context
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
 from flag_engine.identities.traits.types import TraitValue
-from flag_engine.context.mappers import map_environment_identity_to_context
 from requests.adapters import HTTPAdapter
 from requests.utils import default_user_agent
 from urllib3 import Retry
