@@ -1,8 +1,9 @@
 import typing
 
 import pytest
-from flagsmith.models import Flag, Flags
 from flag_engine.segments.evaluator import EvaluationResult, FlagResult
+
+from flagsmith.models import Flag, Flags
 
 
 def test_flag_from_evaluation_result() -> None:
