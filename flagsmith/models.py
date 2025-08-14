@@ -27,23 +27,9 @@ class Flag(BaseFlag):
     is_default: bool = field(default=False)
 
     @classmethod
-    def from_feature_state_model(
-        cls,
-        feature_state_model: FeatureStateModel,
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
-    ) -> Flag:
-        return Flag(
-            enabled=feature_state_model.enabled,
-            value=feature_state_model.get_value(identity_id=identity_id),
-            feature_name=feature_state_model.feature.name,
-            feature_id=feature_state_model.feature.id,
-        )
-
-    @classmethod
     def from_evaluation_result(
         cls,
         flag: FlagResult,
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
     ) -> Flag:
         return Flag(
             enabled=flag["enabled"],
@@ -69,33 +55,11 @@ class Flags:
     _analytics_processor: typing.Optional[AnalyticsProcessor] = None
 
     @classmethod
-    def from_feature_state_models(
-        cls,
-        feature_states: typing.Sequence[FeatureStateModel],
-        analytics_processor: typing.Optional[AnalyticsProcessor],
-        default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
-    ) -> Flags:
-        flags = {
-            feature_state.feature.name: Flag.from_feature_state_model(
-                feature_state, identity_id=identity_id
-            )
-            for feature_state in feature_states
-        }
-
-        return cls(
-            flags=flags,
-            default_flag_handler=default_flag_handler,
-            _analytics_processor=analytics_processor,
-        )
-
-    @classmethod
     def from_evaluation_result(
         cls,
         evaluation_result: EvaluationResult,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
     ) -> Flags:
         return cls(
             flags={

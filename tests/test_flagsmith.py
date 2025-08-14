@@ -90,7 +90,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert len(all_flags) == 1
     assert all_flags[0].feature_name == environment_model.feature_states[0].feature.name
     assert all_flags[0].enabled == environment_model.feature_states[0].enabled
-    assert all_flags[0].value == environment_model.feature_states[0].get_value()
+    assert all_flags[0].value == environment_model.feature_states[0].feature_state_value
 
 
 @responses.activate()
@@ -160,13 +160,14 @@ def test_get_identity_flags_uses_local_environment_when_available(
         feature=FeatureModel(id=1, name="some_feature", type="STANDARD"),
         enabled=True,
         featurestate_uuid=str(uuid.uuid4()),
+        feature_state_value="some-feature-state-value",
     )
     mock_engine.get_evaluation_result.return_value = {
         "flags": [
             {
                 "name": "some_feature",
                 "enabled": True,
-                "value": None,
+                "value": "some-feature-state-value",
                 "feature_key": "1",
             }
         ],
@@ -182,7 +183,7 @@ def test_get_identity_flags_uses_local_environment_when_available(
     # Then
     mock_engine.get_evaluation_result.assert_called_once()
     assert identity_flags[0].enabled is feature_state.enabled
-    assert identity_flags[0].value == feature_state.get_value()
+    assert identity_flags[0].value == feature_state.feature_state_value
 
 
 @responses.activate()

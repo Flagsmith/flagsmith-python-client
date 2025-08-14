@@ -329,9 +329,18 @@ class Flagsmith:
     def _get_environment_flags_from_document(self) -> Flags:
         if self._environment is None:
             raise TypeError("No environment present")
-        return Flags.from_feature_state_models(
-            # TODO: Use from_evaluation_result
-            feature_states=engine.get_environment_feature_states(self._environment),
+        identity = self._get_identity_model(identifier="", traits=None)
+
+        context = map_environment_identity_to_context(
+            environment=self._environment,
+            identity=identity,
+            override_traits=None,
+        )
+
+        evaluation_result = engine.get_evaluation_result(context=context)
+
+        return Flags.from_evaluation_result(
+            evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
         )
@@ -342,6 +351,7 @@ class Flagsmith:
         identity_model = self._get_identity_model(identifier, **traits)
         if self._environment is None:
             raise TypeError("No environment present")
+
         context = map_environment_identity_to_context(
             environment=self._environment,
             identity=identity_model,
@@ -356,7 +366,6 @@ class Flagsmith:
             evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
-            identity_id=identity_model.composite_key,
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
