@@ -6,7 +6,7 @@ from datetime import timezone
 import pydantic
 import requests
 from flag_engine import engine
-from flag_engine.context.mappers import map_environment_identity_to_context
+from flagsmith.mappers import map_environment_identity_to_context
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
