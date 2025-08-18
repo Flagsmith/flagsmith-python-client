@@ -27,7 +27,7 @@ OverridesKey = typing.Tuple[OverrideKey, ...]
 
 def map_environment_identity_to_context(
     environment: EnvironmentModel,
-    identity: IdentityModel,
+    identity: typing.Optional[IdentityModel],
     override_traits: typing.Optional[typing.List[TraitModel]],
 ) -> EvaluationContext:
     """
@@ -58,6 +58,8 @@ def map_environment_identity_to_context(
         typing.List[str],
     ] = defaultdict(list)
     for identity_override in (*environment.identity_overrides, identity):
+        if identity_override is None:
+            continue
         identity_features: typing.List[FeatureStateModel] = (
             identity_override.identity_features
         )
@@ -123,7 +125,9 @@ def map_environment_identity_to_context(
                     else identity.identity_traits
                 )
             },
-        },
+        }
+        if identity
+        else None,
         "features": features,
         "segments": segments,
     }
