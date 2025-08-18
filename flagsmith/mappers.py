@@ -1,3 +1,4 @@
+import json
 import typing
 from collections import defaultdict
 
@@ -9,11 +10,13 @@ from flag_engine.context.types import (
 )
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.features.models import (
+    FeatureModel,
     FeatureStateModel,
     MultivariateFeatureStateValueModel,
 )
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
+from flag_engine.result.types import FlagResult
 from flag_engine.segments.models import SegmentRuleModel
 
 OverrideKey = typing.Tuple[
@@ -38,28 +41,61 @@ def map_environment_identity_to_context(
     :param override_traits: A list of TraitModel objects, to be used in place of `identity.identity_traits` if provided.
     :return: An EvaluationContext containing the environment and identity.
     """
-    features = map_feature_states_to_feature_contexts(environment.feature_states)
+    features = _map_feature_states_to_feature_contexts(environment.feature_states)
     segments: typing.Dict[str, SegmentContext] = {}
     for segment in environment.project.segments:
         segment_ctx_data: SegmentContext = {
             "key": str(segment.id),
             "name": segment.name,
-            "rules": map_segment_rules_to_segment_context_rules(segment.rules),
+            "rules": _map_segment_rules_to_segment_context_rules(segment.rules),
         }
         if segment_feature_states := segment.feature_states:
             segment_ctx_data["overrides"] = list(
-                map_feature_states_to_feature_contexts(segment_feature_states).values()
+                _map_feature_states_to_feature_contexts(segment_feature_states).values()
             )
-        segments[segment.name] = segment_ctx_data
-    # Concatenate feature states overriden for identities
-    # to segment contexts
+        segments[str(segment.id)] = segment_ctx_data
+    identity_overrides = environment.identity_overrides + [identity] if identity else []
+    segments.update(_map_identity_overrides_to_segment_contexts(identity_overrides))
+    return {
+        "environment": {
+            "key": environment.api_key,
+            "name": environment.name or "",
+        },
+        "identity": (
+            {
+                "identifier": identity.identifier,
+                "key": str(identity.django_id or identity.composite_key),
+                "traits": {
+                    trait.trait_key: trait.trait_value
+                    for trait in (
+                        override_traits
+                        if override_traits is not None
+                        else identity.identity_traits
+                    )
+                },
+            }
+            if identity
+            else None
+        ),
+        "features": features,
+        "segments": segments,
+    }
+
+
+def _map_identity_overrides_to_segment_contexts(
+    identity_overrides: typing.List[IdentityModel],
+) -> typing.Dict[str, SegmentContext]:
+    """
+    Map identity overrides to segment contexts.
+
+    :param identity_overrides: A list of IdentityModel objects.
+    :return: A dictionary mapping segment ids to SegmentContext objects.
+    """
     features_to_identifiers: typing.Dict[
         OverridesKey,
         typing.List[str],
     ] = defaultdict(list)
-    for identity_override in (*environment.identity_overrides, identity):
-        if identity_override is None:
-            continue
+    for identity_override in identity_overrides:
         identity_features: typing.List[FeatureStateModel] = (
             identity_override.identity_features
         )
@@ -75,24 +111,19 @@ def map_environment_identity_to_context(
             for feature_state in sorted(identity_features, key=_get_name)
         )
         features_to_identifiers[overrides_key].append(identity_override.identifier)
+    segment_contexts: typing.Dict[str, SegmentContext] = {}
     for overrides_key, identifiers in features_to_identifiers.items():
-        segment_name = f"overrides_{abs(hash(overrides_key))}"
-        segments[segment_name] = SegmentContext(
+        segment_contexts[str(hash(overrides_key))] = SegmentContext(
             key="",  # Identity override segments never use % Split operator
-            name=segment_name,
+            name="identity_overrides",
             rules=[
                 {
                     "type": "ALL",
-                    "rules": [
+                    "conditions": [
                         {
-                            "type": "ALL",
-                            "conditions": [
-                                {
-                                    "property": "$.identity.identifier",
-                                    "operator": "IN",
-                                    "value": ",".join(identifiers),
-                                }
-                            ],
+                            "property": "$.identity.identifier",
+                            "operator": "IN",
+                            "value": json.dumps(identifiers),
                         }
                     ],
                 }
@@ -109,31 +140,10 @@ def map_environment_identity_to_context(
                 for feature_key, feature_name, feature_enabled, feature_value in overrides_key
             ],
         )
-    return {
-        "environment": {
-            "key": environment.api_key,
-            "name": environment.name or "",
-        },
-        "identity": {
-            "identifier": identity.identifier,
-            "key": str(identity.django_id or identity.composite_key),
-            "traits": {
-                trait.trait_key: trait.trait_value
-                for trait in (
-                    override_traits
-                    if override_traits is not None
-                    else identity.identity_traits
-                )
-            },
-        }
-        if identity
-        else None,
-        "features": features,
-        "segments": segments,
-    }
+    return segment_contexts
 
 
-def map_feature_states_to_feature_contexts(
+def _map_feature_states_to_feature_contexts(
     feature_states: typing.List[FeatureStateModel],
 ) -> typing.Dict[str, FeatureContext]:
     """
@@ -144,7 +154,7 @@ def map_feature_states_to_feature_contexts(
     """
     features: typing.Dict[str, FeatureContext] = {}
     for feature_state in feature_states:
-        feature_ctx_data: FeatureContext = {
+        feature_context: FeatureContext = {
             "key": str(feature_state.django_id or feature_state.featurestate_uuid),
             "feature_key": str(feature_state.feature.id),
             "name": feature_state.feature.name,
@@ -155,9 +165,10 @@ def map_feature_states_to_feature_contexts(
             MultivariateFeatureStateValueModel
         ]
         if (
-            multivariate_feature_state_values := feature_state.multivariate_feature_state_values
+            multivariate_feature_state_values
+            := feature_state.multivariate_feature_state_values
         ):
-            feature_ctx_data["variants"] = [
+            feature_context["variants"] = [
                 {
                     "value": multivariate_feature_state_value.multivariate_feature_option.value,
                     "weight": multivariate_feature_state_value.percentage_allocation,
@@ -169,21 +180,12 @@ def map_feature_states_to_feature_contexts(
             ]
         if feature_segment := feature_state.feature_segment:
             if (priority := feature_segment.priority) is not None:
-                feature_ctx_data["priority"] = priority
-        features[feature_state.feature.name] = feature_ctx_data
+                feature_context["priority"] = priority
+        features[feature_state.feature.name] = feature_context
     return features
 
 
-def _get_multivariate_feature_state_value_id(
-    multivariate_feature_state_value: MultivariateFeatureStateValueModel,
-) -> int:
-    return (
-        multivariate_feature_state_value.id
-        or multivariate_feature_state_value.mv_fs_value_uuid.int
-    )
-
-
-def map_segment_rules_to_segment_context_rules(
+def _map_segment_rules_to_segment_context_rules(
     rules: typing.List[SegmentRuleModel],
 ) -> typing.List[SegmentRule]:
     """
@@ -203,10 +205,46 @@ def map_segment_rules_to_segment_context_rules(
                 }
                 for condition in rule.conditions
             ],
-            "rules": map_segment_rules_to_segment_context_rules(rule.rules),
+            "rules": _map_segment_rules_to_segment_context_rules(rule.rules),
         }
         for rule in rules
     ]
+
+
+def map_flag_results_to_feature_states(
+    flag_results: typing.List[FlagResult],
+) -> typing.List[FeatureStateModel]:
+    """
+    Map flag results to feature states.
+
+    :param flag_results: A list of FlagResult objects.
+    :return: A list of FeatureStateModel objects.
+    """
+    return [
+        FeatureStateModel(
+            feature=FeatureModel(
+                id=flag_result["feature_key"],
+                name=flag_result["name"],
+                type=(
+                    "MULTIVARIATE"
+                    if flag_result["reason"].startswith("SPLIT")
+                    else "STANDARD"
+                ),
+            ),
+            enabled=flag_result["enabled"],
+            feature_state_value=flag_result["value"],
+        )
+        for flag_result in flag_results
+    ]
+
+
+def _get_multivariate_feature_state_value_id(
+    multivariate_feature_state_value: MultivariateFeatureStateValueModel,
+) -> int:
+    return (
+        multivariate_feature_state_value.id
+        or multivariate_feature_state_value.mv_fs_value_uuid.int
+    )
 
 
 def _get_name(feature_state: FeatureStateModel) -> str:
