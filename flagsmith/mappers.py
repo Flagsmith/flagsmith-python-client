@@ -114,20 +114,22 @@ def map_environment_identity_to_context(
             "key": environment.api_key,
             "name": environment.name or "",
         },
-        "identity": {
-            "identifier": identity.identifier,
-            "key": str(identity.django_id or identity.composite_key),
-            "traits": {
-                trait.trait_key: trait.trait_value
-                for trait in (
-                    override_traits
-                    if override_traits is not None
-                    else identity.identity_traits
-                )
-            },
-        }
-        if identity
-        else None,
+        "identity": (
+            {
+                "identifier": identity.identifier,
+                "key": str(identity.django_id or identity.composite_key),
+                "traits": {
+                    trait.trait_key: trait.trait_value
+                    for trait in (
+                        override_traits
+                        if override_traits is not None
+                        else identity.identity_traits
+                    )
+                },
+            }
+            if identity
+            else None
+        ),
         "features": features,
         "segments": segments,
     }
