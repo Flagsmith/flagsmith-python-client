@@ -165,8 +165,7 @@ def _map_feature_states_to_feature_contexts(
             MultivariateFeatureStateValueModel
         ]
         if (
-            multivariate_feature_state_values
-            := feature_state.multivariate_feature_state_values
+            multivariate_feature_state_values := feature_state.multivariate_feature_state_values
         ):
             feature_context["variants"] = [
                 {
