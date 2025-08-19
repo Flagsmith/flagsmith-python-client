@@ -6,11 +6,11 @@ from datetime import timezone
 import pydantic
 import requests
 from flag_engine import engine
+from flag_engine.context.mappers import map_environment_identity_to_context
 from flag_engine.environments.models import EnvironmentModel
 from flag_engine.identities.models import IdentityModel
 from flag_engine.identities.traits.models import TraitModel
 from flag_engine.identities.traits.types import TraitValue
-from flag_engine.segments.evaluator import get_identity_segments
 from requests.adapters import HTTPAdapter
 from requests.utils import default_user_agent
 from urllib3 import Retry
@@ -280,10 +280,18 @@ class Flagsmith:
 
         traits = traits or {}
         identity_model = self._get_identity_model(identifier, **traits)
-        segment_models = get_identity_segments(
-            environment=self._environment, identity=identity_model
+        context = map_environment_identity_to_context(
+            environment=self._environment,
+            identity=identity_model,
+            override_traits=None,
         )
-        return [Segment(id=sm.id, name=sm.name) for sm in segment_models]
+        evaluation_result = engine.get_evaluation_result(
+            context=context,
+        )
+        return [
+            Segment(id=int(sm["key"]), name=sm["name"])
+            for sm in evaluation_result.get("segments", [])
+        ]
 
     def update_environment(self) -> None:
         try:
@@ -321,8 +329,18 @@ class Flagsmith:
     def _get_environment_flags_from_document(self) -> Flags:
         if self._environment is None:
             raise TypeError("No environment present")
-        return Flags.from_feature_state_models(
-            feature_states=engine.get_environment_feature_states(self._environment),
+        identity = self._get_identity_model(identifier="", traits=None)
+
+        context = map_environment_identity_to_context(
+            environment=self._environment,
+            identity=identity,
+            override_traits=None,
+        )
+
+        evaluation_result = engine.get_evaluation_result(context=context)
+
+        return Flags.from_evaluation_result(
+            evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
         )
@@ -333,13 +351,20 @@ class Flagsmith:
         identity_model = self._get_identity_model(identifier, **traits)
         if self._environment is None:
             raise TypeError("No environment present")
-        feature_states = engine.get_identity_feature_states(
-            self._environment, identity_model
+
+        context = map_environment_identity_to_context(
+            environment=self._environment,
+            identity=identity_model,
+            override_traits=None,
         )
-        return Flags.from_feature_state_models(
-            feature_states=feature_states,
+
+        evaluation_result = engine.get_evaluation_result(
+            context=context,
+        )
+
+        return Flags.from_evaluation_result(
+            evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
-            identity_id=identity_model.composite_key,
             default_flag_handler=self.default_flag_handler,
         )
 

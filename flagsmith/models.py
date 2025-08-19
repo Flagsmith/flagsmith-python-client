@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, field
 
-from flag_engine.features.models import FeatureStateModel
+from flag_engine.result.types import EvaluationResult, FlagResult
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
@@ -27,16 +27,15 @@ class Flag(BaseFlag):
     is_default: bool = field(default=False)
 
     @classmethod
-    def from_feature_state_model(
+    def from_evaluation_result(
         cls,
-        feature_state_model: FeatureStateModel,
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
+        flag: FlagResult,
     ) -> Flag:
         return Flag(
-            enabled=feature_state_model.enabled,
-            value=feature_state_model.get_value(identity_id=identity_id),
-            feature_name=feature_state_model.feature.name,
-            feature_id=feature_state_model.feature.id,
+            enabled=flag["enabled"],
+            value=flag["value"],
+            feature_name=flag["name"],
+            feature_id=int(flag["feature_key"]),
         )
 
     @classmethod
@@ -56,22 +55,22 @@ class Flags:
     _analytics_processor: typing.Optional[AnalyticsProcessor] = None
 
     @classmethod
-    def from_feature_state_models(
+    def from_evaluation_result(
         cls,
-        feature_states: typing.Sequence[FeatureStateModel],
+        evaluation_result: EvaluationResult,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        identity_id: typing.Optional[typing.Union[str, int]] = None,
     ) -> Flags:
-        flags = {
-            feature_state.feature.name: Flag.from_feature_state_model(
-                feature_state, identity_id=identity_id
-            )
-            for feature_state in feature_states
-        }
-
         return cls(
-            flags=flags,
+            flags={
+                flag["name"]: Flag(
+                    enabled=flag["enabled"],
+                    value=flag["value"],
+                    feature_name=flag["name"],
+                    feature_id=int(flag["feature_key"]),
+                )
+                for flag in evaluation_result["flags"]
+            },
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
         )
