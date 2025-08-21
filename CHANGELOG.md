@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.10.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.0...v3.10.1) (2025-08-21)
+
+
+### CI
+
+* pre-commit autoupdate ([#137](https://github.com/Flagsmith/flagsmith-python-client/issues/137)) ([0372818](https://github.com/Flagsmith/flagsmith-python-client/commit/0372818c9717021c583b561816f54d62eb8be88e))
+
+
+### Other
+
+* replacing-deprecated-methods ([#143](https://github.com/Flagsmith/flagsmith-python-client/issues/143)) ([03715ab](https://github.com/Flagsmith/flagsmith-python-client/commit/03715abc403eeface2bd4d3d472b6da97d7d0e77))
+
 ## [3.10.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.9.2...v3.10.0) (2025-08-06)
 
 ### Features
