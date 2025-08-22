@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.10.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.1...v3.10.2) (2025-08-22)
+
+
+### Other
+
+* Add `CODEOWNERS` ([#148](https://github.com/Flagsmith/flagsmith-python-client/issues/148)) ([a55a921](https://github.com/Flagsmith/flagsmith-python-client/commit/a55a92136699af06390a6570850d45464dcad7aa))
+
 ## [3.10.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.0...v3.10.1) (2025-08-21)
 
 ### CI
