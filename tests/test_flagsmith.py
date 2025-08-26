@@ -2,13 +2,11 @@ import json
 import sys
 import time
 import typing
-import uuid
 
 import pytest
 import requests
 import responses
-from flag_engine.environments.models import EnvironmentModel
-from flag_engine.features.models import FeatureModel, FeatureStateModel
+from flag_engine.engine import EvaluationContext
 from pytest_mock import MockerFixture
 from responses import matchers
 
@@ -18,7 +16,7 @@ from flagsmith.exceptions import (
     FlagsmithFeatureDoesNotExistError,
 )
 from flagsmith.models import DefaultFlag, Flags
-from flagsmith.offline_handlers import BaseOfflineHandler
+from flagsmith.offline_handlers import OfflineHandler
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
@@ -40,18 +38,20 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(
 
 @responses.activate()
 def test_update_environment_sets_environment(
-    flagsmith: Flagsmith, environment_json: str, environment_model: EnvironmentModel
+    flagsmith: Flagsmith,
+    environment_json: str,
+    evaluation_context: EvaluationContext,
 ) -> None:
     # Given
     responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
-    assert flagsmith._environment is None
+    assert flagsmith._evaluation_context is None
 
     # When
     flagsmith.update_environment()
 
     # Then
-    assert flagsmith._environment is not None
-    assert flagsmith._environment == environment_model
+    assert flagsmith._evaluation_context is not None
+    assert flagsmith._evaluation_context == evaluation_context
 
 
 @responses.activate()
@@ -76,10 +76,11 @@ def test_get_environment_flags_calls_api_when_no_local_environment(
 
 @responses.activate()
 def test_get_environment_flags_uses_local_environment_when_available(
-    flagsmith: Flagsmith, environment_model: EnvironmentModel
+    flagsmith: Flagsmith,
+    evaluation_context: EvaluationContext,
 ) -> None:
     # Given
-    flagsmith._environment = environment_model
+    flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
 
     # When
@@ -88,9 +89,9 @@ def test_get_environment_flags_uses_local_environment_when_available(
     # Then
     assert len(responses.calls) == 0
     assert len(all_flags) == 1
-    assert all_flags[0].feature_name == environment_model.feature_states[0].feature.name
-    assert all_flags[0].enabled == environment_model.feature_states[0].enabled
-    assert all_flags[0].value == environment_model.feature_states[0].feature_state_value
+    assert all_flags[0].feature_name == "some_feature"
+    assert all_flags[0].enabled
+    assert all_flags[0].value == "some-value"
 
 
 @responses.activate()
@@ -149,19 +150,15 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
 
 @responses.activate()
 def test_get_identity_flags_uses_local_environment_when_available(
-    flagsmith: Flagsmith, environment_model: EnvironmentModel, mocker: MockerFixture
+    flagsmith: Flagsmith,
+    evaluation_context: EvaluationContext,
+    mocker: MockerFixture,
 ) -> None:
     # Given
-    flagsmith._environment = environment_model
+    flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
     mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
-    feature_state = FeatureStateModel(
-        feature=FeatureModel(id=1, name="some_feature", type="STANDARD"),
-        enabled=True,
-        featurestate_uuid=str(uuid.uuid4()),
-        feature_state_value="some-feature-state-value",
-    )
     expected_evaluation_result = {
         "flags": [
             {
@@ -190,8 +187,8 @@ def test_get_identity_flags_uses_local_environment_when_available(
     assert context["identity"]["traits"]["some_trait"] == "some_value"
     assert "some_trait" in context["identity"]["traits"]
 
-    assert identity_flags[0].enabled is feature_state.enabled
-    assert identity_flags[0].value == feature_state.feature_state_value
+    assert identity_flags[0].enabled is True
+    assert identity_flags[0].value == "some-feature-state-value"
 
 
 @responses.activate()
@@ -229,7 +226,6 @@ def test_get_identity_flags__transient_identity__calls_expected(
 def test_get_identity_flags__transient_trait_keys__calls_expected(
     flagsmith: Flagsmith,
     identities_json: str,
-    environment_model: EnvironmentModel,
     mocker: MockerFixture,
 ) -> None:
     # Given
@@ -487,7 +483,7 @@ def test_default_flags_are_used_if_api_error_and_default_flag_handler_given(
 
 
 def test_get_identity_segments_no_traits(
-    local_eval_flagsmith: Flagsmith, environment_model: EnvironmentModel
+    local_eval_flagsmith: Flagsmith,
 ) -> None:
     # Given
     identifier = "identifier"
@@ -500,7 +496,7 @@ def test_get_identity_segments_no_traits(
 
 
 def test_get_identity_segments_with_valid_trait(
-    local_eval_flagsmith: Flagsmith, environment_model: EnvironmentModel
+    local_eval_flagsmith: Flagsmith,
 ) -> None:
     # Given
     identifier = "identifier"
@@ -530,11 +526,11 @@ def test_initialise_flagsmith_with_proxies() -> None:
     assert flagsmith.session.proxies == proxies
 
 
-def test_offline_mode(environment_model: EnvironmentModel) -> None:
+def test_offline_mode(evaluation_context: EvaluationContext) -> None:
     # Given
-    class DummyOfflineHandler(BaseOfflineHandler):
-        def get_environment(self) -> EnvironmentModel:
-            return environment_model
+    class DummyOfflineHandler:
+        def get_evaluation_context(self) -> EvaluationContext:
+            return evaluation_context
 
     # When
     flagsmith = Flagsmith(offline_mode=True, offline_handler=DummyOfflineHandler())
@@ -550,12 +546,13 @@ def test_offline_mode(environment_model: EnvironmentModel) -> None:
 
 @responses.activate()
 def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
-    mocker: MockerFixture, environment_model: EnvironmentModel
+    mocker: MockerFixture,
+    evaluation_context: EvaluationContext,
 ) -> None:
     # Given
     api_url = "http://some.flagsmith.com/api/v1/"
-    mock_offline_handler = mocker.MagicMock(spec=BaseOfflineHandler)
-    mock_offline_handler.get_environment.return_value = environment_model
+    mock_offline_handler = mocker.MagicMock(spec=OfflineHandler)
+    mock_offline_handler.get_evaluation_context.return_value = evaluation_context
 
     flagsmith = Flagsmith(
         environment_key="some-key",
@@ -571,7 +568,7 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
     identity_flags = flagsmith.get_identity_flags("identity", traits={})
 
     # Then
-    mock_offline_handler.get_environment.assert_called_once_with()
+    mock_offline_handler.get_evaluation_context.assert_called_once_with()
 
     assert environment_flags.is_feature_enabled("some_feature") is True
     assert environment_flags.get_feature_value("some_feature") == "some-value"
@@ -583,13 +580,13 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
 @responses.activate()
 def test_offline_mode__local_evaluation__correct_fallback(
     mocker: MockerFixture,
-    environment_model: EnvironmentModel,
+    evaluation_context: EvaluationContext,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Given
     api_url = "http://some.flagsmith.com/api/v1/"
-    mock_offline_handler = mocker.MagicMock(spec=BaseOfflineHandler)
-    mock_offline_handler.get_environment.return_value = environment_model
+    mock_offline_handler = mocker.MagicMock(spec=OfflineHandler)
+    mock_offline_handler.get_evaluation_context.return_value = evaluation_context
 
     mocker.patch("flagsmith.flagsmith.EnvironmentDataPollingManager")
 
@@ -607,7 +604,7 @@ def test_offline_mode__local_evaluation__correct_fallback(
     identity_flags = flagsmith.get_identity_flags("identity", traits={})
 
     # Then
-    mock_offline_handler.get_environment.assert_called_once_with()
+    mock_offline_handler.get_evaluation_context.assert_called_once_with()
 
     assert environment_flags.is_feature_enabled("some_feature") is True
     assert environment_flags.get_feature_value("some_feature") == "some-value"
@@ -617,7 +614,7 @@ def test_offline_mode__local_evaluation__correct_fallback(
 
     [error_log_record] = caplog.records
     assert error_log_record.levelname == "ERROR"
-    assert error_log_record.message == "Error updating environment"
+    assert error_log_record.message == "Error retrieving environment document from API"
 
 
 def test_cannot_use_offline_mode_without_offline_handler() -> None:
@@ -636,7 +633,7 @@ def test_cannot_use_default_handler_and_offline_handler(mocker: MockerFixture) -
     # When
     with pytest.raises(ValueError) as e:
         Flagsmith(
-            offline_handler=mocker.MagicMock(spec=BaseOfflineHandler),
+            offline_handler=mocker.MagicMock(spec=OfflineHandler),
             default_flag_handler=lambda flag_name: DefaultFlag(
                 enabled=True, value="foo"
             ),

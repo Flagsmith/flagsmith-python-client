@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock
 
 import requests
@@ -38,13 +38,13 @@ def test_environment_updates_on_recent_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 2)
-    environment_updated_at = datetime(2020, 1, 1, 1, 1, 1)
+    environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._environment = MagicMock()
-    flagsmith._environment.updated_at = environment_updated_at
+    flagsmith._evaluation_context = MagicMock()
+    flagsmith._environment_updated_at = environment_updated_at
     flagsmith.handle_stream_event(
         event=StreamEvent(updated_at=stream_updated_at.timestamp())
     )
@@ -56,13 +56,13 @@ def test_environment_does_not_update_on_past_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
-    environment_updated_at = datetime(2020, 1, 1, 1, 1, 2)
+    environment_updated_at = datetime(2020, 1, 1, 1, 1, 2, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._environment = MagicMock()
-    flagsmith._environment.updated_at = environment_updated_at
+    flagsmith._evaluation_context = MagicMock()
+    flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(
         event=StreamEvent(updated_at=stream_updated_at.timestamp())
@@ -75,13 +75,13 @@ def test_environment_does_not_update_on_same_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
-    environment_updated_at = datetime(2020, 1, 1, 1, 1, 1)
+    environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._environment = MagicMock()
-    flagsmith._environment.updated_at = environment_updated_at
+    flagsmith._evaluation_context = MagicMock()
+    flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(
         event=StreamEvent(updated_at=stream_updated_at.timestamp())
