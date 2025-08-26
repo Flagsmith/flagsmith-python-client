@@ -15,7 +15,6 @@ requests = "^2.32.3"
 requests-futures = "^1.0.1"
 flagsmith-flag-engine = { git = "https://github.com/Flagsmith/flagsmith-engine/", rev = "9ab732a20975fefa5996d89a2cbfd95ffb52c3d3" }
 sseclient-py = "^1.8.0"
-pydantic = "^2"
 
 [tool.poetry.group.dev]
 optional = true
@@ -31,7 +30,6 @@ types-requests = "^2.32"
 pyfakefs = "^5.9.2"
 
 [tool.mypy]
-plugins = ["pydantic.mypy"]
 exclude = ["example/*"]
 
 [tool.black]

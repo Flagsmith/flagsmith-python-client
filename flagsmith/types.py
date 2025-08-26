@@ -1,4 +1,5 @@
 import typing
+from datetime import datetime
 
 from flag_engine.engine import ContextValue
 from typing_extensions import NotRequired, TypeAlias
@@ -15,6 +16,10 @@ JsonType: TypeAlias = typing.Union[
     typing.Dict[str, "JsonType"],
     typing.List["JsonType"],
 ]
+
+
+class StreamEvent(typing.TypedDict):
+    updated_at: datetime
 
 
 class TraitConfig(typing.TypedDict):

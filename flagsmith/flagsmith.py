@@ -207,7 +207,7 @@ class Flagsmith:
             raise ValueError(
                 "Cannot handle stream events before retrieving initial environment"
             )
-        if event.updated_at > environment_updated_at:
+        if event["updated_at"] > environment_updated_at:
             self.update_environment()
 
     def get_environment_flags(self) -> Flags:

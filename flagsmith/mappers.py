@@ -1,14 +1,18 @@
+import json
 import typing
 from collections import defaultdict
 from datetime import datetime, timezone
 from operator import itemgetter
 
+import sseclient
 from flag_engine.context.types import (
     EvaluationContext,
     FeatureContext,
     SegmentContext,
     SegmentRule,
 )
+
+from flagsmith.types import StreamEvent
 
 OverrideKey = typing.Tuple[
     str,
@@ -19,13 +23,24 @@ OverrideKey = typing.Tuple[
 OverridesKey = typing.Tuple[OverrideKey, ...]
 
 
+def map_sse_event_to_stream_event(event: sseclient.Event) -> StreamEvent:
+    event_data = json.loads(event.data)
+    return {
+        "updated_at": datetime.fromtimestamp(
+            event_data["updated_at"],
+            tz=timezone.utc,
+        )
+    }
+
+
 def map_environment_document_to_environment_updated_at(
     environment_document: dict[str, typing.Any],
 ) -> datetime:
-    updated_at = datetime.fromisoformat(environment_document["updated_at"])
-    if updated_at.tzinfo is None:
-        return updated_at.astimezone(tz=timezone.utc)
-    return updated_at
+    if (
+        updated_at := datetime.fromisoformat(environment_document["updated_at"])
+    ).tzinfo is None:
+        return updated_at.replace(tzinfo=timezone.utc)
+    return updated_at.astimezone(tz=timezone.utc)
 
 
 def map_environment_document_to_context(

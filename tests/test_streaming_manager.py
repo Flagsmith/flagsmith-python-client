@@ -37,7 +37,7 @@ def test_stream_manager_handles_timeout(
 def test_environment_updates_on_recent_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
-    stream_updated_at = datetime(2020, 1, 1, 1, 1, 2)
+    stream_updated_at = datetime(2020, 1, 1, 1, 1, 2, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
@@ -45,9 +45,7 @@ def test_environment_updates_on_recent_event(
     flagsmith = Flagsmith(environment_key=server_api_key)
     flagsmith._evaluation_context = MagicMock()
     flagsmith._environment_updated_at = environment_updated_at
-    flagsmith.handle_stream_event(
-        event=StreamEvent(updated_at=stream_updated_at.timestamp())
-    )
+    flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
     assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_called_once()
 
@@ -55,7 +53,7 @@ def test_environment_updates_on_recent_event(
 def test_environment_does_not_update_on_past_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
-    stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
+    stream_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 2, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
@@ -64,9 +62,7 @@ def test_environment_does_not_update_on_past_event(
     flagsmith._evaluation_context = MagicMock()
     flagsmith._environment_updated_at = environment_updated_at
 
-    flagsmith.handle_stream_event(
-        event=StreamEvent(updated_at=stream_updated_at.timestamp())
-    )
+    flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
     assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_not_called()
 
@@ -74,7 +70,7 @@ def test_environment_does_not_update_on_past_event(
 def test_environment_does_not_update_on_same_event(
     server_api_key: str, mocker: MockerFixture
 ) -> None:
-    stream_updated_at = datetime(2020, 1, 1, 1, 1, 1)
+    stream_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
     mocker.patch("flagsmith.Flagsmith.update_environment")
@@ -83,8 +79,6 @@ def test_environment_does_not_update_on_same_event(
     flagsmith._evaluation_context = MagicMock()
     flagsmith._environment_updated_at = environment_updated_at
 
-    flagsmith.handle_stream_event(
-        event=StreamEvent(updated_at=stream_updated_at.timestamp())
-    )
+    flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
     assert isinstance(flagsmith.update_environment, Mock)
     flagsmith.update_environment.assert_not_called()
