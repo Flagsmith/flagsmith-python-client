@@ -7,7 +7,8 @@ import responses
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
-from flagsmith.streaming_manager import EventStreamManager, StreamEvent
+from flagsmith.streaming_manager import EventStreamManager
+from flagsmith.types import StreamEvent
 
 
 def test_stream_manager_handles_timeout(

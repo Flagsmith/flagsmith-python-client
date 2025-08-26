@@ -18,8 +18,13 @@ from flagsmith.mappers import (
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
-from flagsmith.streaming_manager import EventStreamManager, StreamEvent
-from flagsmith.types import ApplicationMetadata, JsonType, TraitMapping
+from flagsmith.streaming_manager import EventStreamManager
+from flagsmith.types import (
+    ApplicationMetadata,
+    JsonType,
+    StreamEvent,
+    TraitMapping,
+)
 from flagsmith.utils.identities import generate_identity_data
 from flagsmith.version import __version__
 
