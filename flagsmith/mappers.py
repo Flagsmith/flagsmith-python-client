@@ -6,13 +6,14 @@ from operator import itemgetter
 
 import sseclient
 from flag_engine.context.types import (
+    ContextValue,
     EvaluationContext,
     FeatureContext,
     SegmentContext,
     SegmentRule,
 )
 
-from flagsmith.types import StreamEvent
+from flagsmith.types import StreamEvent, TraitConfig
 
 OverrideKey = typing.Tuple[
     str,
@@ -41,6 +42,36 @@ def map_environment_document_to_environment_updated_at(
     ).tzinfo is None:
         return updated_at.replace(tzinfo=timezone.utc)
     return updated_at.astimezone(tz=timezone.utc)
+
+
+def map_context_and_identity_data_to_context(
+    context: EvaluationContext,
+    identifier: str,
+    traits: typing.Optional[
+        typing.Mapping[
+            str,
+            typing.Union[
+                ContextValue,
+                TraitConfig,
+            ],
+        ]
+    ],
+) -> EvaluationContext:
+    return {
+        **context,
+        "identity": {
+            "identifier": identifier,
+            "key": f"{context['environment']['key']}_{identifier}",
+            "traits": {
+                trait_key: (
+                    trait_value_or_config["value"]
+                    if isinstance(trait_value_or_config, dict)
+                    else trait_value_or_config
+                )
+                for trait_key, trait_value_or_config in (traits or {}).items()
+            },
+        },
+    }
 
 
 def map_environment_document_to_context(

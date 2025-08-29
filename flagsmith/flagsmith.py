@@ -2,6 +2,7 @@ import logging
 import sys
 import typing
 from datetime import datetime
+from urllib.parse import urljoin
 
 import requests
 from flag_engine import engine
@@ -12,6 +13,7 @@ from urllib3 import Retry
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.mappers import (
+    map_context_and_identity_data_to_context,
     map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
 )
@@ -157,9 +159,9 @@ class Flagsmith:
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
-            self.environment_flags_url = f"{self.api_url}flags/"
-            self.identities_url = f"{self.api_url}identities/"
-            self.environment_url = f"{self.api_url}environment-document/"
+            self.environment_flags_url = urljoin(self.api_url, "flags/")
+            self.identities_url = urljoin(self.api_url, "identities/")
+            self.environment_url = urljoin(self.api_url, "environment-document/")
 
             if self.enable_local_evaluation:
                 if not environment_key.startswith("ser."):
@@ -183,9 +185,9 @@ class Flagsmith:
             if not self._evaluation_context:
                 raise ValueError("Unable to get environment from API key")
 
-            stream_url = (
-                f"{self.realtime_api_url}sse/environments/"
-                f"{self._evaluation_context['environment']['key']}/stream"
+            stream_url = urljoin(
+                self.realtime_api_url,
+                f"sse/environments/{self._evaluation_context['environment']['key']}/stream",
             )
 
             self.event_stream_thread = EventStreamManager(
@@ -278,15 +280,11 @@ class Flagsmith:
                 "Local evaluation required to obtain identity segments."
             )
 
-        identity_key = f"{self._evaluation_context['environment']['key']}_{identifier}"
-        context: engine.EvaluationContext = {
-            **self._evaluation_context,
-            "identity": {
-                "identifier": identifier,
-                "key": identity_key,
-                "traits": dict(traits or {}),
-            },
-        }
+        context = map_context_and_identity_data_to_context(
+            context=self._evaluation_context,
+            identifier=identifier,
+            traits=traits,
+        )
 
         evaluation_result = engine.get_evaluation_result(
             context=context,
@@ -354,22 +352,11 @@ class Flagsmith:
         if self._evaluation_context is None:
             raise TypeError("No environment present")
 
-        identity_key = f"{self._evaluation_context['environment']['key']}_{identifier}"
-        context: engine.EvaluationContext = {
-            **self._evaluation_context,
-            "identity": {
-                "identifier": identifier,
-                "key": identity_key,
-                "traits": {
-                    trait_key: (
-                        trait_value_or_config["value"]
-                        if isinstance(trait_value_or_config, dict)
-                        else trait_value_or_config
-                    )
-                    for trait_key, trait_value_or_config in traits.items()
-                },
-            },
-        }
+        context = map_context_and_identity_data_to_context(
+            context=self._evaluation_context,
+            identifier=identifier,
+            traits=traits,
+        )
         evaluation_result = engine.get_evaluation_result(
             context=context,
         )
