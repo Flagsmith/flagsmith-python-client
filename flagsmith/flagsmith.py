@@ -303,13 +303,13 @@ class Flagsmith:
             logger.exception("Error retrieving environment document from API")
         else:
             try:
-                self._evaluation_context, self._environment_updated_at = (
-                    map_environment_document_to_context(
-                        environment_data,
-                    ),
+                self._evaluation_context = map_environment_document_to_context(
+                    environment_data,
+                )
+                self._environment_updated_at = (
                     map_environment_document_to_environment_updated_at(
                         environment_data,
-                    ),
+                    )
                 )
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
