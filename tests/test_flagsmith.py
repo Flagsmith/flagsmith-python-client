@@ -90,7 +90,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert len(responses.calls) == 0
     assert len(all_flags) == 1
     assert all_flags[0].feature_name == "some_feature"
-    assert all_flags[0].enabled
+    assert all_flags[0].enabled is True
     assert all_flags[0].value == "some-value"
 
 
