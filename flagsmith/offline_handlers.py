@@ -21,8 +21,9 @@ class EvaluationContextLocalFileHandler:
     """
 
     def __init__(self, file_path: str) -> None:
-        with Path(file_path).open("r", encoding="utf-8") as f:
-            self.evaluation_context: EvaluationContext = json.load(f)
+        self.evaluation_context: EvaluationContext = json.loads(
+            Path(file_path).read_text(),
+        )
 
     def get_evaluation_context(self) -> EvaluationContext:
         return self.evaluation_context
@@ -38,13 +39,18 @@ class EnvironmentDocumentLocalFileHandler:
     """
 
     def __init__(self, file_path: str) -> None:
-        with Path(file_path).open("r", encoding="utf-8") as f:
-            self.evaluation_context: EvaluationContext = (
-                map_environment_document_to_context(json.load(f))
+        self.evaluation_context: EvaluationContext = (
+            map_environment_document_to_context(
+                json.loads(
+                    Path(file_path).read_text(),
+                ),
             )
+        )
 
     def get_evaluation_context(self) -> EvaluationContext:
         return self.evaluation_context
 
 
+# For backward compatibility, use the old class name for
+# the local file handler implementation dependant on the environment document.
 LocalFileHandler = EnvironmentDocumentLocalFileHandler
