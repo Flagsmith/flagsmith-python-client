@@ -6,12 +6,12 @@ from operator import itemgetter
 
 import sseclient
 from flag_engine.context.types import (
-    ContextValue,
     EvaluationContext,
     FeatureContext,
     SegmentContext,
     SegmentRule,
 )
+from flag_engine.segments.types import ContextValue
 
 from flagsmith.types import StreamEvent, TraitConfig
 
