@@ -96,11 +96,11 @@ def map_environment_document_to_context(
                     "rules": _map_environment_document_rules_to_context_rules(
                         segment["rules"]
                     ),
-                    "overrides": [
-                        *_map_environment_document_feature_states_to_feature_contexts(
+                    "overrides": list(
+                        _map_environment_document_feature_states_to_feature_contexts(
                             segment.get("feature_states") or []
                         )
-                    ],
+                    ),
                 }
                 for segment in environment_document["project"]["segments"]
             },
