@@ -53,9 +53,10 @@ def test_analytics_processor_calling_track_feature_calls_flush_when_timer_runs_o
     analytics_processor: AnalyticsProcessor,
 ) -> None:
     # Given
-    with mock.patch("flagsmith.analytics.datetime") as mocked_datetime, mock.patch(
-        "flagsmith.analytics.session"
-    ) as session:
+    with (
+        mock.patch("flagsmith.analytics.datetime") as mocked_datetime,
+        mock.patch("flagsmith.analytics.session") as session,
+    ):
         # Let's move the time
         mocked_datetime.now.return_value = datetime.now() + timedelta(
             seconds=ANALYTICS_TIMER + 1

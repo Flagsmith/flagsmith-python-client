@@ -3,15 +3,13 @@ import threading
 import typing
 from typing import Callable, Optional
 
-import pydantic
 import requests
 import sseclient
 
+from flagsmith.mappers import map_sse_event_to_stream_event
+from flagsmith.types import StreamEvent
+
 logger = logging.getLogger(__name__)
-
-
-class StreamEvent(pydantic.BaseModel):
-    updated_at: pydantic.AwareDatetime
 
 
 class EventStreamManager(threading.Thread):
@@ -40,9 +38,9 @@ class EventStreamManager(threading.Thread):
                 ) as response:
                     sse_client = sseclient.SSEClient(chunk for chunk in response)
                     for event in sse_client.events():
-                        self.on_event(StreamEvent.model_validate_json(event.data))
+                        self.on_event(map_sse_event_to_stream_event(event))
 
-            except (requests.RequestException, pydantic.ValidationError):
+            except (requests.RequestException, ValueError, TypeError):
                 logger.exception("Error opening or reading from the event stream")
 
     def stop(self) -> None:

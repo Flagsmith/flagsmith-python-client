@@ -1,22 +1,21 @@
-from unittest.mock import mock_open, patch
-
-from flag_engine.environments.models import EnvironmentModel
+from flag_engine.engine import EvaluationContext
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 from flagsmith.offline_handlers import LocalFileHandler
 
 
-def test_local_file_handler(environment_json: str) -> None:
-    with patch("builtins.open", mock_open(read_data=environment_json)) as mock_file:
-        # Given
-        environment_document_file_path = "/some/path/environment.json"
-        local_file_handler = LocalFileHandler(environment_document_file_path)
+def test_local_file_handler(
+    fs: FakeFilesystem,
+    evaluation_context: EvaluationContext,
+    environment_json: str,
+) -> None:
+    # Given
+    environment_document_file_path = "/some/path/environment.json"
+    fs.create_file(environment_document_file_path, contents=environment_json)
+    local_file_handler = LocalFileHandler(environment_document_file_path)
 
-        # When
-        environment_model = local_file_handler.get_environment()
+    # When
+    result = local_file_handler.get_evaluation_context()
 
-        # Then
-        assert isinstance(environment_model, EnvironmentModel)
-        assert (
-            environment_model.api_key == "B62qaMZNwfiqT76p38ggrQ"
-        )  # hard coded from json file
-        mock_file.assert_called_once_with(environment_document_file_path)
+    # Then
+    assert result == evaluation_context

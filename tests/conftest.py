@@ -7,11 +7,13 @@ from typing import Generator
 
 import pytest
 import responses
-from flag_engine.environments.models import EnvironmentModel
+from flag_engine.engine import EvaluationContext
+from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.mappers import map_environment_document_to_context
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -39,8 +41,10 @@ def flagsmith(api_key: str) -> Flagsmith:
 
 
 @pytest.fixture()
-def environment_json() -> typing.Generator[str, None, None]:
-    with open(os.path.join(DATA_DIR, "environment.json"), "rt") as f:
+def environment_json(fs: FakeFilesystem) -> typing.Generator[str, None, None]:
+    environment_json_path = os.path.join(DATA_DIR, "environment.json")
+    fs.add_real_file(environment_json_path)
+    with open(environment_json_path, "rt") as f:
         yield f.read()
 
 
@@ -70,8 +74,8 @@ def local_eval_flagsmith(
 
 
 @pytest.fixture()
-def environment_model(environment_json: str) -> EnvironmentModel:
-    return EnvironmentModel.model_validate_json(environment_json)
+def evaluation_context(environment_json: str) -> EvaluationContext:
+    return map_environment_document_to_context(json.loads(environment_json))
 
 
 @pytest.fixture()

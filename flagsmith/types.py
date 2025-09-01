@@ -1,6 +1,7 @@
 import typing
+from datetime import datetime
 
-from flag_engine.identities.traits.types import TraitValue
+from flag_engine.engine import ContextValue
 from typing_extensions import NotRequired, TypeAlias
 
 _JsonScalarType: TypeAlias = typing.Union[
@@ -17,12 +18,16 @@ JsonType: TypeAlias = typing.Union[
 ]
 
 
+class StreamEvent(typing.TypedDict):
+    updated_at: datetime
+
+
 class TraitConfig(typing.TypedDict):
-    value: TraitValue
+    value: ContextValue
     transient: bool
 
 
-TraitMapping: TypeAlias = typing.Mapping[str, typing.Union[TraitValue, TraitConfig]]
+TraitMapping: TypeAlias = typing.Mapping[str, typing.Union[ContextValue, TraitConfig]]
 
 
 class ApplicationMetadata(typing.TypedDict):

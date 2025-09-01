@@ -25,19 +25,3 @@ jobs:
             refactor
             test
             chore
-      - name: Auto-label PR with Conventional Commit title
-        uses: kramen22/conventional-release-labels@v1
-        with:
-          type_labels: |
-            {
-              "feat": "feature",
-              "fix": "fix",
-              "ci": "ci-cd",
-              "docs": "docs",
-              "deps": "dependencies",
-              "perf": "performance",
-              "refactor": "refactor",
-              "test": "testing",
-              "chore": "chore"
-            }
-          ignored_types: '[]'
