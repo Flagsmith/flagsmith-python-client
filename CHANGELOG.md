@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.1...v4.0.0) (2025-09-02)
+
+### ⚠ BREAKING CHANGES
+
+- Engine V7 compatibility ([#150](https://github.com/Flagsmith/flagsmith-python-client/issues/150))
+
+### Features
+
+- Engine V7 compatibility ([#150](https://github.com/Flagsmith/flagsmith-python-client/issues/150))
+  ([5ecb078](https://github.com/Flagsmith/flagsmith-python-client/commit/5ecb0788b6c2903826210e0c453d68769220d250))
+- Standardised `User-Agent` ([#152](https://github.com/Flagsmith/flagsmith-python-client/issues/152))
+  ([a0e96c9](https://github.com/Flagsmith/flagsmith-python-client/commit/a0e96c907f3401eb9fd801af05400e4ce92f8feb))
+
+### Other
+
+- Add `CODEOWNERS` ([#148](https://github.com/Flagsmith/flagsmith-python-client/issues/148))
+  ([a55a921](https://github.com/Flagsmith/flagsmith-python-client/commit/a55a92136699af06390a6570850d45464dcad7aa))
+
 ## [3.10.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.0...v3.10.1) (2025-08-21)
 
 ### CI
