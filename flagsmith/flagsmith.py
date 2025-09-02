@@ -1,5 +1,4 @@
 import logging
-import sys
 import typing
 from datetime import datetime
 from urllib.parse import urljoin
@@ -7,7 +6,6 @@ from urllib.parse import urljoin
 import requests
 from flag_engine import engine
 from requests.adapters import HTTPAdapter
-from requests.utils import default_user_agent
 from urllib3 import Retry
 
 from flagsmith.analytics import AnalyticsProcessor
@@ -34,11 +32,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
-DEFAULT_USER_AGENT = (
-    f"flagsmith-python-client/{__version__} "
-    + default_user_agent()
-    + f" python/{sys.version_info.major}.{sys.version_info.minor}"
-)
+DEFAULT_USER_AGENT = f"flagsmith-python-sdk/{__version__}"
 
 
 class Flagsmith:

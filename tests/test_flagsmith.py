@@ -1,5 +1,4 @@
 import json
-import sys
 import time
 import typing
 
@@ -817,10 +816,7 @@ def test_flagsmith__init__expected_headers_sent(
     # Then
     headers = responses.calls[0].request.headers
     assert headers == {
-        "User-Agent": (
-            f"flagsmith-python-client/{__version__} python-requests/{requests.__version__} "
-            f"python/{sys.version_info.major}.{sys.version_info.minor}"
-        ),
+        "User-Agent": f"flagsmith-python-sdk/{__version__}",
         "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
