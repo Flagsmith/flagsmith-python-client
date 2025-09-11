@@ -80,7 +80,7 @@ def map_environment_document_to_context(
     return {
         "environment": {
             "key": environment_document["api_key"],
-            "name": "Test Environment",
+            "name": environment_document["name"],
         },
         "features": {
             feature["name"]: feature
