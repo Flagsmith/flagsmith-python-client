@@ -43,8 +43,8 @@
         {
             "multivariate_feature_state_values": [],
             "feature_state_value": "some-value",
-            "id": 1,
-            "featurestate_uuid": "40eb539d-3713-4720-bbd4-829dbef10d51",
+            "django_id": 1,
+            "featurestate_uuid": "799d42c3-e973-4d43-957a-35a2aea169c1",
             "feature": {
                 "name": "some_feature",
                 "type": "STANDARD",
