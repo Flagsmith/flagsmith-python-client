@@ -2,11 +2,14 @@
 
 ## [4.0.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.0...v4.0.1) (2025-09-19)
 
-
 ### Bug Fixes
 
-* Environment name not mapped to evaluation context ([#153](https://github.com/Flagsmith/flagsmith-python-client/issues/153)) ([3fcae7c](https://github.com/Flagsmith/flagsmith-python-client/commit/3fcae7c13fb36428ad8137195916f102e39e9453))
-* Feature state `django_id` fields are not handled ([#156](https://github.com/Flagsmith/flagsmith-python-client/issues/156)) ([860b630](https://github.com/Flagsmith/flagsmith-python-client/commit/860b6303cb310166d4bc740fcd8213f4c92164dd))
+- Environment name not mapped to evaluation context
+  ([#153](https://github.com/Flagsmith/flagsmith-python-client/issues/153))
+  ([3fcae7c](https://github.com/Flagsmith/flagsmith-python-client/commit/3fcae7c13fb36428ad8137195916f102e39e9453))
+- Feature state `django_id` fields are not handled
+  ([#156](https://github.com/Flagsmith/flagsmith-python-client/issues/156))
+  ([860b630](https://github.com/Flagsmith/flagsmith-python-client/commit/860b6303cb310166d4bc740fcd8213f4c92164dd))
 
 ## [4.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v3.10.1...v4.0.0) (2025-09-02)
 
