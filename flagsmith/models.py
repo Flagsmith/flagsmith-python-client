@@ -63,13 +63,13 @@ class Flags:
     ) -> Flags:
         return cls(
             flags={
-                flag["name"]: Flag(
+                flag_name: Flag(
                     enabled=flag["enabled"],
                     value=flag["value"],
                     feature_name=flag["name"],
                     feature_id=int(flag["feature_key"]),
                 )
-                for flag in evaluation_result["flags"]
+                for flag_name, flag in evaluation_result["flags"].items()
             },
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,

@@ -11,9 +11,11 @@ from flag_engine.context.types import (
     SegmentContext,
     SegmentRule,
 )
+from flag_engine.result.types import SegmentResult
 from flag_engine.segments.types import ContextValue
 
-from flagsmith.types import StreamEvent, TraitConfig
+from flagsmith.models import Segment
+from flagsmith.types import SegmentMetadata, StreamEvent, TraitConfig
 
 OverrideKey = typing.Tuple[
     str,
@@ -22,6 +24,25 @@ OverrideKey = typing.Tuple[
     typing.Any,
 ]
 OverridesKey = typing.Tuple[OverrideKey, ...]
+
+
+def map_segment_results_to_identity_segments(
+    segment_results: list[SegmentResult],
+) -> list[Segment]:
+    identity_segments: list[Segment] = []
+    for segment_result in segment_results:
+        if raw_metadata := segment_result.get("metadata"):
+            metadata = typing.cast(SegmentMetadata, raw_metadata)
+            if metadata.get("source") == "api" and (
+                (flagsmith_id := metadata.get("flagsmith_id")) is not None
+            ):
+                identity_segments.append(
+                    Segment(
+                        id=flagsmith_id,
+                        name=segment_result["name"],
+                    )
+                )
+    return identity_segments
 
 
 def map_sse_event_to_stream_event(event: sseclient.Event) -> StreamEvent:
@@ -90,7 +111,7 @@ def map_environment_document_to_context(
         },
         "segments": {
             **{
-                (segment_key := str(segment["id"])): {
+                (segment_key := str(segment_id := segment["id"])): {
                     "key": segment_key,
                     "name": segment["name"],
                     "rules": _map_environment_document_rules_to_context_rules(
@@ -99,6 +120,12 @@ def map_environment_document_to_context(
                     "overrides": list(
                         _map_environment_document_feature_states_to_feature_contexts(
                             segment.get("feature_states") or []
+                        )
+                    ),
+                    "metadata": dict(
+                        SegmentMetadata(
+                            flagsmith_id=segment_id,
+                            source="api",
                         )
                     ),
                 }
@@ -142,6 +169,7 @@ def _map_identity_overrides_to_segments(
         # Create a segment context for each unique set of overrides
         # Generate a unique key to avoid collisions
         segment_key = str(hash(overrides_key))
+        segment_metadata = SegmentMetadata(source="identity_overrides")
         segment_contexts[segment_key] = SegmentContext(
             key="",  # Identity override segments never use % Split operator
             name="identity_overrides",
@@ -168,6 +196,7 @@ def _map_identity_overrides_to_segments(
                 }
                 for feature_key, feature_name, feature_enabled, feature_value in overrides_key
             ],
+            metadata=dict(segment_metadata),
         )
     return segment_contexts
 

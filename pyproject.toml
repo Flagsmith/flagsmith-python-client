@@ -13,7 +13,7 @@ packages = [{ include = "flagsmith" }]
 python = ">=3.9,<4"
 requests = "^2.32.3"
 requests-futures = "^1.0.1"
-flagsmith-flag-engine = "^7.0.0"
+flagsmith-flag-engine = "^8.0.0"
 sseclient-py = "^1.8.0"
 
 [tool.poetry.group.dev]

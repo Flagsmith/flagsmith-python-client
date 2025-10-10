@@ -33,3 +33,10 @@ TraitMapping: TypeAlias = typing.Mapping[str, typing.Union[ContextValue, TraitCo
 class ApplicationMetadata(typing.TypedDict):
     name: NotRequired[str]
     version: NotRequired[str]
+
+
+class SegmentMetadata(typing.TypedDict):
+    flagsmith_id: NotRequired[int]
+    """The ID of the segment used in Flagsmith API."""
+    source: NotRequired[typing.Literal["api", "identity_overrides"]]
+    """The source of the segment, e.g. 'api', 'identity_overrides'."""

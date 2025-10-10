@@ -159,14 +159,14 @@ def test_get_identity_flags_uses_local_environment_when_available(
     mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
     expected_evaluation_result = {
-        "flags": [
-            {
+        "flags": {
+            "some_feature": {
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
                 "feature_key": "1",
             }
-        ],
+        },
         "segments": [],
     }
 
@@ -507,6 +507,26 @@ def test_get_identity_segments_with_valid_trait(
     # Then
     assert len(segments) == 1
     assert segments[0].name == "Test segment"  # obtained from data/environment.json
+
+
+def test_get_identity_segments__identity_overrides__returns_expected(
+    local_eval_flagsmith: Flagsmith,
+) -> None:
+    # Given
+    # the identifier matches the identity override in data/environment.json
+    identifier = "overridden-id"
+    # traits match the "Test segment" segment in data/environment.json
+    traits = {"foo": "bar"}
+
+    # When
+    segments = local_eval_flagsmith.get_identity_segments(identifier, traits)
+
+    # Then
+    # identity override virtual segment is not returned,
+    # only the segment matching the traits
+    assert len(segments) == 1
+    assert segments[0].id == 1
+    assert segments[0].name == "Test segment"
 
 
 def test_local_evaluation_requires_server_key() -> None:
