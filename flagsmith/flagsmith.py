@@ -14,6 +14,7 @@ from flagsmith.mappers import (
     map_context_and_identity_data_to_context,
     map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
+    map_segment_results_to_identity_segments,
 )
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
@@ -283,10 +284,8 @@ class Flagsmith:
         evaluation_result = engine.get_evaluation_result(
             context=context,
         )
-        return [
-            Segment(id=int(segment_result["key"]), name=segment_result["name"])
-            for segment_result in evaluation_result["segments"]
-        ]
+
+        return map_segment_results_to_identity_segments(evaluation_result["segments"])
 
     def update_environment(self) -> None:
         try:
