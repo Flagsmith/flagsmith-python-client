@@ -159,14 +159,14 @@ def test_get_identity_flags_uses_local_environment_when_available(
     mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
     expected_evaluation_result = {
-        "flags": [
-            {
+        "flags": {
+            "some_feature": {
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
                 "feature_key": "1",
             }
-        ],
+        },
         "segments": [],
     }
 

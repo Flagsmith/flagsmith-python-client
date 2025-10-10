@@ -29,42 +29,59 @@ def test_flag_from_evaluation_result() -> None:
 @pytest.mark.parametrize(
     "flags_result,expected_count,expected_names",
     [
-        ([], 0, []),
+        ({}, 0, []),
         (
-            [
-                {
+            {
+                "feature1": {
                     "name": "feature1",
                     "enabled": True,
                     "value": "value1",
                     "feature_key": "1",
                 }
-            ],
+            },
             1,
             ["feature1"],
         ),
         (
-            [
-                {
+            {
+                "feature1": {
+                    "name": "feature1",
+                    "enabled": True,
+                    "value": "value1",
+                    "feature_key": "1",
+                }
+            },
+            1,
+            ["feature1"],
+        ),
+        (
+            {
+                "feature1": {
                     "name": "feature1",
                     "enabled": True,
                     "value": "value1",
                     "feature_key": "1",
                 },
-                {
+                "feature2": {
                     "name": "feature2",
-                    "enabled": False,
-                    "value": None,
+                    "enabled": True,
+                    "value": "value2",
                     "feature_key": "2",
                 },
-                {"name": "feature3", "enabled": True, "value": 42, "feature_key": "3"},
-            ],
+                "feature3": {
+                    "name": "feature3",
+                    "enabled": True,
+                    "value": 42,
+                    "feature_key": "3",
+                },
+            },
             3,
             ["feature1", "feature2", "feature3"],
         ),
     ],
 )
 def test_flags_from_evaluation_result(
-    flags_result: typing.List[FlagResult],
+    flags_result: typing.Dict[str, FlagResult],
     expected_count: int,
     expected_names: typing.List[str],
 ) -> None:
@@ -72,12 +89,6 @@ def test_flags_from_evaluation_result(
     evaluation_result: EvaluationResult = {
         "flags": flags_result,
         "segments": [],
-        "context": {
-            "environment": {
-                "name": "test_environment",
-                "key": "test_environment_key",
-            }
-        },
     }
 
     # When
