@@ -9,10 +9,11 @@ from flagsmith.models import Flag, Flags
 def test_flag_from_evaluation_result() -> None:
     # Given
     flag_result: FlagResult = {
-        "name": "test_feature",
         "enabled": True,
-        "value": "test-value",
         "feature_key": "123",
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
     }
 
     # When
@@ -33,10 +34,11 @@ def test_flag_from_evaluation_result() -> None:
         (
             {
                 "feature1": {
-                    "name": "feature1",
                     "enabled": True,
-                    "value": "value1",
                     "feature_key": "1",
+                    "name": "feature1",
+                    "reason": "DEFAULT",
+                    "value": "value1",
                 }
             },
             1,
@@ -45,10 +47,11 @@ def test_flag_from_evaluation_result() -> None:
         (
             {
                 "feature1": {
-                    "name": "feature1",
                     "enabled": True,
-                    "value": "value1",
                     "feature_key": "1",
+                    "name": "feature1",
+                    "reason": "DEFAULT",
+                    "value": "value1",
                 }
             },
             1,
@@ -57,22 +60,25 @@ def test_flag_from_evaluation_result() -> None:
         (
             {
                 "feature1": {
-                    "name": "feature1",
                     "enabled": True,
-                    "value": "value1",
                     "feature_key": "1",
+                    "name": "feature1",
+                    "reason": "DEFAULT",
+                    "value": "value1",
                 },
                 "feature2": {
-                    "name": "feature2",
                     "enabled": True,
-                    "value": "value2",
                     "feature_key": "2",
+                    "name": "feature2",
+                    "reason": "DEFAULT",
+                    "value": "value2",
                 },
                 "feature3": {
-                    "name": "feature3",
                     "enabled": True,
-                    "value": 42,
                     "feature_key": "3",
+                    "name": "feature3",
+                    "reason": "DEFAULT",
+                    "value": 42,
                 },
             },
             3,
@@ -124,10 +130,11 @@ def test_flag_from_evaluation_result_value_types(
 ) -> None:
     # Given
     flag_result: FlagResult = {
-        "name": "test_feature",
         "enabled": True,
-        "value": value,
         "feature_key": "123",
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": value,
     }
 
     # When
