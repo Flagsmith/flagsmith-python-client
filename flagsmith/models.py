@@ -3,10 +3,11 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, field
 
-from flag_engine.result.types import EvaluationResult, FlagResult
+from flag_engine.result.types import FlagResult
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
+from flagsmith.types import SDKEvaluationResult
 
 
 @dataclass
@@ -57,7 +58,7 @@ class Flags:
     @classmethod
     def from_evaluation_result(
         cls,
-        evaluation_result: EvaluationResult,
+        evaluation_result: SDKEvaluationResult,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:

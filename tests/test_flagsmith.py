@@ -5,7 +5,6 @@ import typing
 import pytest
 import requests
 import responses
-from flag_engine.engine import EvaluationContext
 from pytest_mock import MockerFixture
 from responses import matchers
 
@@ -16,6 +15,7 @@ from flagsmith.exceptions import (
 )
 from flagsmith.models import DefaultFlag, Flags
 from flagsmith.offline_handlers import OfflineHandler
+from flagsmith.types import SDKEvaluationContext
 
 
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
@@ -39,7 +39,7 @@ def test_flagsmith_starts_polling_manager_on_init_if_enabled(
 def test_update_environment_sets_environment(
     flagsmith: Flagsmith,
     environment_json: str,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
     responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
@@ -76,7 +76,7 @@ def test_get_environment_flags_calls_api_when_no_local_environment(
 @responses.activate()
 def test_get_environment_flags_uses_local_environment_when_available(
     flagsmith: Flagsmith,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
     flagsmith._evaluation_context = evaluation_context
@@ -150,7 +150,7 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
 @responses.activate()
 def test_get_identity_flags_uses_local_environment_when_available(
     flagsmith: Flagsmith,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
     mocker: MockerFixture,
 ) -> None:
     # Given
@@ -545,10 +545,10 @@ def test_initialise_flagsmith_with_proxies() -> None:
     assert flagsmith.session.proxies == proxies
 
 
-def test_offline_mode(evaluation_context: EvaluationContext) -> None:
+def test_offline_mode(evaluation_context: SDKEvaluationContext) -> None:
     # Given
     class DummyOfflineHandler:
-        def get_evaluation_context(self) -> EvaluationContext:
+        def get_evaluation_context(self) -> SDKEvaluationContext:
             return evaluation_context
 
     # When
@@ -566,7 +566,7 @@ def test_offline_mode(evaluation_context: EvaluationContext) -> None:
 @responses.activate()
 def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
     mocker: MockerFixture,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
     api_url = "http://some.flagsmith.com/api/v1/"
@@ -599,7 +599,7 @@ def test_flagsmith_uses_offline_handler_if_set_and_no_api_response(
 @responses.activate()
 def test_offline_mode__local_evaluation__correct_fallback(
     mocker: MockerFixture,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Given

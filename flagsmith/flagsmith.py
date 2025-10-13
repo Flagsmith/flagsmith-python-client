@@ -23,6 +23,7 @@ from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.types import (
     ApplicationMetadata,
     JsonType,
+    SDKEvaluationContext,
     StreamEvent,
     TraitMapping,
 )
@@ -107,7 +108,7 @@ class Flagsmith:
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
-        self._evaluation_context: typing.Optional[engine.EvaluationContext] = None
+        self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation

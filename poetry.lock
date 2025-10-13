@@ -264,15 +264,19 @@ description = "Flag engine for the Flagsmith API."
 optional = false
 python-versions = "*"
 groups = ["main"]
-files = [
-    {file = "flagsmith_flag_engine-8.0.0-py3-none-any.whl", hash = "sha256:b3540ad818fd4d00d16546f2253f1faa345c925727ea5527ad6b03cee15d313e"},
-    {file = "flagsmith_flag_engine-8.0.0.tar.gz", hash = "sha256:7d702582b7c7a42cfc1216be290fb25229cb1bda8c179074a94ae849b2001eb1"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 jsonpath-rfc9535 = ">=0.1.5,<1"
 semver = ">=3.0.4,<4"
 typing-extensions = ">=4.14.1,<5"
+
+[package.source]
+type = "git"
+url = "https://github.com/Flagsmith/flagsmith-engine.git"
+reference = "feat/generic-metadata"
+resolved_reference = "7e9d00aec998cb115d4b8175660c79563042a502"
 
 [[package]]
 name = "identify"
@@ -947,4 +951,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4"
-content-hash = "afb156bdc9ea8308d1826a75f1eb7179a16e08f69e42812e8d64b31fffa9a5f8"
+content-hash = "07576ed467449cc3df826bcec81a02fbd13ab1eeb17a0b6591c451945d3c3239"

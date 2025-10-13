@@ -1,9 +1,10 @@
 import typing
 
 import pytest
-from flag_engine.result.types import EvaluationResult, FlagResult
+from flag_engine.result.types import FlagResult
 
 from flagsmith.models import Flag, Flags
+from flagsmith.types import SDKEvaluationResult
 
 
 def test_flag_from_evaluation_result() -> None:
@@ -92,7 +93,7 @@ def test_flags_from_evaluation_result(
     expected_names: typing.List[str],
 ) -> None:
     # Given
-    evaluation_result: EvaluationResult = {
+    evaluation_result: SDKEvaluationResult = {
         "flags": flags_result,
         "segments": [],
     }

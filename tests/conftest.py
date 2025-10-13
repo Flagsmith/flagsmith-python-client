@@ -7,13 +7,13 @@ from typing import Generator
 
 import pytest
 import responses
-from flag_engine.engine import EvaluationContext
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.mappers import map_environment_document_to_context
+from flagsmith.types import SDKEvaluationContext
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -74,7 +74,7 @@ def local_eval_flagsmith(
 
 
 @pytest.fixture()
-def evaluation_context(environment_json: str) -> EvaluationContext:
+def evaluation_context(environment_json: str) -> SDKEvaluationContext:
     return map_environment_document_to_context(json.loads(environment_json))
 
 
