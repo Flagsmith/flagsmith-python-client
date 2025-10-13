@@ -35,16 +35,16 @@ def map_segment_results_to_identity_segments(
 ) -> list[Segment]:
     identity_segments: list[Segment] = []
     for segment_result in segment_results:
-        metadata = segment_result["metadata"]
-        if metadata.get("source") == "api" and (
-            (flagsmith_id := metadata.get("flagsmith_id")) is not None
-        ):
-            identity_segments.append(
-                Segment(
-                    id=flagsmith_id,
-                    name=segment_result["name"],
+        if metadata := segment_result.get("metadata"):
+            if metadata.get("source") == "api" and (
+                (flagsmith_id := metadata.get("flagsmith_id")) is not None
+            ):
+                identity_segments.append(
+                    Segment(
+                        id=flagsmith_id,
+                        name=segment_result["name"],
+                    )
                 )
-            )
     return identity_segments
 
 
