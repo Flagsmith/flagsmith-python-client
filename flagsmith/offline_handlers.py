@@ -2,13 +2,12 @@ import json
 from pathlib import Path
 from typing import Protocol
 
-from flag_engine.context.types import EvaluationContext
-
 from flagsmith.mappers import map_environment_document_to_context
+from flagsmith.types import SDKEvaluationContext
 
 
 class OfflineHandler(Protocol):
-    def get_evaluation_context(self) -> EvaluationContext: ...
+    def get_evaluation_context(self) -> SDKEvaluationContext: ...
 
 
 class EvaluationContextLocalFileHandler:
@@ -21,11 +20,11 @@ class EvaluationContextLocalFileHandler:
     """
 
     def __init__(self, file_path: str) -> None:
-        self.evaluation_context: EvaluationContext = json.loads(
+        self.evaluation_context: SDKEvaluationContext = json.loads(
             Path(file_path).read_text(),
         )
 
-    def get_evaluation_context(self) -> EvaluationContext:
+    def get_evaluation_context(self) -> SDKEvaluationContext:
         return self.evaluation_context
 
 
@@ -39,7 +38,7 @@ class EnvironmentDocumentLocalFileHandler:
     """
 
     def __init__(self, file_path: str) -> None:
-        self.evaluation_context: EvaluationContext = (
+        self.evaluation_context: SDKEvaluationContext = (
             map_environment_document_to_context(
                 json.loads(
                     Path(file_path).read_text(),
@@ -47,7 +46,7 @@ class EnvironmentDocumentLocalFileHandler:
             )
         )
 
-    def get_evaluation_context(self) -> EvaluationContext:
+    def get_evaluation_context(self) -> SDKEvaluationContext:
         return self.evaluation_context
 
 

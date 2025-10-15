@@ -14,6 +14,7 @@ from flagsmith.mappers import (
     map_context_and_identity_data_to_context,
     map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
+    map_segment_results_to_identity_segments,
 )
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
@@ -22,6 +23,7 @@ from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.types import (
     ApplicationMetadata,
     JsonType,
+    SDKEvaluationContext,
     StreamEvent,
     TraitMapping,
 )
@@ -106,7 +108,7 @@ class Flagsmith:
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
-        self._evaluation_context: typing.Optional[engine.EvaluationContext] = None
+        self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation
@@ -283,10 +285,8 @@ class Flagsmith:
         evaluation_result = engine.get_evaluation_result(
             context=context,
         )
-        return [
-            Segment(id=int(segment_result["key"]), name=segment_result["name"])
-            for segment_result in evaluation_result["segments"]
-        ]
+
+        return map_segment_results_to_identity_segments(evaluation_result["segments"])
 
     def update_environment(self) -> None:
         try:

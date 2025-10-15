@@ -1,12 +1,12 @@
-from flag_engine.engine import EvaluationContext
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from flagsmith.offline_handlers import LocalFileHandler
+from flagsmith.types import SDKEvaluationContext
 
 
 def test_local_file_handler(
     fs: FakeFilesystem,
-    evaluation_context: EvaluationContext,
+    evaluation_context: SDKEvaluationContext,
     environment_json: str,
 ) -> None:
     # Given
