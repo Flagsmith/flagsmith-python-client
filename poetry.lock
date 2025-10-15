@@ -275,8 +275,8 @@ typing-extensions = ">=4.14.1,<5"
 [package.source]
 type = "git"
 url = "https://github.com/Flagsmith/flagsmith-engine.git"
-reference = "feat/generic-metadata"
-resolved_reference = "7e9d00aec998cb115d4b8175660c79563042a502"
+reference = "feat/variants-priority"
+resolved_reference = "bc16c3b2d6a5ce741b0d29cfd528b4bd31e17f53"
 
 [[package]]
 name = "identify"
