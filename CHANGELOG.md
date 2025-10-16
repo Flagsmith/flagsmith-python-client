@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.1...v5.0.0) (2025-10-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Restore v3 `OfflineHandler` interface ([#162](https://github.com/Flagsmith/flagsmith-python-client/issues/162))
+
+### Features
+
+* Restore v3 `OfflineHandler` interface ([#162](https://github.com/Flagsmith/flagsmith-python-client/issues/162)) ([374e292](https://github.com/Flagsmith/flagsmith-python-client/commit/374e29293aca44eafadda672907d9b701b8414fc))
+* Support variant priority ([#161](https://github.com/Flagsmith/flagsmith-python-client/issues/161)) ([4f84044](https://github.com/Flagsmith/flagsmith-python-client/commit/4f84044ea87a9d284f6731ff4cfe4835d5f99fa4))
+
+
+### Bug Fixes
+
+* `get_identity_segments` tries to return identity override segments ([#159](https://github.com/Flagsmith/flagsmith-python-client/issues/159)) ([68d44a1](https://github.com/Flagsmith/flagsmith-python-client/commit/68d44a15feae75905d08103ff8dba53c605377fd))
+
 ## [4.0.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.0...v4.0.1) (2025-09-19)
 
 ### Bug Fixes
