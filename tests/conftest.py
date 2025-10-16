@@ -76,7 +76,8 @@ def local_eval_flagsmith(
 
 @pytest.fixture()
 def environment(environment_json: str) -> EnvironmentModel:
-    return json.loads(environment_json)
+    ret: EnvironmentModel = json.loads(environment_json)
+    return ret
 
 
 @pytest.fixture()
