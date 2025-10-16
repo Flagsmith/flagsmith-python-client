@@ -1,7 +1,6 @@
 import typing
 
 import pytest
-from flag_engine.result.types import FlagResult
 
 from flagsmith.models import Flag, Flags
 from flagsmith.types import SDKEvaluationResult, SDKFlagResult
@@ -140,7 +139,7 @@ def test_flag_from_evaluation_result_value_types(
     value: typing.Any, expected: typing.Any
 ) -> None:
     # Given
-    flag_result: FlagResult = {
+    flag_result: SDKFlagResult = {
         "enabled": True,
         "feature_key": "123",
         "name": "test_feature",
@@ -150,7 +149,8 @@ def test_flag_from_evaluation_result_value_types(
     }
 
     # When
-    flag: Flag = Flag.from_evaluation_result(flag_result)
+    flag: typing.Optional[Flag] = Flag.from_evaluation_result(flag_result)
 
     # Then
+    assert flag
     assert flag.value == expected
