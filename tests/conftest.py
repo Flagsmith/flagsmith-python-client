@@ -12,6 +12,7 @@ from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
 from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import map_environment_document_to_context
 from flagsmith.types import SDKEvaluationContext
 
@@ -74,8 +75,14 @@ def local_eval_flagsmith(
 
 
 @pytest.fixture()
-def evaluation_context(environment_json: str) -> SDKEvaluationContext:
-    return map_environment_document_to_context(json.loads(environment_json))
+def environment(environment_json: str) -> EnvironmentModel:
+    ret: EnvironmentModel = json.loads(environment_json)
+    return ret
+
+
+@pytest.fixture()
+def evaluation_context(environment: EnvironmentModel) -> SDKEvaluationContext:
+    return map_environment_document_to_context(environment)
 
 
 @pytest.fixture()

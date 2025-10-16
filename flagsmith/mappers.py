@@ -9,10 +9,17 @@ from flag_engine.context.types import (
     FeatureContext,
     SegmentContext,
     SegmentRule,
+    StrValueSegmentCondition,
 )
 from flag_engine.result.types import SegmentResult
 from flag_engine.segments.types import ContextValue
 
+from flagsmith.api.types import (
+    EnvironmentModel,
+    FeatureStateModel,
+    IdentityModel,
+    SegmentRuleModel,
+)
 from flagsmith.models import Segment
 from flagsmith.types import (
     SDKEvaluationContext,
@@ -99,7 +106,7 @@ def map_context_and_identity_data_to_context(
 
 
 def map_environment_document_to_context(
-    environment_document: dict[str, typing.Any],
+    environment_document: EnvironmentModel,
 ) -> SDKEvaluationContext:
     return {
         "environment": {
@@ -140,16 +147,14 @@ def map_environment_document_to_context(
 
 
 def _map_identity_overrides_to_segments(
-    identity_overrides: list[dict[str, typing.Any]],
+    identity_overrides: list[IdentityModel],
 ) -> dict[str, SegmentContext[SegmentMetadata]]:
     features_to_identifiers: typing.Dict[
         OverridesKey,
         typing.List[str],
     ] = defaultdict(list)
     for identity_override in identity_overrides:
-        identity_features: list[dict[str, typing.Any]] = identity_override[
-            "identity_features"
-        ]
+        identity_features = identity_override["identity_features"]
         if not identity_features:
             continue
         overrides_key = tuple(
@@ -202,14 +207,14 @@ def _map_identity_overrides_to_segments(
 
 
 def _map_environment_document_rules_to_context_rules(
-    rules: list[dict[str, typing.Any]],
+    rules: list[SegmentRuleModel],
 ) -> list[SegmentRule]:
     return [
         dict(
             type=rule["type"],
             conditions=[
-                dict(
-                    property=condition.get("property_"),
+                StrValueSegmentCondition(
+                    property=condition.get("property_") or "",
                     operator=condition["operator"],
                     value=condition["value"],
                 )
@@ -224,7 +229,7 @@ def _map_environment_document_rules_to_context_rules(
 
 
 def _map_environment_document_feature_states_to_feature_contexts(
-    feature_states: list[dict[str, typing.Any]],
+    feature_states: list[FeatureStateModel],
 ) -> typing.Iterable[FeatureContext]:
     for feature_state in feature_states:
         feature_context = FeatureContext(
@@ -251,10 +256,8 @@ def _map_environment_document_feature_states_to_feature_contexts(
                     key=itemgetter("id"),
                 )
             ]
-        if (
-            priority := (feature_state.get("feature_segment") or {}).get("priority")
-            is not None
-        ):
-            feature_context["priority"] = priority
+
+        if "feature_segment" in feature_state:
+            feature_context["priority"] = feature_state["feature_segment"]["priority"]
 
         yield feature_context
