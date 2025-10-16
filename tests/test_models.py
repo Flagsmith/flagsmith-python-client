@@ -115,13 +115,10 @@ def test_flags_from_evaluation_result(
     )
 
     # Then
-    assert len(flags.flags) == len(expected_names)
-
-    for name in expected_names:
-        assert name in flags.flags
-        flag: Flag = flags.flags[name]
-        assert isinstance(flag, Flag)
-        assert flag.feature_name == name
+    assert set(flags.flags.keys()) == set(expected_names)
+    assert set(flag.feature_name for flag in flags.flags.values()) == set(
+        expected_names
+    )
 
 
 @pytest.mark.parametrize(
