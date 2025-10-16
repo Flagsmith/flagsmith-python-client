@@ -29,7 +29,7 @@ class Flag(BaseFlag):
     def from_evaluation_result(
         cls,
         flag_result: SDKFlagResult,
-    ) -> typing.Optional[Flag]:
+    ) -> Flag:
         if metadata := flag_result.get("metadata"):
             return Flag(
                 enabled=flag_result["enabled"],
@@ -37,7 +37,10 @@ class Flag(BaseFlag):
                 feature_name=flag_result["name"],
                 feature_id=metadata["flagsmith_id"],
             )
-        return None
+        raise ValueError(
+            "FlagResult metadata is missing. Cannot create Flag instance. "
+            "This means a bug in the SDK, please report it."
+        )
 
     @classmethod
     def from_api_flag(cls, flag_data: typing.Mapping[str, typing.Any]) -> Flag:

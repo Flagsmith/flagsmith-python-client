@@ -85,13 +85,6 @@ def test_flag_from_evaluation_result() -> None:
                     "value": 42,
                     "metadata": {"flagsmith_id": 3},
                 },
-                "feature4": {
-                    "enabled": True,
-                    "feature_key": "4",
-                    "name": "feature4",
-                    "reason": "DEFAULT",
-                    "value": 42,
-                },
             },
             ["feature1", "feature2", "feature3"],
         ),
@@ -151,3 +144,18 @@ def test_flag_from_evaluation_result_value_types(
     # Then
     assert flag
     assert flag.value == expected
+
+
+def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None:
+    # Given
+    flag_result: SDKFlagResult = {
+        "enabled": True,
+        "feature_key": "123",
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
+    }
+
+    # When & Then
+    with pytest.raises(ValueError):
+        Flag.from_evaluation_result(flag_result)
