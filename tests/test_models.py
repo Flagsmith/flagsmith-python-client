@@ -18,10 +18,9 @@ def test_flag_from_evaluation_result() -> None:
     }
 
     # When
-    flag: typing.Optional[Flag] = Flag.from_evaluation_result(flag_result)
+    flag = Flag.from_evaluation_result(flag_result)
 
     # Then
-    assert flag
     assert flag.enabled is True
     assert flag.value == "test-value"
     assert flag.feature_name == "test_feature"
@@ -139,10 +138,9 @@ def test_flag_from_evaluation_result_value_types(
     }
 
     # When
-    flag: typing.Optional[Flag] = Flag.from_evaluation_result(flag_result)
+    flag = Flag.from_evaluation_result(flag_result)
 
     # Then
-    assert flag
     assert flag.value == expected
 
 
