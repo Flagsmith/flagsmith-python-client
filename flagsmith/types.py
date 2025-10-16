@@ -45,7 +45,7 @@ class SegmentMetadata(typing.TypedDict):
 
 
 class FeatureMetadata(typing.TypedDict):
-    flagsmith_id: NotRequired[int]
+    flagsmith_id: int
     """The ID of the feature used in Flagsmith API."""
 
 

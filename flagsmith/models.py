@@ -30,14 +30,12 @@ class Flag(BaseFlag):
         cls,
         flag_result: SDKFlagResult,
     ) -> typing.Optional[Flag]:
-        if (
-            flagsmith_id := (flag_result.get("metadata") or {}).get("flagsmith_id")
-        ) is not None:
+        if metadata := flag_result.get("metadata"):
             return Flag(
                 enabled=flag_result["enabled"],
                 value=flag_result["value"],
                 feature_name=flag_result["name"],
-                feature_id=flagsmith_id,
+                feature_id=metadata["flagsmith_id"],
             )
         return None
 
