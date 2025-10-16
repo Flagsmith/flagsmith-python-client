@@ -1,8 +1,8 @@
 import json
 import typing
+import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
-from operator import itemgetter
 
 import sseclient
 from flag_engine.context.types import (
@@ -250,11 +250,14 @@ def _map_environment_document_feature_states_to_feature_contexts(
                         "multivariate_feature_option"
                     ]["value"],
                     "weight": multivariate_feature_state_value["percentage_allocation"],
+                    "priority": (
+                        multivariate_feature_state_value.get("id")
+                        or uuid.UUID(
+                            multivariate_feature_state_value["mv_fs_value_uuid"]
+                        ).int
+                    ),
                 }
-                for multivariate_feature_state_value in sorted(
-                    multivariate_feature_state_values,
-                    key=itemgetter("id"),
-                )
+                for multivariate_feature_state_value in multivariate_feature_state_values
             ]
 
         if "feature_segment" in feature_state:
