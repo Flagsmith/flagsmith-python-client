@@ -1,4 +1,5 @@
 import json
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Protocol
 
@@ -8,6 +9,12 @@ from flagsmith.mappers import map_environment_document_to_context
 
 class OfflineHandler(Protocol):
     def get_environment(self) -> EnvironmentModel: ...
+
+
+class BaseOfflineHandler(ABC):
+    @abstractmethod
+    def get_environment(self) -> EnvironmentModel:
+        raise NotImplementedError()
 
 
 class LocalFileHandler:
