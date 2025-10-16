@@ -205,7 +205,7 @@ def _map_identity_overrides_to_segments(
                     "enabled": feature_enabled,
                     "value": feature_value,
                     "priority": float("-inf"),  # Highest possible priority
-                    "metadata": {"flagsmith_id": int(flagsmith_id)},
+                    "metadata": {"flagsmith_id": flagsmith_id},
                 }
                 for flagsmith_id, feature_name, feature_enabled, feature_value in overrides_key
             ],
