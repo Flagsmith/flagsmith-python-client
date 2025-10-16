@@ -125,7 +125,9 @@ class Flagsmith:
             )
 
         if self.offline_handler:
-            self._evaluation_context = self.offline_handler.get_evaluation_context()
+            self._evaluation_context = map_environment_document_to_context(
+                self.offline_handler.get_environment()
+            )
 
         if not self.offline_mode:
             if not environment_key:
