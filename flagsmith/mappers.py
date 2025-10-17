@@ -22,6 +22,7 @@ from flagsmith.api.types import (
 )
 from flagsmith.models import Segment
 from flagsmith.types import (
+    FeatureMetadata,
     SDKEvaluationContext,
     SegmentMetadata,
     StreamEvent,
@@ -29,7 +30,7 @@ from flagsmith.types import (
 )
 
 OverrideKey = typing.Tuple[
-    str,
+    int,
     str,
     bool,
     typing.Any,
@@ -148,7 +149,7 @@ def map_environment_document_to_context(
 
 def _map_identity_overrides_to_segments(
     identity_overrides: list[IdentityModel],
-) -> dict[str, SegmentContext[SegmentMetadata]]:
+) -> dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]:
     features_to_identifiers: typing.Dict[
         OverridesKey,
         typing.List[str],
@@ -159,7 +160,7 @@ def _map_identity_overrides_to_segments(
             continue
         overrides_key = tuple(
             (
-                str(feature_state["feature"]["id"]),
+                feature_state["feature"]["id"],
                 feature_state["feature"]["name"],
                 feature_state["enabled"],
                 feature_state["feature_state_value"],
@@ -170,7 +171,13 @@ def _map_identity_overrides_to_segments(
             )
         )
         features_to_identifiers[overrides_key].append(identity_override["identifier"])
-    segment_contexts: typing.Dict[str, SegmentContext[SegmentMetadata]] = {}
+    segment_contexts: typing.Dict[
+        str,
+        SegmentContext[
+            SegmentMetadata,
+            FeatureMetadata,
+        ],
+    ] = {}
     for overrides_key, identifiers in features_to_identifiers.items():
         # Create a segment context for each unique set of overrides
         # Generate a unique key to avoid collisions
@@ -193,13 +200,14 @@ def _map_identity_overrides_to_segments(
             overrides=[
                 {
                     "key": "",  # Identity overrides never carry multivariate options
-                    "feature_key": feature_key,
+                    "feature_key": str(flagsmith_id),
                     "name": feature_name,
                     "enabled": feature_enabled,
                     "value": feature_value,
                     "priority": float("-inf"),  # Highest possible priority
+                    "metadata": {"flagsmith_id": flagsmith_id},
                 }
-                for feature_key, feature_name, feature_enabled, feature_value in overrides_key
+                for flagsmith_id, feature_name, feature_enabled, feature_value in overrides_key
             ],
             metadata=SegmentMetadata(source="identity_overrides"),
         )
@@ -230,9 +238,10 @@ def _map_environment_document_rules_to_context_rules(
 
 def _map_environment_document_feature_states_to_feature_contexts(
     feature_states: list[FeatureStateModel],
-) -> typing.Iterable[FeatureContext]:
+) -> typing.Iterable[FeatureContext[FeatureMetadata]]:
     for feature_state in feature_states:
-        feature_context = FeatureContext(
+        metadata: FeatureMetadata = {"flagsmith_id": feature_state["feature"]["id"]}
+        feature_context = FeatureContext[FeatureMetadata](
             key=str(
                 feature_state.get("django_id") or feature_state["featurestate_uuid"]
             ),
@@ -240,6 +249,7 @@ def _map_environment_document_feature_states_to_feature_contexts(
             name=feature_state["feature"]["name"],
             enabled=feature_state["enabled"],
             value=feature_state["feature_state_value"],
+            metadata=metadata,
         )
         if multivariate_feature_state_values := feature_state.get(
             "multivariate_feature_state_values"

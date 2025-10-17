@@ -1,24 +1,24 @@
 import typing
 
 import pytest
-from flag_engine.result.types import FlagResult
 
 from flagsmith.models import Flag, Flags
-from flagsmith.types import SDKEvaluationResult
+from flagsmith.types import SDKEvaluationResult, SDKFlagResult
 
 
 def test_flag_from_evaluation_result() -> None:
     # Given
-    flag_result: FlagResult = {
+    flag_result: SDKFlagResult = {
         "enabled": True,
         "feature_key": "123",
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
+        "metadata": {"flagsmith_id": 123},
     }
 
     # When
-    flag: Flag = Flag.from_evaluation_result(flag_result)
+    flag = Flag.from_evaluation_result(flag_result)
 
     # Then
     assert flag.enabled is True
@@ -29,9 +29,9 @@ def test_flag_from_evaluation_result() -> None:
 
 
 @pytest.mark.parametrize(
-    "flags_result,expected_count,expected_names",
+    "flags_result,expected_names",
     [
-        ({}, 0, []),
+        ({}, []),
         (
             {
                 "feature1": {
@@ -40,9 +40,9 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "metadata": {"flagsmith_id": 1},
                 }
             },
-            1,
             ["feature1"],
         ),
         (
@@ -53,9 +53,9 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "metadata": {"flagsmith_id": 1},
                 }
             },
-            1,
             ["feature1"],
         ),
         (
@@ -66,6 +66,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "metadata": {"flagsmith_id": 1},
                 },
                 "feature2": {
                     "enabled": True,
@@ -73,6 +74,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature2",
                     "reason": "DEFAULT",
                     "value": "value2",
+                    "metadata": {"flagsmith_id": 2},
                 },
                 "feature3": {
                     "enabled": True,
@@ -80,16 +82,15 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature3",
                     "reason": "DEFAULT",
                     "value": 42,
+                    "metadata": {"flagsmith_id": 3},
                 },
             },
-            3,
             ["feature1", "feature2", "feature3"],
         ),
     ],
 )
 def test_flags_from_evaluation_result(
-    flags_result: typing.Dict[str, FlagResult],
-    expected_count: int,
+    flags_result: typing.Dict[str, SDKFlagResult],
     expected_names: typing.List[str],
 ) -> None:
     # Given
@@ -106,13 +107,10 @@ def test_flags_from_evaluation_result(
     )
 
     # Then
-    assert len(flags.flags) == expected_count
-
-    for name in expected_names:
-        assert name in flags.flags
-        flag: Flag = flags.flags[name]
-        assert isinstance(flag, Flag)
-        assert flag.feature_name == name
+    assert set(flags.flags.keys()) == set(expected_names)
+    assert set(flag.feature_name for flag in flags.flags.values()) == set(
+        expected_names
+    )
 
 
 @pytest.mark.parametrize(
@@ -130,16 +128,32 @@ def test_flag_from_evaluation_result_value_types(
     value: typing.Any, expected: typing.Any
 ) -> None:
     # Given
-    flag_result: FlagResult = {
+    flag_result: SDKFlagResult = {
         "enabled": True,
         "feature_key": "123",
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": value,
+        "metadata": {"flagsmith_id": 123},
     }
 
     # When
-    flag: Flag = Flag.from_evaluation_result(flag_result)
+    flag = Flag.from_evaluation_result(flag_result)
 
     # Then
     assert flag.value == expected
+
+
+def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None:
+    # Given
+    flag_result: SDKFlagResult = {
+        "enabled": True,
+        "feature_key": "123",
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
+    }
+
+    # When & Then
+    with pytest.raises(ValueError):
+        Flag.from_evaluation_result(flag_result)
