@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flag_engine.context.types import EvaluationContext
 from flag_engine.engine import ContextValue
-from flag_engine.result.types import EvaluationResult
+from flag_engine.result.types import EvaluationResult, FlagResult
 from typing_extensions import NotRequired, TypeAlias
 
 _JsonScalarType: TypeAlias = typing.Union[
@@ -44,5 +44,11 @@ class SegmentMetadata(typing.TypedDict):
     """The source of the segment, e.g. 'api', 'identity_overrides'."""
 
 
-SDKEvaluationContext = EvaluationContext[SegmentMetadata]
-SDKEvaluationResult = EvaluationResult[SegmentMetadata]
+class FeatureMetadata(typing.TypedDict):
+    flagsmith_id: int
+    """The ID of the feature used in Flagsmith API."""
+
+
+SDKEvaluationContext = EvaluationContext[SegmentMetadata, FeatureMetadata]
+SDKEvaluationResult = EvaluationResult[SegmentMetadata, FeatureMetadata]
+SDKFlagResult = FlagResult[FeatureMetadata]
