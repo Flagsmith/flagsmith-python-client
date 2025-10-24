@@ -1,5 +1,38 @@
 # Changelog
 
+## [5.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.1...v5.0.0) (2025-10-24)
+
+### ⚠ BREAKING CHANGES
+
+- Restore v3 `OfflineHandler` interface ([#162](https://github.com/Flagsmith/flagsmith-python-client/issues/162))
+
+### Features
+
+- Restore v3 `OfflineHandler` interface ([#162](https://github.com/Flagsmith/flagsmith-python-client/issues/162))
+  ([374e292](https://github.com/Flagsmith/flagsmith-python-client/commit/374e29293aca44eafadda672907d9b701b8414fc))
+- Support feature metadata ([#163](https://github.com/Flagsmith/flagsmith-python-client/issues/163))
+  ([1bbbdf8](https://github.com/Flagsmith/flagsmith-python-client/commit/1bbbdf8d98054ea4317a1ba3bd95f437a7edbf0e))
+- Support variant priority ([#161](https://github.com/Flagsmith/flagsmith-python-client/issues/161))
+  ([4f84044](https://github.com/Flagsmith/flagsmith-python-client/commit/4f84044ea87a9d284f6731ff4cfe4835d5f99fa4))
+
+### Bug Fixes
+
+- `get_identity_segments` tries to return identity override segments
+  ([#159](https://github.com/Flagsmith/flagsmith-python-client/issues/159))
+  ([68d44a1](https://github.com/Flagsmith/flagsmith-python-client/commit/68d44a15feae75905d08103ff8dba53c605377fd))
+
+### CI
+
+- pre-commit autoupdate ([#158](https://github.com/Flagsmith/flagsmith-python-client/issues/158))
+  ([e2fe6eb](https://github.com/Flagsmith/flagsmith-python-client/commit/e2fe6eb01ba61a2477d54e75abc636c00c7f1e10))
+
+### Dependency Updates
+
+- Bump `flagsmith-flag-engine` to 10.0.0 ([#165](https://github.com/Flagsmith/flagsmith-python-client/issues/165))
+  ([68c40b5](https://github.com/Flagsmith/flagsmith-python-client/commit/68c40b554d4cbc9d7e3b5e31f7238de253648db1))
+- bump urllib3 from 2.2.3 to 2.5.0 ([#157](https://github.com/Flagsmith/flagsmith-python-client/issues/157))
+  ([5de9650](https://github.com/Flagsmith/flagsmith-python-client/commit/5de965027d94cd4cd62178615c7e6d14c5340b70))
+
 ## [4.0.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.0...v4.0.1) (2025-09-19)
 
 ### Bug Fixes
