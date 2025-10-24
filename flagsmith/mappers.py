@@ -243,7 +243,6 @@ def _map_environment_document_feature_states_to_feature_contexts(
             key=str(
                 feature_state.get("django_id") or feature_state["featurestate_uuid"]
             ),
-            feature_key=str(feature_state["feature"]["id"]),
             name=feature_state["feature"]["name"],
             enabled=feature_state["enabled"],
             value=feature_state["feature_state_value"],
