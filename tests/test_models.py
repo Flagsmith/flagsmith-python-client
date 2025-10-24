@@ -10,7 +10,6 @@ def test_flag_from_evaluation_result() -> None:
     # Given
     flag_result: SDKFlagResult = {
         "enabled": True,
-        "feature_key": "123",
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
@@ -36,7 +35,6 @@ def test_flag_from_evaluation_result() -> None:
             {
                 "feature1": {
                     "enabled": True,
-                    "feature_key": "1",
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
@@ -49,7 +47,6 @@ def test_flag_from_evaluation_result() -> None:
             {
                 "feature1": {
                     "enabled": True,
-                    "feature_key": "1",
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
@@ -62,7 +59,6 @@ def test_flag_from_evaluation_result() -> None:
             {
                 "feature1": {
                     "enabled": True,
-                    "feature_key": "1",
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
@@ -70,7 +66,6 @@ def test_flag_from_evaluation_result() -> None:
                 },
                 "feature2": {
                     "enabled": True,
-                    "feature_key": "2",
                     "name": "feature2",
                     "reason": "DEFAULT",
                     "value": "value2",
@@ -78,7 +73,6 @@ def test_flag_from_evaluation_result() -> None:
                 },
                 "feature3": {
                     "enabled": True,
-                    "feature_key": "3",
                     "name": "feature3",
                     "reason": "DEFAULT",
                     "value": 42,
@@ -130,7 +124,6 @@ def test_flag_from_evaluation_result_value_types(
     # Given
     flag_result: SDKFlagResult = {
         "enabled": True,
-        "feature_key": "123",
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": value,
@@ -148,7 +141,6 @@ def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None
     # Given
     flag_result: SDKFlagResult = {
         "enabled": True,
-        "feature_key": "123",
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
