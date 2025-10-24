@@ -165,7 +165,6 @@ def test_get_identity_flags_uses_local_environment_when_available(
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
-                "feature_key": "1",
                 "metadata": {"flagsmith_id": 1},
             }
         },

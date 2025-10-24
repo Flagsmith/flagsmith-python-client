@@ -93,7 +93,6 @@ def map_context_and_identity_data_to_context(
         **context,
         "identity": {
             "identifier": identifier,
-            "key": f"{context['environment']['key']}_{identifier}",
             "traits": {
                 trait_key: (
                     trait_value_or_config["value"]
@@ -200,7 +199,6 @@ def _map_identity_overrides_to_segments(
             overrides=[
                 {
                     "key": "",  # Identity overrides never carry multivariate options
-                    "feature_key": str(flagsmith_id),
                     "name": feature_name,
                     "enabled": feature_enabled,
                     "value": feature_value,
