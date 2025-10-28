@@ -54,13 +54,13 @@
             "enabled": true
         }
     ],
-    "updated_at": "2023-07-14 16:12:00.000000",
+    "updated_at": "2023-07-14T16:12:00.000000Z",
     "identity_overrides": [
         {
             "identifier": "overridden-id",
             "identity_uuid": "0f21cde8-63c5-4e50-baca-87897fa6cd01",
             "created_date": "2019-08-27T14:53:45.698555Z",
-            "updated_at": "2023-07-14 16:12:00.000000",
+            "updated_at": "2023-07-14T16:12:00.000000Z",
             "environment_api_key": "B62qaMZNwfiqT76p38ggrQ",
             "identity_features": [
                 {
