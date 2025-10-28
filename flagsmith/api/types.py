@@ -49,7 +49,7 @@ class MultivariateFeatureStateValueModel(typing.TypedDict):
 
 class FeatureStateModel(typing.TypedDict):
     enabled: bool
-    feature_segment: NotRequired[FeatureSegmentModel]
+    feature_segment: NotRequired[typing.Optional[FeatureSegmentModel]]
     feature_state_value: object
     feature: FeatureModel
     featurestate_uuid: str
