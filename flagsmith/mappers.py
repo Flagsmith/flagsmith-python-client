@@ -28,6 +28,7 @@ from flagsmith.types import (
     StreamEvent,
     TraitConfig,
 )
+from flagsmith.utils.datetime import fromisoformat
 
 OverrideKey = typing.Tuple[
     int,
@@ -69,9 +70,7 @@ def map_sse_event_to_stream_event(event: sseclient.Event) -> StreamEvent:
 def map_environment_document_to_environment_updated_at(
     environment_document: dict[str, typing.Any],
 ) -> datetime:
-    if (
-        updated_at := datetime.fromisoformat(environment_document["updated_at"])
-    ).tzinfo is None:
+    if (updated_at := fromisoformat(environment_document["updated_at"])).tzinfo is None:
         return updated_at.replace(tzinfo=timezone.utc)
     return updated_at.astimezone(tz=timezone.utc)
 

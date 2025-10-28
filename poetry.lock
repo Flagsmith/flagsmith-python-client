@@ -342,6 +342,19 @@ files = [
 ]
 
 [[package]]
+name = "iso8601"
+version = "2.1.0"
+description = "Simple module to parse ISO 8601 dates"
+optional = false
+python-versions = ">=3.7,<4.0"
+groups = ["main"]
+markers = "python_version < \"3.11\""
+files = [
+    {file = "iso8601-2.1.0-py3-none-any.whl", hash = "sha256:aac4145c4dcb66ad8b648a02830f5e2ff6c24af20f4f482689be402db2429242"},
+    {file = "iso8601-2.1.0.tar.gz", hash = "sha256:6b1d3829ee8921c4301998c909f7829fa9ed3cbdac0d3b16af2d743aed1ba8df"},
+]
+
+[[package]]
 name = "jsonpath-rfc9535"
 version = "0.1.6"
 description = "RFC 9535 - JSONPath: Query Expressions for JSON in Python"
@@ -947,4 +960,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4"
-content-hash = "cfe10e9fdb3ea780c9d8fae0f9cf8b92b3a37356be13633f655d910f71e0035e"
+content-hash = "22ba0b94f5228702454729e8f3962ecb316d1caf4d69f47df478c04735c67ab2"
