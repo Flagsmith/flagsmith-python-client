@@ -259,14 +259,14 @@ files = [
 
 [[package]]
 name = "flagsmith-flag-engine"
-version = "10.0.0"
+version = "10.0.1"
 description = "Flag engine for the Flagsmith API."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "flagsmith_flag_engine-10.0.0-py3-none-any.whl", hash = "sha256:da9dec37556416a6bec2004ec6dbe7e2581dfdd24167fe224a2280db7f01c011"},
-    {file = "flagsmith_flag_engine-10.0.0.tar.gz", hash = "sha256:c3318504d904532cb4673df849cfc222ccbd92915d1697d34c9e9e55f3f5eb53"},
+    {file = "flagsmith_flag_engine-10.0.1-py3-none-any.whl", hash = "sha256:f1b586ec2892492a99a525dc65a3e446e11ad7cb88fa7b7cfd36487dc8494280"},
+    {file = "flagsmith_flag_engine-10.0.1.tar.gz", hash = "sha256:c5c29e59535593cdd5a7c2732061a5e71d114c20a5063197077490020572349f"},
 ]
 
 [package.dependencies]
@@ -960,4 +960,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4"
-content-hash = "22ba0b94f5228702454729e8f3962ecb316d1caf4d69f47df478c04735c67ab2"
+content-hash = "6665e4f72b0b6bf0c95cec94689e86b852cd0579035bb3031daddeff0aba8161"
