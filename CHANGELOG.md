@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.0.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.0...v5.0.1) (2025-10-28)
+
+### Bug Fixes
+
+- TypeError: 'NoneType' object is not subscriptable (Python 3.11)
+  ([#170](https://github.com/Flagsmith/flagsmith-python-client/issues/170))
+  ([c20f543](https://github.com/Flagsmith/flagsmith-python-client/commit/c20f54385390677657edcafc8c38204c5197e736))
+- ValueError: Invalid isoformat string on Python 3.10
+  ([#168](https://github.com/Flagsmith/flagsmith-python-client/issues/168))
+  ([29dee4d](https://github.com/Flagsmith/flagsmith-python-client/commit/29dee4de219754ec9874e2db39287f065b2dc166))
+
+### Dependency Updates
+
+- Bump `flagsmith-flag-engine` to 10.0.1 ([#171](https://github.com/Flagsmith/flagsmith-python-client/issues/171))
+  ([ab093bd](https://github.com/Flagsmith/flagsmith-python-client/commit/ab093bd71bf870461a153864eb2b9ea08533f852))
+
 ## [5.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v4.0.1...v5.0.0) (2025-10-24)
 
 ### ⚠ BREAKING CHANGES
