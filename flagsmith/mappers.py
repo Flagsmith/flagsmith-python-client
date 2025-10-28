@@ -267,7 +267,7 @@ def _map_environment_document_feature_states_to_feature_contexts(
                 for multivariate_feature_state_value in multivariate_feature_state_values
             ]
 
-        if "feature_segment" in feature_state:
-            feature_context["priority"] = feature_state["feature_segment"]["priority"]
+        if feature_segment := feature_state.get("feature_segment"):
+            feature_context["priority"] = feature_segment["priority"]
 
         yield feature_context

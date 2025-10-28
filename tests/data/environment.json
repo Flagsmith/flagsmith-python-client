@@ -51,7 +51,8 @@
                 "id": 1
             },
             "segment_id": null,
-            "enabled": true
+            "enabled": true,
+            "feature_segment": null
         }
     ],
     "updated_at": "2023-07-14 16:12:00.000000",
