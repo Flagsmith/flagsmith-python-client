@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.1...v5.0.2) (2025-10-30)
+
+### Dependency Updates
+
+- Bump `flagsmith-flag-engine` to 10.0.2 ([#173](https://github.com/Flagsmith/flagsmith-python-client/issues/173))
+  ([9a0fc58](https://github.com/Flagsmith/flagsmith-python-client/commit/9a0fc58dc4e7eb590271a76e62a29078cf54b01b))
+
 ## [5.0.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.0...v5.0.1) (2025-10-28)
 
 ### Bug Fixes
