@@ -334,14 +334,8 @@ class Flagsmith:
 
         # Omit segments from evaluation context for environment flags
         # as they are only relevant for identity-specific evaluations
-        context_without_segments = typing.cast(
-            SDKEvaluationContext,
-            {
-                key: value
-                for key, value in self._evaluation_context.items()
-                if key != "segments"
-            },
-        )
+        context_without_segments = self._evaluation_context.copy()
+        context_without_segments.pop("segments", None)
 
         evaluation_result = engine.get_evaluation_result(
             context=context_without_segments,

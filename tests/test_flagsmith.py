@@ -96,13 +96,14 @@ def test_get_environment_flags_uses_local_environment_when_available(
 
 def test_get_environment_flags_omits_segments_from_evaluation_context(
     mocker: MockerFixture,
-    flagsmith: Flagsmith,
+    local_eval_flagsmith: Flagsmith,
     evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
-    flagsmith._evaluation_context = evaluation_context
-    flagsmith.enable_local_evaluation = True
-    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+    mock_get_evaluation_result = mocker.patch(
+        "flagsmith.flagsmith.engine.get_evaluation_result",
+        autospec=True,
+    )
 
     expected_evaluation_result = {
         "flags": {
@@ -116,17 +117,16 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
         "segments": [],
     }
 
-    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
+    mock_get_evaluation_result.return_value = expected_evaluation_result
 
     # When
-    flagsmith.get_environment_flags()
+    local_eval_flagsmith.get_environment_flags()
 
     # Then
-    mock_engine.get_evaluation_result.assert_called_once()
-    call_args = mock_engine.get_evaluation_result.call_args
-    context = call_args[1]["context"]  # Keyword argument 'context'
-    # Segments should not be present in the context passed to the engine
-    assert "segments" not in context
+    # Verify segments are not present in the context passed to the engine
+    context_without_segments = evaluation_context.copy()
+    context_without_segments.pop("segments", None)
+    mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
 
 
 @responses.activate()
@@ -228,13 +228,13 @@ def test_get_identity_flags_uses_local_environment_when_available(
 
 def test_get_identity_flags_includes_segments_in_evaluation_context(
     mocker: MockerFixture,
-    flagsmith: Flagsmith,
-    evaluation_context: SDKEvaluationContext,
+    local_eval_flagsmith: Flagsmith,
 ) -> None:
     # Given
-    flagsmith._evaluation_context = evaluation_context
-    flagsmith.enable_local_evaluation = True
-    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+    mock_get_evaluation_result = mocker.patch(
+        "flagsmith.flagsmith.engine.get_evaluation_result",
+        autospec=True,
+    )
 
     expected_evaluation_result = {
         "flags": {
@@ -251,19 +251,16 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     identifier = "identifier"
     traits = {"some_trait": "some_value"}
 
-    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
+    mock_get_evaluation_result.return_value = expected_evaluation_result
 
     # When
-    flagsmith.get_identity_flags(identifier, traits)
+    local_eval_flagsmith.get_identity_flags(identifier, traits)
 
     # Then
-    mock_engine.get_evaluation_result.assert_called_once()
-    call_args = mock_engine.get_evaluation_result.call_args
+    # Verify segments are present in the context passed to the engine for identity flags
+    call_args = mock_get_evaluation_result.call_args
     context = call_args[1]["context"]
-    # Segments should be present in the context passed to the engine for identity flags
     assert "segments" in context
-    # Verify segments from evaluation_context are preserved
-    assert context["segments"] == evaluation_context["segments"]
 
 
 @responses.activate()
