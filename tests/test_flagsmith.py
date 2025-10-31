@@ -94,6 +94,41 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert all_flags[0].value == "some-value"
 
 
+def test_get_environment_flags_omits_segments_from_evaluation_context(
+    mocker: MockerFixture,
+    flagsmith: Flagsmith,
+    evaluation_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    flagsmith._evaluation_context = evaluation_context
+    flagsmith.enable_local_evaluation = True
+    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+
+    expected_evaluation_result = {
+        "flags": {
+            "some_feature": {
+                "name": "some_feature",
+                "enabled": True,
+                "value": "some-feature-state-value",
+                "metadata": {"id": 1},
+            }
+        },
+        "segments": [],
+    }
+
+    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
+
+    # When
+    flagsmith.get_environment_flags()
+
+    # Then
+    mock_engine.get_evaluation_result.assert_called_once()
+    call_args = mock_engine.get_evaluation_result.call_args
+    context = call_args[0][0]  # First positional argument
+    # Segments should not be present in the context passed to the engine
+    assert "segments" not in context
+
+
 @responses.activate()
 def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
     flagsmith: Flagsmith, identities_json: str
@@ -189,6 +224,46 @@ def test_get_identity_flags_uses_local_environment_when_available(
 
     assert identity_flags[0].enabled is True
     assert identity_flags[0].value == "some-feature-state-value"
+
+
+def test_get_identity_flags_includes_segments_in_evaluation_context(
+    mocker: MockerFixture,
+    flagsmith: Flagsmith,
+    evaluation_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    flagsmith._evaluation_context = evaluation_context
+    flagsmith.enable_local_evaluation = True
+    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
+
+    expected_evaluation_result = {
+        "flags": {
+            "some_feature": {
+                "name": "some_feature",
+                "enabled": True,
+                "value": "some-feature-state-value",
+                "metadata": {"id": 1},
+            }
+        },
+        "segments": [],
+    }
+
+    identifier = "identifier"
+    traits = {"some_trait": "some_value"}
+
+    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
+
+    # When
+    flagsmith.get_identity_flags(identifier, traits)
+
+    # Then
+    mock_engine.get_evaluation_result.assert_called_once()
+    call_args = mock_engine.get_evaluation_result.call_args
+    context = call_args[1]["context"]
+    # Segments should be present in the context passed to the engine for identity flags
+    assert "segments" in context
+    # Verify segments from evaluation_context are preserved
+    assert context["segments"] == evaluation_context["segments"]
 
 
 @responses.activate()
