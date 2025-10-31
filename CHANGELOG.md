@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.2...v5.0.3) (2025-10-31)
+
+### Other
+
+- Standardize engine metadata ([#177](https://github.com/Flagsmith/flagsmith-python-client/issues/177))
+  ([c0d57ec](https://github.com/Flagsmith/flagsmith-python-client/commit/c0d57ec4cd208b79908298e6cf9a3504e5d42fda))
+
 ## [5.0.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.1...v5.0.2) (2025-10-30)
 
 ### Dependency Updates
