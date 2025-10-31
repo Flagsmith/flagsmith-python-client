@@ -46,11 +46,11 @@ def map_segment_results_to_identity_segments(
     for segment_result in segment_results:
         if metadata := segment_result.get("metadata"):
             if metadata.get("source") == "api" and (
-                (flagsmith_id := metadata.get("flagsmith_id")) is not None
+                (segment_id := metadata.get("id")) is not None
             ):
                 identity_segments.append(
                     Segment(
-                        id=flagsmith_id,
+                        id=segment_id,
                         name=segment_result["name"],
                     )
                 )
@@ -132,7 +132,7 @@ def map_environment_document_to_context(
                         )
                     ),
                     "metadata": SegmentMetadata(
-                        flagsmith_id=segment_id,
+                        id=segment_id,
                         source="api",
                     ),
                 }
@@ -202,9 +202,9 @@ def _map_identity_overrides_to_segments(
                     "enabled": feature_enabled,
                     "value": feature_value,
                     "priority": float("-inf"),  # Highest possible priority
-                    "metadata": {"flagsmith_id": flagsmith_id},
+                    "metadata": {"id": feature_id},
                 }
-                for flagsmith_id, feature_name, feature_enabled, feature_value in overrides_key
+                for feature_id, feature_name, feature_enabled, feature_value in overrides_key
             ],
             metadata=SegmentMetadata(source="identity_overrides"),
         )
@@ -237,7 +237,7 @@ def _map_environment_document_feature_states_to_feature_contexts(
     feature_states: list[FeatureStateModel],
 ) -> typing.Iterable[FeatureContext[FeatureMetadata]]:
     for feature_state in feature_states:
-        metadata: FeatureMetadata = {"flagsmith_id": feature_state["feature"]["id"]}
+        metadata: FeatureMetadata = {"id": feature_state["feature"]["id"]}
         feature_context = FeatureContext[FeatureMetadata](
             key=str(
                 feature_state.get("django_id") or feature_state["featurestate_uuid"]

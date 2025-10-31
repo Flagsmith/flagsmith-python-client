@@ -13,7 +13,7 @@ def test_flag_from_evaluation_result() -> None:
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
-        "metadata": {"flagsmith_id": 123},
+        "metadata": {"id": 123},
     }
 
     # When
@@ -38,7 +38,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
-                    "metadata": {"flagsmith_id": 1},
+                    "metadata": {"id": 1},
                 }
             },
             ["feature1"],
@@ -50,7 +50,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
-                    "metadata": {"flagsmith_id": 1},
+                    "metadata": {"id": 1},
                 }
             },
             ["feature1"],
@@ -62,21 +62,21 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
-                    "metadata": {"flagsmith_id": 1},
+                    "metadata": {"id": 1},
                 },
                 "feature2": {
                     "enabled": True,
                     "name": "feature2",
                     "reason": "DEFAULT",
                     "value": "value2",
-                    "metadata": {"flagsmith_id": 2},
+                    "metadata": {"id": 2},
                 },
                 "feature3": {
                     "enabled": True,
                     "name": "feature3",
                     "reason": "DEFAULT",
                     "value": 42,
-                    "metadata": {"flagsmith_id": 3},
+                    "metadata": {"id": 3},
                 },
             },
             ["feature1", "feature2", "feature3"],
@@ -127,7 +127,7 @@ def test_flag_from_evaluation_result_value_types(
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": value,
-        "metadata": {"flagsmith_id": 123},
+        "metadata": {"id": 123},
     }
 
     # When

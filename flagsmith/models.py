@@ -35,7 +35,7 @@ class Flag(BaseFlag):
                 enabled=flag_result["enabled"],
                 value=flag_result["value"],
                 feature_name=flag_result["name"],
-                feature_id=metadata["flagsmith_id"],
+                feature_id=metadata["id"],
             )
         raise ValueError(
             "FlagResult metadata is missing. Cannot create Flag instance. "
