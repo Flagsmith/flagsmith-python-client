@@ -332,7 +332,14 @@ class Flagsmith:
         if self._evaluation_context is None:
             raise TypeError("No environment present")
 
-        evaluation_result = engine.get_evaluation_result(self._evaluation_context)
+        # Omit segments from evaluation context for environment flags
+        # as they are only relevant for identity-specific evaluations
+        context_without_segments = self._evaluation_context.copy()
+        context_without_segments.pop("segments", None)
+
+        evaluation_result = engine.get_evaluation_result(
+            context=context_without_segments,
+        )
 
         return Flags.from_evaluation_result(
             evaluation_result=evaluation_result,
