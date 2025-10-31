@@ -124,7 +124,7 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
     # Then
     mock_engine.get_evaluation_result.assert_called_once()
     call_args = mock_engine.get_evaluation_result.call_args
-    context = call_args[0][0]  # First positional argument
+    context = call_args[1]["context"]  # Keyword argument 'context'
     # Segments should not be present in the context passed to the engine
     assert "segments" not in context
 

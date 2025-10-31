@@ -343,7 +343,9 @@ class Flagsmith:
             },
         )
 
-        evaluation_result = engine.get_evaluation_result(context_without_segments)
+        evaluation_result = engine.get_evaluation_result(
+            context=context_without_segments,
+        )
 
         return Flags.from_evaluation_result(
             evaluation_result=evaluation_result,
