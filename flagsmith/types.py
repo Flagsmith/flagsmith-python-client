@@ -38,14 +38,14 @@ class ApplicationMetadata(typing.TypedDict):
 
 
 class SegmentMetadata(typing.TypedDict):
-    flagsmith_id: NotRequired[int]
+    id: NotRequired[int]
     """The ID of the segment used in Flagsmith API."""
     source: NotRequired[typing.Literal["api", "identity_overrides"]]
     """The source of the segment, e.g. 'api', 'identity_overrides'."""
 
 
 class FeatureMetadata(typing.TypedDict):
-    flagsmith_id: int
+    id: int
     """The ID of the feature used in Flagsmith API."""
 
 
