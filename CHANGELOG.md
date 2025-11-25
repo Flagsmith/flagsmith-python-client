@@ -2,20 +2,21 @@
 
 ## [5.0.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.2...v5.0.3) (2025-11-25)
 
-
 ### Bug Fixes
 
-* `get_environment_flags` includes segments in evaluation context ([#179](https://github.com/Flagsmith/flagsmith-python-client/issues/179)) ([470c4e3](https://github.com/Flagsmith/flagsmith-python-client/commit/470c4e3e71be55795387ab023b4fe6f7623d6aec))
-
+- `get_environment_flags` includes segments in evaluation context
+  ([#179](https://github.com/Flagsmith/flagsmith-python-client/issues/179))
+  ([470c4e3](https://github.com/Flagsmith/flagsmith-python-client/commit/470c4e3e71be55795387ab023b4fe6f7623d6aec))
 
 ### Dependency Updates
 
-* Bump `flagsmith-flag-engine` to 10.0.3 ([#182](https://github.com/Flagsmith/flagsmith-python-client/issues/182)) ([cf54be5](https://github.com/Flagsmith/flagsmith-python-client/commit/cf54be555b3d3178cd1494e8fc775b0283ad1ee9))
-
+- Bump `flagsmith-flag-engine` to 10.0.3 ([#182](https://github.com/Flagsmith/flagsmith-python-client/issues/182))
+  ([cf54be5](https://github.com/Flagsmith/flagsmith-python-client/commit/cf54be555b3d3178cd1494e8fc775b0283ad1ee9))
 
 ### Other
 
-* Standardize engine metadata ([#177](https://github.com/Flagsmith/flagsmith-python-client/issues/177)) ([c0d57ec](https://github.com/Flagsmith/flagsmith-python-client/commit/c0d57ec4cd208b79908298e6cf9a3504e5d42fda))
+- Standardize engine metadata ([#177](https://github.com/Flagsmith/flagsmith-python-client/issues/177))
+  ([c0d57ec](https://github.com/Flagsmith/flagsmith-python-client/commit/c0d57ec4cd208b79908298e6cf9a3504e5d42fda))
 
 ## [5.0.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.1...v5.0.2) (2025-10-30)
 
