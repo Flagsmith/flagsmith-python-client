@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.0.4](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.3...v5.0.4) (2025-11-27)
+
+### CI
+
+- pre-commit autoupdate ([#180](https://github.com/Flagsmith/flagsmith-python-client/issues/180))
+  ([cafb3e2](https://github.com/Flagsmith/flagsmith-python-client/commit/cafb3e209491afa66f9b84e6b8aeb81c2b220a07))
+
 ## [5.0.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.2...v5.0.3) (2025-11-25)
 
 ### Bug Fixes
