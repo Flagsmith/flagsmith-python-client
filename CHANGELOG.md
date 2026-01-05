@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.1.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.3...v5.1.0) (2026-01-05)
+
+
+### Features
+
+* added-trait-model-type ([#186](https://github.com/Flagsmith/flagsmith-python-client/issues/186)) ([5c865ce](https://github.com/Flagsmith/flagsmith-python-client/commit/5c865cefd90d0ab8dc139e5d608809c3d03105a7))
+
+
+### CI
+
+* pre-commit autoupdate ([#180](https://github.com/Flagsmith/flagsmith-python-client/issues/180)) ([cafb3e2](https://github.com/Flagsmith/flagsmith-python-client/commit/cafb3e209491afa66f9b84e6b8aeb81c2b220a07))
+* pre-commit autoupdate ([#185](https://github.com/Flagsmith/flagsmith-python-client/issues/185)) ([ef13716](https://github.com/Flagsmith/flagsmith-python-client/commit/ef13716013313ab5eaaaf4de3ca577707ea82a75))
+
+
+### Other
+
+* **deps:** bump urllib3 from 2.5.0 to 2.6.0 ([#184](https://github.com/Flagsmith/flagsmith-python-client/issues/184)) ([efd43fd](https://github.com/Flagsmith/flagsmith-python-client/commit/efd43fd01d0b591ee3583a3ebf13846cc129f5e9))
+
 ## [5.0.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.2...v5.0.3) (2025-11-25)
 
 ### Bug Fixes
