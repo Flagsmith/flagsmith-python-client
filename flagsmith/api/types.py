@@ -2,7 +2,7 @@ import typing
 
 from flag_engine.engine import ContextValue
 from flag_engine.segments.types import ConditionOperator, RuleType
-from typing_extensions import NotRequired
+from typing_extensions import NotRequired, TypedDict
 
 
 class SegmentConditionModel(typing.TypedDict):
@@ -70,7 +70,7 @@ class EnvironmentModel(typing.TypedDict):
     project: ProjectModel
 
 
-class TraitModel(typing.TypedDict):
+class TraitModel(TypedDict):
     trait_key: str
     trait_value: ContextValue
     transient: NotRequired[bool]
