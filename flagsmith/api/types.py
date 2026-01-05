@@ -1,6 +1,6 @@
 import typing
 
-from flag_engine.identities.traits.types import ContextValue
+from flag_engine.engine import ContextValue
 from flag_engine.segments.types import ConditionOperator, RuleType
 from typing_extensions import NotRequired
 
