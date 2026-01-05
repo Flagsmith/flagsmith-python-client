@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.1.0...v5.1.1) (2026-01-05)
+
+
+### Bug Fixes
+
+* use-typing-extension ([#188](https://github.com/Flagsmith/flagsmith-python-client/issues/188)) ([a636536](https://github.com/Flagsmith/flagsmith-python-client/commit/a636536162f94589bd7337090dad493fb3745ef0))
+
 ## [5.1.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.0.3...v5.1.0) (2026-01-05)
 
 ### Features
