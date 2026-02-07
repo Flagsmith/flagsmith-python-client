@@ -2,11 +2,14 @@
 
 ## [5.1.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.1.1...v5.1.2) (2026-02-07)
 
-
 ### Other
 
-* **deps-dev:** bump virtualenv from 20.34.0 to 20.36.1 ([#191](https://github.com/Flagsmith/flagsmith-python-client/issues/191)) ([0aa4231](https://github.com/Flagsmith/flagsmith-python-client/commit/0aa423183e6e665e0532a85019fbb40e625b1b5b))
-* Remove amannn/action-semantic-pull-request workflow ([#194](https://github.com/Flagsmith/flagsmith-python-client/issues/194)) ([ccced7f](https://github.com/Flagsmith/flagsmith-python-client/commit/ccced7f0f36dadba1a4d75d8aa363d23be1bfea8))
+- **deps-dev:** bump virtualenv from 20.34.0 to 20.36.1
+  ([#191](https://github.com/Flagsmith/flagsmith-python-client/issues/191))
+  ([0aa4231](https://github.com/Flagsmith/flagsmith-python-client/commit/0aa423183e6e665e0532a85019fbb40e625b1b5b))
+- Remove amannn/action-semantic-pull-request workflow
+  ([#194](https://github.com/Flagsmith/flagsmith-python-client/issues/194))
+  ([ccced7f](https://github.com/Flagsmith/flagsmith-python-client/commit/ccced7f0f36dadba1a4d75d8aa363d23be1bfea8))
 
 ## [5.1.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.1.0...v5.1.1) (2026-01-05)
 
