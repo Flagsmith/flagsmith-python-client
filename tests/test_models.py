@@ -1,7 +1,9 @@
 import typing
+from unittest import mock
 
 import pytest
 
+from flagsmith.analytics import PipelineAnalyticsProcessor
 from flagsmith.models import Flag, Flags
 from flagsmith.types import SDKEvaluationResult, SDKFlagResult
 
@@ -149,3 +151,33 @@ def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None
     # When & Then
     with pytest.raises(ValueError):
         Flag.from_evaluation_result(flag_result)
+
+
+def test_get_flag_records_pipeline_evaluation_event(
+    pipeline_analytics_processor: PipelineAnalyticsProcessor,
+) -> None:
+    flags = Flags(
+        flags={"my_feature": Flag(enabled=True, value="v1", feature_name="my_feature", feature_id=1)},
+        _pipeline_analytics_processor=pipeline_analytics_processor,
+        _identity_identifier="user123",
+        _traits={"plan": "premium"},
+    )
+
+    with mock.patch.object(pipeline_analytics_processor, "record_evaluation_event") as mock_record:
+        flags.get_flag("my_feature")
+
+    mock_record.assert_called_once_with(
+        flag_key="my_feature",
+        enabled=True,
+        value="v1",
+        identity_identifier="user123",
+        traits={"plan": "premium"},
+    )
+
+
+def test_get_flag_without_pipeline_processor() -> None:
+    flags = Flags(
+        flags={"my_feature": Flag(enabled=True, value="v1", feature_name="my_feature", feature_id=1)},
+    )
+    flag = flags.get_flag("my_feature")
+    assert flag.enabled is True
