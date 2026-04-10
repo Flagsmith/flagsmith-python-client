@@ -9,6 +9,7 @@ from pytest_mock import MockerFixture
 from responses import matchers
 
 from flagsmith import Flagsmith, __version__
+from flagsmith.analytics import PipelineAnalyticsConfig
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.exceptions import (
     FlagsmithAPIError,
@@ -915,3 +916,84 @@ def test_flagsmith__init__expected_headers_sent(
         "Connection": "keep-alive",
         **expected_headers,
     }
+
+
+def test_track_event_raises_without_config(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key)
+    with pytest.raises(ValueError, match="Pipeline analytics is not configured"):
+        flagsmith.track_event("purchase")
+
+
+def test_track_event_calls_pipeline_processor(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
+
+    mock_record = mocker.patch.object(
+        flagsmith._pipeline_analytics_processor, "record_custom_event"
+    )
+
+    flagsmith.track_event(
+        "purchase",
+        identity_identifier="user1",
+        traits={"plan": "premium"},
+        metadata={"amount": 99},
+    )
+
+    mock_record.assert_called_once_with(
+        event_name="purchase",
+        identity_identifier="user1",
+        traits={"plan": "premium"},
+        metadata={"amount": 99},
+    )
+
+
+@responses.activate()
+def test_get_flag_records_evaluation_event_via_flagsmith(
+    mocker: MockerFixture, api_key: str, flags_json: str
+) -> None:
+    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
+
+    mock_record = mocker.patch.object(
+        flagsmith._pipeline_analytics_processor, "record_evaluation_event"
+    )
+
+    responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
+    flags = flagsmith.get_environment_flags()
+    flags.get_flag("some_feature")
+
+    mock_record.assert_called_once_with(
+        flag_key="some_feature",
+        enabled=True,
+        value="some-value",
+        identity_identifier=None,
+        traits=None,
+    )
+
+
+@responses.activate()
+def test_get_identity_flags_passes_identity_and_traits(
+    mocker: MockerFixture, api_key: str, identities_json: str
+) -> None:
+    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
+
+    mock_record = mocker.patch.object(
+        flagsmith._pipeline_analytics_processor, "record_evaluation_event"
+    )
+
+    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
+    flags = flagsmith.get_identity_flags(
+        "user123", traits={"plan": "premium"}
+    )
+    flags.get_flag("some_feature")
+
+    mock_record.assert_called_once_with(
+        flag_key="some_feature",
+        enabled=True,
+        value="some-value",
+        identity_identifier="user123",
+        traits={"plan": "premium"},
+    )
