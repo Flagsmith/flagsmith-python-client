@@ -11,7 +11,11 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
-from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.analytics import (
+    AnalyticsProcessor,
+    PipelineAnalyticsConfig,
+    PipelineAnalyticsProcessor,
+)
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import map_environment_document_to_context
 from flagsmith.types import SDKEvaluationContext
@@ -23,6 +27,21 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 def analytics_processor() -> AnalyticsProcessor:
     return AnalyticsProcessor(
         environment_key="test_key", base_api_url="http://test_url"
+    )
+
+
+@pytest.fixture()
+def pipeline_analytics_config() -> PipelineAnalyticsConfig:
+    return PipelineAnalyticsConfig(analytics_server_url="http://test_analytics/")
+
+
+@pytest.fixture()
+def pipeline_analytics_processor(
+    pipeline_analytics_config: PipelineAnalyticsConfig,
+) -> PipelineAnalyticsProcessor:
+    return PipelineAnalyticsProcessor(
+        config=pipeline_analytics_config,
+        environment_key="test_key",
     )
 
 

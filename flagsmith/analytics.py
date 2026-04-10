@@ -1,8 +1,16 @@
 import json
+import logging
+import threading
+import time
 import typing
+from dataclasses import dataclass
 from datetime import datetime
 
 from requests_futures.sessions import FuturesSession  # type: ignore
+
+from flagsmith.version import __version__
+
+logger = logging.getLogger(__name__)
 
 ANALYTICS_ENDPOINT: typing.Final[str] = "analytics/flags/"
 
@@ -60,3 +68,147 @@ class AnalyticsProcessor:
         self.analytics_data[feature_name] = self.analytics_data.get(feature_name, 0) + 1
         if (datetime.now() - self._last_flushed).seconds > ANALYTICS_TIMER:
             self.flush()
+
+
+@dataclass
+class PipelineAnalyticsConfig:
+    analytics_server_url: str
+    max_buffer: int = 1000
+    flush_interval_seconds: float = 10.0
+
+
+class PipelineAnalyticsProcessor:
+    def __init__(
+        self,
+        config: PipelineAnalyticsConfig,
+        environment_key: str,
+    ) -> None:
+        url = config.analytics_server_url
+        if not url.endswith("/"):
+            url = f"{url}/"
+        self._batch_endpoint = f"{url}v1/analytics/batch"
+        self._environment_key = environment_key
+        self._max_buffer = config.max_buffer
+        self._flush_interval_seconds = config.flush_interval_seconds
+
+        self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
+        self._dedup_keys: typing.Dict[str, str] = {}
+        self._lock = threading.Lock()
+        self._timer: typing.Optional[threading.Timer] = None
+
+    def record_evaluation_event(
+        self,
+        flag_key: str,
+        enabled: bool,
+        value: typing.Any,
+        identity_identifier: typing.Optional[str] = None,
+        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> None:
+        fingerprint = f"{identity_identifier or 'none'}|{enabled}|{value}"
+        should_flush = False
+
+        with self._lock:
+            if self._dedup_keys.get(flag_key) == fingerprint:
+                return
+            self._dedup_keys[flag_key] = fingerprint
+            self._buffer.append(
+                {
+                    "event_id": flag_key,
+                    "event_type": "flag_evaluation",
+                    "evaluated_at": int(time.time() * 1000),
+                    "identity_identifier": identity_identifier,
+                    "enabled": enabled,
+                    "value": value,
+                    "traits": dict(traits) if traits else None,
+                    "metadata": {"sdk_version": __version__},
+                }
+            )
+            if len(self._buffer) >= self._max_buffer:
+                should_flush = True
+
+        if should_flush:
+            self.flush()
+
+    def record_custom_event(
+        self,
+        event_name: str,
+        identity_identifier: typing.Optional[str] = None,
+        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> None:
+        should_flush = False
+
+        with self._lock:
+            self._buffer.append(
+                {
+                    "event_id": event_name,
+                    "event_type": "custom_event",
+                    "evaluated_at": int(time.time() * 1000),
+                    "identity_identifier": identity_identifier,
+                    "enabled": None,
+                    "value": None,
+                    "traits": dict(traits) if traits else None,
+                    "metadata": {**(metadata or {}), "sdk_version": __version__},
+                }
+            )
+            if len(self._buffer) >= self._max_buffer:
+                should_flush = True
+
+        if should_flush:
+            self.flush()
+
+    def flush(self) -> None:
+        with self._lock:
+            if not self._buffer:
+                return
+            events = self._buffer
+            self._buffer = []
+            self._dedup_keys.clear()
+
+        payload = json.dumps(
+            {"events": events, "environment_key": self._environment_key}
+        )
+        future = session.post(
+            self._batch_endpoint,
+            data=payload,
+            timeout=3,
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "X-Environment-Key": self._environment_key,
+                "Flagsmith-SDK-User-Agent": f"flagsmith-python-client/{__version__}",
+            },
+        )
+        future.add_done_callback(lambda f: self._handle_flush_result(f, events))
+
+    def _handle_flush_result(
+        self,
+        future: typing.Any,
+        events: typing.List[typing.Dict[str, typing.Any]],
+    ) -> None:
+        try:
+            response = future.result()
+            response.raise_for_status()
+        except Exception:
+            logger.warning("Failed to flush pipeline analytics, re-queuing events")
+            with self._lock:
+                self._buffer = events + self._buffer
+                self._buffer = self._buffer[: self._max_buffer]
+
+    def start(self) -> None:
+        self._schedule_flush()
+
+    def stop(self) -> None:
+        if self._timer is not None:
+            self._timer.cancel()
+        self.flush()
+
+    def _schedule_flush(self) -> None:
+        self._timer = threading.Timer(
+            self._flush_interval_seconds, self._timer_flush
+        )
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _timer_flush(self) -> None:
+        self.flush()
+        self._schedule_flush()
