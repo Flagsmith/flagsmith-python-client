@@ -168,16 +168,20 @@ class PipelineAnalyticsProcessor:
         payload = json.dumps(
             {"events": events, "environment_key": self._environment_key}
         )
-        future = session.post(
-            self._batch_endpoint,
-            data=payload,
-            timeout=3,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "X-Environment-Key": self._environment_key,
-                "Flagsmith-SDK-User-Agent": f"flagsmith-python-client/{__version__}",
-            },
-        )
+        try:
+            future = session.post(
+                self._batch_endpoint,
+                data=payload,
+                timeout=3,
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "X-Environment-Key": self._environment_key,
+                    "Flagsmith-SDK-User-Agent": f"flagsmith-python-client/{__version__}",
+                },
+            )
+        except RuntimeError:
+            logger.debug("Skipping flush: thread pool already shut down")
+            return
         future.add_done_callback(lambda f: self._handle_flush_result(f, events))
 
     def _handle_flush_result(
