@@ -193,7 +193,7 @@ class PipelineAnalyticsProcessor:
             response = future.result()
             response.raise_for_status()
         except Exception:
-            logger.warning("Failed to flush pipeline analytics, re-queuing events")
+            logger.warning("Failed to flush pipeline analytics, re-queuing events", exc_info=True)
             with self._lock:
                 self._buffer = events + self._buffer
                 self._buffer = self._buffer[: self._max_buffer]

@@ -997,3 +997,30 @@ def test_get_identity_flags_passes_identity_and_traits(
         identity_identifier="user123",
         traits={"plan": "premium"},
     )
+
+
+@responses.activate()
+def test_get_identity_flags_resolves_trait_config_values(
+    mocker: MockerFixture, api_key: str, identities_json: str
+) -> None:
+    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
+
+    mock_record = mocker.patch.object(
+        flagsmith._pipeline_analytics_processor, "record_evaluation_event"
+    )
+
+    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
+    flags = flagsmith.get_identity_flags(
+        "user123",
+        traits={"plan": {"value": "premium", "transient": True}},
+    )
+    flags.get_flag("some_feature")
+
+    mock_record.assert_called_once_with(
+        flag_key="some_feature",
+        enabled=True,
+        value="some-value",
+        identity_identifier="user123",
+        traits={"plan": "premium"},
+    )

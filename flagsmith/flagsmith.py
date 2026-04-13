@@ -19,6 +19,7 @@ from flagsmith.mappers import (
     map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
     map_segment_results_to_identity_segments,
+    resolve_trait_values,
 )
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
@@ -318,20 +319,9 @@ class Flagsmith:
         self._pipeline_analytics_processor.record_custom_event(
             event_name=event_name,
             identity_identifier=identity_identifier,
-            traits=self._resolve_traits(traits),
+            traits=resolve_trait_values(traits),
             metadata=metadata,
         )
-
-    @staticmethod
-    def _resolve_traits(
-        traits: typing.Optional[TraitMapping],
-    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
-        if not traits:
-            return None
-        return {
-            key: (val["value"] if isinstance(val, dict) else val)
-            for key, val in traits.items()
-        }
 
     def update_environment(self) -> None:
         try:
@@ -414,7 +404,7 @@ class Flagsmith:
             default_flag_handler=self.default_flag_handler,
             pipeline_analytics_processor=self._pipeline_analytics_processor,
             identity_identifier=identifier,
-            traits=self._resolve_traits(traits),
+            traits=resolve_trait_values(traits),
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
@@ -461,7 +451,7 @@ class Flagsmith:
                 default_flag_handler=self.default_flag_handler,
                 pipeline_analytics_processor=self._pipeline_analytics_processor,
                 identity_identifier=identifier,
-                traits=self._resolve_traits(traits),
+                traits=resolve_trait_values(traits),
             )
         except FlagsmithAPIError:
             if self.offline_handler:
