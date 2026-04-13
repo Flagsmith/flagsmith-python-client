@@ -177,17 +177,28 @@ class Flagsmith:
 
                 self._initialise_local_evaluation()
 
-            if enable_analytics:
-                self._analytics_processor = AnalyticsProcessor(
-                    environment_key, self.api_url, timeout=self.request_timeout_seconds
-                )
+            self._initialise_analytics(
+                environment_key=environment_key,
+                enable_analytics=enable_analytics,
+                pipeline_analytics_config=pipeline_analytics_config,
+            )
 
-            if pipeline_analytics_config:
-                self._pipeline_analytics_processor = PipelineAnalyticsProcessor(
-                    config=pipeline_analytics_config,
-                    environment_key=environment_key,
-                )
-                self._pipeline_analytics_processor.start()
+    def _initialise_analytics(
+        self,
+        environment_key: str,
+        enable_analytics: bool,
+        pipeline_analytics_config: typing.Optional[PipelineAnalyticsConfig],
+    ) -> None:
+        if enable_analytics:
+            self._analytics_processor = AnalyticsProcessor(
+                environment_key, self.api_url, timeout=self.request_timeout_seconds
+            )
+        if pipeline_analytics_config:
+            self._pipeline_analytics_processor = PipelineAnalyticsProcessor(
+                config=pipeline_analytics_config,
+                environment_key=environment_key,
+            )
+            self._pipeline_analytics_processor.start()
 
     def _initialise_local_evaluation(self) -> None:
         # To ensure that the environment is set before allowing subsequent

@@ -12,7 +12,6 @@ from flag_engine.context.types import (
     StrValueSegmentCondition,
 )
 from flag_engine.result.types import SegmentResult
-from flag_engine.segments.types import ContextValue
 
 from flagsmith.api.types import (
     EnvironmentModel,
@@ -26,7 +25,6 @@ from flagsmith.types import (
     SDKEvaluationContext,
     SegmentMetadata,
     StreamEvent,
-    TraitConfig,
     TraitMapping,
 )
 from flagsmith.utils.datetime import fromisoformat
