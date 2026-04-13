@@ -157,13 +157,19 @@ def test_get_flag_records_pipeline_evaluation_event(
     pipeline_analytics_processor: PipelineAnalyticsProcessor,
 ) -> None:
     flags = Flags(
-        flags={"my_feature": Flag(enabled=True, value="v1", feature_name="my_feature", feature_id=1)},
+        flags={
+            "my_feature": Flag(
+                enabled=True, value="v1", feature_name="my_feature", feature_id=1
+            )
+        },
         _pipeline_analytics_processor=pipeline_analytics_processor,
         _identity_identifier="user123",
         _traits={"plan": "premium"},
     )
 
-    with mock.patch.object(pipeline_analytics_processor, "record_evaluation_event") as mock_record:
+    with mock.patch.object(
+        pipeline_analytics_processor, "record_evaluation_event"
+    ) as mock_record:
         flags.get_flag("my_feature")
 
     mock_record.assert_called_once_with(
@@ -177,7 +183,11 @@ def test_get_flag_records_pipeline_evaluation_event(
 
 def test_get_flag_without_pipeline_processor() -> None:
     flags = Flags(
-        flags={"my_feature": Flag(enabled=True, value="v1", feature_name="my_feature", feature_id=1)},
+        flags={
+            "my_feature": Flag(
+                enabled=True, value="v1", feature_name="my_feature", feature_id=1
+            )
+        },
     )
     flag = flags.get_flag("my_feature")
     assert flag.enabled is True

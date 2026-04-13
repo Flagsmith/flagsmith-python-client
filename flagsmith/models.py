@@ -67,7 +67,9 @@ class Flags:
         evaluation_result: SDKEvaluationResult,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        pipeline_analytics_processor: typing.Optional[PipelineAnalyticsProcessor] = None,
+        pipeline_analytics_processor: typing.Optional[
+            PipelineAnalyticsProcessor
+        ] = None,
         identity_identifier: typing.Optional[str] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
@@ -90,7 +92,9 @@ class Flags:
         api_flags: typing.Sequence[typing.Mapping[str, typing.Any]],
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        pipeline_analytics_processor: typing.Optional[PipelineAnalyticsProcessor] = None,
+        pipeline_analytics_processor: typing.Optional[
+            PipelineAnalyticsProcessor
+        ] = None,
         identity_identifier: typing.Optional[str] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:

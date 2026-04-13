@@ -114,7 +114,9 @@ class Flagsmith:
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
-        self._pipeline_analytics_processor: typing.Optional[PipelineAnalyticsProcessor] = None
+        self._pipeline_analytics_processor: typing.Optional[
+            PipelineAnalyticsProcessor
+        ] = None
         self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
@@ -485,5 +487,8 @@ class Flagsmith:
         if hasattr(self, "event_stream_thread"):
             self.event_stream_thread.stop()
 
-        if hasattr(self, "_pipeline_analytics_processor") and self._pipeline_analytics_processor:
+        if (
+            hasattr(self, "_pipeline_analytics_processor")
+            and self._pipeline_analytics_processor
+        ):
             self._pipeline_analytics_processor.stop()
