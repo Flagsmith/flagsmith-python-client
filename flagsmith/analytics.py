@@ -193,7 +193,9 @@ class PipelineAnalyticsProcessor:
             response = future.result()
             response.raise_for_status()
         except Exception:
-            logger.warning("Failed to flush pipeline analytics, re-queuing events", exc_info=True)
+            logger.warning(
+                "Failed to flush pipeline analytics, re-queuing events", exc_info=True
+            )
             with self._lock:
                 self._buffer = events + self._buffer
                 self._buffer = self._buffer[: self._max_buffer]
@@ -207,9 +209,7 @@ class PipelineAnalyticsProcessor:
         self.flush()
 
     def _schedule_flush(self) -> None:
-        self._timer = threading.Timer(
-            self._flush_interval_seconds, self._timer_flush
-        )
+        self._timer = threading.Timer(self._flush_interval_seconds, self._timer_flush)
         self._timer.daemon = True
         self._timer.start()
 

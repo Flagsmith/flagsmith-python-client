@@ -985,9 +985,7 @@ def test_get_identity_flags_passes_identity_and_traits(
     )
 
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
-    flags = flagsmith.get_identity_flags(
-        "user123", traits={"plan": "premium"}
-    )
+    flags = flagsmith.get_identity_flags("user123", traits={"plan": "premium"})
     flags.get_flag("some_feature")
 
     mock_record.assert_called_once_with(

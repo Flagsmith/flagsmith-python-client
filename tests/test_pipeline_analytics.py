@@ -36,7 +36,7 @@ def test_record_evaluation_event_buffers_event(
 @pytest.mark.parametrize(
     "second_enabled, expected_count",
     [
-        (True, 1),   # same fingerprint -> deduplicated
+        (True, 1),  # same fingerprint -> deduplicated
         (False, 2),  # different fingerprint -> both kept
     ],
 )
@@ -49,7 +49,10 @@ def test_evaluation_event_deduplication(
         flag_key="my_flag", enabled=True, value="v1", identity_identifier="user1"
     )
     pipeline_analytics_processor.record_evaluation_event(
-        flag_key="my_flag", enabled=second_enabled, value="v1", identity_identifier="user1"
+        flag_key="my_flag",
+        enabled=second_enabled,
+        value="v1",
+        identity_identifier="user1",
     )
 
     assert len(pipeline_analytics_processor._buffer) == expected_count
@@ -72,9 +75,7 @@ def test_dedup_keys_cleared_after_flush(
 
 
 def test_auto_flush_on_buffer_full() -> None:
-    config = PipelineAnalyticsConfig(
-        analytics_server_url="http://test/", max_buffer=5
-    )
+    config = PipelineAnalyticsConfig(analytics_server_url="http://test/", max_buffer=5)
     processor = PipelineAnalyticsProcessor(config=config, environment_key="key")
 
     with mock.patch("flagsmith.analytics.session"):
@@ -186,9 +187,7 @@ def test_start_stop_lifecycle() -> None:
     assert processor._timer.is_alive()
 
     with mock.patch("flagsmith.analytics.session"):
-        processor.record_evaluation_event(
-            flag_key="my_flag", enabled=True, value="v1"
-        )
+        processor.record_evaluation_event(flag_key="my_flag", enabled=True, value="v1")
         processor.stop()
 
     assert len(processor._buffer) == 0
