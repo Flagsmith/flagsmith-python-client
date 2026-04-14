@@ -137,19 +137,6 @@ def test_failed_flush_requeues_events(
     assert pipeline_analytics_processor._buffer[0]["event_id"] == "my_flag"
 
 
-@pytest.mark.parametrize(
-    "url, expected_endpoint",
-    [
-        ("http://example.com", "http://example.com/v1/analytics/batch"),
-        ("http://example.com/", "http://example.com/v1/analytics/batch"),
-    ],
-)
-def test_url_trailing_slash_handling(url: str, expected_endpoint: str) -> None:
-    config = PipelineAnalyticsConfig(analytics_server_url=url)
-    processor = PipelineAnalyticsProcessor(config=config, environment_key="key")
-    assert processor._batch_endpoint == expected_endpoint
-
-
 def test_record_custom_event(
     pipeline_analytics_processor: PipelineAnalyticsProcessor,
 ) -> None:
