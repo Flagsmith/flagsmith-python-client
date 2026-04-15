@@ -498,8 +498,5 @@ class Flagsmith:
         if hasattr(self, "event_stream_thread"):
             self.event_stream_thread.stop()
 
-        if (
-            hasattr(self, "_pipeline_analytics_processor")
-            and self._pipeline_analytics_processor
-        ):
+        if self._pipeline_analytics_processor:
             self._pipeline_analytics_processor.stop()
