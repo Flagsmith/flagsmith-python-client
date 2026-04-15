@@ -78,6 +78,14 @@ class PipelineAnalyticsConfig:
 
 
 class PipelineAnalyticsProcessor:
+    """
+    Buffered analytics processor that sends per-evaluation and custom events
+    to the Flagsmith pipeline analytics endpoint in batches.
+
+    Evaluation events are deduplicated within each flush window. Events are
+    flushed periodically via a background timer or when the buffer is full.
+    """
+
     def __init__(
         self,
         config: PipelineAnalyticsConfig,
