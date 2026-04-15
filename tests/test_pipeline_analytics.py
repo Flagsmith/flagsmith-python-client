@@ -75,7 +75,9 @@ def test_dedup_keys_cleared_after_flush(
 
 
 def test_auto_flush_on_buffer_full() -> None:
-    config = PipelineAnalyticsConfig(analytics_server_url="http://test/", max_buffer_items=5)
+    config = PipelineAnalyticsConfig(
+        analytics_server_url="http://test/", max_buffer_items=5
+    )
     processor = PipelineAnalyticsProcessor(config=config, environment_key="key")
 
     with mock.patch("flagsmith.analytics.session"):
