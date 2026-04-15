@@ -149,3 +149,15 @@ def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None
     # When & Then
     with pytest.raises(ValueError):
         Flag.from_evaluation_result(flag_result)
+
+
+def test_get_flag_without_pipeline_processor() -> None:
+    flags = Flags(
+        flags={
+            "my_feature": Flag(
+                enabled=True, value="v1", feature_name="my_feature", feature_id=1
+            )
+        },
+    )
+    flag = flags.get_flag("my_feature")
+    assert flag.enabled is True

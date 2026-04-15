@@ -8,13 +8,18 @@ from flag_engine import engine
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
-from flagsmith.analytics import AnalyticsProcessor
+from flagsmith.analytics import (
+    AnalyticsProcessor,
+    PipelineAnalyticsConfig,
+    PipelineAnalyticsProcessor,
+)
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.mappers import (
     map_context_and_identity_data_to_context,
     map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
     map_segment_results_to_identity_segments,
+    resolve_trait_values,
 )
 from flagsmith.models import DefaultFlag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
@@ -63,6 +68,7 @@ class Flagsmith:
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
         enable_analytics: bool = False,
+        pipeline_analytics_config: typing.Optional[PipelineAnalyticsConfig] = None,
         default_flag_handler: typing.Optional[
             typing.Callable[[str], DefaultFlag]
         ] = None,
@@ -108,6 +114,9 @@ class Flagsmith:
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
+        self._pipeline_analytics_processor: typing.Optional[
+            PipelineAnalyticsProcessor
+        ] = None
         self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
@@ -170,10 +179,28 @@ class Flagsmith:
 
                 self._initialise_local_evaluation()
 
-            if enable_analytics:
-                self._analytics_processor = AnalyticsProcessor(
-                    environment_key, self.api_url, timeout=self.request_timeout_seconds
-                )
+            self._initialise_analytics(
+                environment_key=environment_key,
+                enable_analytics=enable_analytics,
+                pipeline_analytics_config=pipeline_analytics_config,
+            )
+
+    def _initialise_analytics(
+        self,
+        environment_key: str,
+        enable_analytics: bool,
+        pipeline_analytics_config: typing.Optional[PipelineAnalyticsConfig],
+    ) -> None:
+        if enable_analytics:
+            self._analytics_processor = AnalyticsProcessor(
+                environment_key, self.api_url, timeout=self.request_timeout_seconds
+            )
+        if pipeline_analytics_config:
+            self._pipeline_analytics_processor = PipelineAnalyticsProcessor(
+                config=pipeline_analytics_config,
+                environment_key=environment_key,
+            )
+            self._pipeline_analytics_processor.start()
 
     def _initialise_local_evaluation(self) -> None:
         # To ensure that the environment is set before allowing subsequent
@@ -290,6 +317,25 @@ class Flagsmith:
 
         return map_segment_results_to_identity_segments(evaluation_result["segments"])
 
+    def track_event(
+        self,
+        event_name: str,
+        identity_identifier: typing.Optional[str] = None,
+        traits: typing.Optional[TraitMapping] = None,
+        metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ) -> None:
+        if not self._pipeline_analytics_processor:
+            raise ValueError(
+                "Pipeline analytics is not configured. "
+                "Provide pipeline_analytics_config to use track_event."
+            )
+        self._pipeline_analytics_processor.record_custom_event(
+            event_name=event_name,
+            identity_identifier=identity_identifier,
+            traits=resolve_trait_values(traits),
+            metadata=metadata,
+        )
+
     def update_environment(self) -> None:
         try:
             environment_data = self._get_json_response(
@@ -345,6 +391,7 @@ class Flagsmith:
             evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
+            pipeline_analytics_processor=self._pipeline_analytics_processor,
         )
 
     def _get_identity_flags_from_document(
@@ -368,6 +415,9 @@ class Flagsmith:
             evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
+            pipeline_analytics_processor=self._pipeline_analytics_processor,
+            identity_identifier=identifier,
+            traits=resolve_trait_values(traits),
         )
 
     def _get_environment_flags_from_api(self) -> Flags:
@@ -379,6 +429,7 @@ class Flagsmith:
                 api_flags=json_response,
                 analytics_processor=self._analytics_processor,
                 default_flag_handler=self.default_flag_handler,
+                pipeline_analytics_processor=self._pipeline_analytics_processor,
             )
         except FlagsmithAPIError:
             if self.offline_handler:
@@ -411,6 +462,9 @@ class Flagsmith:
                 api_flags=json_response["flags"],
                 analytics_processor=self._analytics_processor,
                 default_flag_handler=self.default_flag_handler,
+                pipeline_analytics_processor=self._pipeline_analytics_processor,
+                identity_identifier=identifier,
+                traits=resolve_trait_values(traits),
             )
         except FlagsmithAPIError:
             if self.offline_handler:
@@ -443,3 +497,6 @@ class Flagsmith:
 
         if hasattr(self, "event_stream_thread"):
             self.event_stream_thread.stop()
+
+        if self._pipeline_analytics_processor:
+            self._pipeline_analytics_processor.stop()

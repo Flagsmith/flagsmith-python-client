@@ -12,7 +12,6 @@ from flag_engine.context.types import (
     StrValueSegmentCondition,
 )
 from flag_engine.result.types import SegmentResult
-from flag_engine.segments.types import ContextValue
 
 from flagsmith.api.types import (
     EnvironmentModel,
@@ -26,7 +25,7 @@ from flagsmith.types import (
     SDKEvaluationContext,
     SegmentMetadata,
     StreamEvent,
-    TraitConfig,
+    TraitMapping,
 )
 from flagsmith.utils.datetime import fromisoformat
 
@@ -75,31 +74,27 @@ def map_environment_document_to_environment_updated_at(
     return updated_at.astimezone(tz=timezone.utc)
 
 
+def resolve_trait_values(
+    traits: typing.Optional[TraitMapping],
+) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    if not traits:
+        return None
+    return {
+        key: (val["value"] if isinstance(val, dict) else val)
+        for key, val in traits.items()
+    }
+
+
 def map_context_and_identity_data_to_context(
     context: SDKEvaluationContext,
     identifier: str,
-    traits: typing.Optional[
-        typing.Mapping[
-            str,
-            typing.Union[
-                ContextValue,
-                TraitConfig,
-            ],
-        ]
-    ],
+    traits: typing.Optional[TraitMapping] = None,
 ) -> SDKEvaluationContext:
     return {
         **context,
         "identity": {
             "identifier": identifier,
-            "traits": {
-                trait_key: (
-                    trait_value_or_config["value"]
-                    if isinstance(trait_value_or_config, dict)
-                    else trait_value_or_config
-                )
-                for trait_key, trait_value_or_config in (traits or {}).items()
-            },
+            "traits": resolve_trait_values(traits) or {},
         },
     }
 
