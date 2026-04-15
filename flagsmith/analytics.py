@@ -73,7 +73,7 @@ class AnalyticsProcessor:
 @dataclass
 class PipelineAnalyticsConfig:
     analytics_server_url: str
-    max_buffer: int = 1000
+    max_buffer_items: int = 1000
     flush_interval_seconds: float = 10.0
 
 
@@ -88,7 +88,7 @@ class PipelineAnalyticsProcessor:
             url = f"{url}/"
         self._batch_endpoint = f"{url}v1/analytics/batch"
         self._environment_key = environment_key
-        self._max_buffer = config.max_buffer
+        self._max_buffer = config.max_buffer_items
         self._flush_interval_seconds = config.flush_interval_seconds
 
         self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
