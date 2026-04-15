@@ -1,3 +1,4 @@
+import atexit
 import json
 import logging
 import threading
@@ -210,8 +211,10 @@ class PipelineAnalyticsProcessor:
 
     def start(self) -> None:
         self._schedule_flush()
+        atexit.register(self.stop)
 
     def stop(self) -> None:
+        atexit.unregister(self.stop)
         if self._timer is not None:
             self._timer.cancel()
         self.flush()
