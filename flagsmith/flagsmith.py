@@ -117,7 +117,12 @@ class Flagsmith:
         self._pipeline_analytics_processor: typing.Optional[
             PipelineAnalyticsProcessor
         ] = None
-        self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
+        self.__evaluation_context: typing.Optional[SDKEvaluationContext] = None
+        self._environment_context_without_segments: typing.Optional[
+            SDKEvaluationContext
+        ] = None
+        self._environment_flags_cache: typing.Optional[Flags] = None
+        self._identity_flags_match_environment: bool = False
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation
@@ -356,6 +361,46 @@ class Flagsmith:
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
 
+    @property
+    def _evaluation_context(self) -> typing.Optional[SDKEvaluationContext]:
+        return self.__evaluation_context
+
+    @_evaluation_context.setter
+    def _evaluation_context(
+        self, context: typing.Optional[SDKEvaluationContext]
+    ) -> None:
+        """Swap in a new evaluation context and invalidate derived caches.
+
+        Pre-computing the segment-stripped view and a couple of shape flags
+        once per refresh keeps the hot path for ``get_environment_flags``
+        and the short-circuited ``get_identity_flags`` allocation-free.
+        """
+        self.__evaluation_context = context
+        self._environment_flags_cache = None
+        if context is None:
+            self._environment_context_without_segments = None
+            self._identity_flags_match_environment = False
+            return
+        context_without_segments = context.copy()
+        context_without_segments.pop("segments", None)
+        self._environment_context_without_segments = context_without_segments
+        # An identity's flags only differ from the environment's when either
+        # a feature has variants (percentage split) or some segment can
+        # override feature values (segment overrides / identity overrides).
+        # When neither is true we can skip the per-call engine evaluation
+        # entirely and reuse the cached environment Flags.
+        has_variants = any(
+            feature.get("variants")
+            for feature in (context.get("features") or {}).values()
+        )
+        has_segment_overrides = any(
+            segment.get("overrides")
+            for segment in (context.get("segments") or {}).values()
+        )
+        self._identity_flags_match_environment = not (
+            has_variants or has_segment_overrides
+        )
+
     def _get_headers(
         self,
         environment_key: str,
@@ -375,24 +420,25 @@ class Flagsmith:
         return headers
 
     def _get_environment_flags_from_document(self) -> Flags:
-        if self._evaluation_context is None:
-            raise TypeError("No environment present")
+        if (cached := self._environment_flags_cache) is not None:
+            return cached
 
-        # Omit segments from evaluation context for environment flags
-        # as they are only relevant for identity-specific evaluations
-        context_without_segments = self._evaluation_context.copy()
-        context_without_segments.pop("segments", None)
+        context_without_segments = self._environment_context_without_segments
+        if context_without_segments is None:
+            raise TypeError("No environment present")
 
         evaluation_result = engine.get_evaluation_result(
             context=context_without_segments,
         )
 
-        return Flags.from_evaluation_result(
+        flags = Flags.from_evaluation_result(
             evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
             pipeline_analytics_processor=self._pipeline_analytics_processor,
         )
+        self._environment_flags_cache = flags
+        return flags
 
     def _get_identity_flags_from_document(
         self,
@@ -402,15 +448,26 @@ class Flagsmith:
         if self._evaluation_context is None:
             raise TypeError("No environment present")
 
+        if self._identity_flags_match_environment:
+            # Reuse the cached environment Flag dict but wrap it in a fresh
+            # ``Flags`` carrying this identity's metadata, so pipeline analytics
+            # still see per-identity events.
+            env_flags = self._get_environment_flags_from_document()
+            return Flags(
+                flags=env_flags.flags,
+                default_flag_handler=self.default_flag_handler,
+                _analytics_processor=self._analytics_processor,
+                _pipeline_analytics_processor=self._pipeline_analytics_processor,
+                _identity_identifier=identifier,
+                _traits=resolve_trait_values(traits),
+            )
+
         context = map_context_and_identity_data_to_context(
             context=self._evaluation_context,
             identifier=identifier,
             traits=traits,
         )
-        evaluation_result = engine.get_evaluation_result(
-            context=context,
-        )
-
+        evaluation_result = engine.get_evaluation_result(context=context)
         return Flags.from_evaluation_result(
             evaluation_result=evaluation_result,
             analytics_processor=self._analytics_processor,

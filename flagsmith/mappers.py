@@ -90,10 +90,13 @@ def map_context_and_identity_data_to_context(
     identifier: str,
     traits: typing.Optional[TraitMapping] = None,
 ) -> SDKEvaluationContext:
+    # Pre-computing ``identity.key`` here lets the engine skip the context
+    # copy it otherwise does in ``get_enriched_context`` on every call.
     return {
         **context,
         "identity": {
             "identifier": identifier,
+            "key": f"{context['environment']['key']}_{identifier}",
             "traits": resolve_trait_values(traits) or {},
         },
     }
@@ -245,23 +248,34 @@ def _map_environment_document_feature_states_to_feature_contexts(
         if multivariate_feature_state_values := feature_state.get(
             "multivariate_feature_state_values"
         ):
-            feature_context["variants"] = [
-                {
-                    "value": multivariate_feature_state_value[
-                        "multivariate_feature_option"
-                    ]["value"],
-                    "weight": multivariate_feature_state_value["percentage_allocation"],
-                    "priority": (
-                        multivariate_feature_state_value.get("id")
-                        or uuid.UUID(
-                            multivariate_feature_state_value["mv_fs_value_uuid"]
-                        ).int
-                    ),
-                }
-                for multivariate_feature_state_value in multivariate_feature_state_values
-            ]
+            # Pre-sort by priority once at env load so evaluation doesn't
+            # have to sort on every identity call.
+            feature_context["variants"] = sorted(
+                (
+                    {
+                        "value": multivariate_feature_state_value[
+                            "multivariate_feature_option"
+                        ]["value"],
+                        "weight": multivariate_feature_state_value[
+                            "percentage_allocation"
+                        ],
+                        "priority": (
+                            multivariate_feature_state_value.get("id")
+                            or uuid.UUID(
+                                multivariate_feature_state_value["mv_fs_value_uuid"]
+                            ).int
+                        ),
+                    }
+                    for multivariate_feature_state_value in multivariate_feature_state_values
+                ),
+                key=_variant_priority,
+            )
 
         if feature_segment := feature_state.get("feature_segment"):
             feature_context["priority"] = feature_segment["priority"]
 
         yield feature_context
+
+
+def _variant_priority(variant: typing.Mapping[str, typing.Any]) -> int:
+    return variant["priority"]
