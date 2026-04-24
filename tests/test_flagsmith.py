@@ -184,84 +184,45 @@ def test_get_identity_flags_calls_api_when_no_local_environment_with_traits(
     assert identity_flags.all_flags()[0].feature_name == "some_feature"
 
 
-@responses.activate()
 def test_get_identity_flags_uses_local_environment_when_available(
     flagsmith: Flagsmith,
     evaluation_context: SDKEvaluationContext,
-    mocker: MockerFixture,
 ) -> None:
     # Given
     flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
-    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
-    expected_evaluation_result = {
-        "flags": {
-            "some_feature": {
-                "name": "some_feature",
-                "enabled": True,
-                "value": "some-feature-state-value",
-                "metadata": {"id": 1},
-            }
-        },
-        "segments": [],
-    }
-
-    identifier = "identifier"
-    traits = {"some_trait": "some_value"}
-
-    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
-
-    # When
-    identity_flags = flagsmith.get_identity_flags(identifier, traits).all_flags()
+    # When: non-overridden identity gets the environment-level flag value.
+    default_flags = flagsmith.get_identity_flags(
+        "identifier",
+        traits={"some_trait": "some_value"},
+    ).all_flags()
 
     # Then
-    mock_engine.get_evaluation_result.assert_called_once()
-    call_args = mock_engine.get_evaluation_result.call_args
-    context = call_args[1]["context"]
-    assert context["identity"]["identifier"] == identifier
-    assert context["identity"]["traits"]["some_trait"] == "some_value"
-    assert "some_trait" in context["identity"]["traits"]
-
-    assert identity_flags[0].enabled is True
-    assert identity_flags[0].value == "some-feature-state-value"
+    assert default_flags[0].enabled is True
+    assert default_flags[0].value == "some-value"
+    assert default_flags[0].feature_name == "some_feature"
 
 
-def test_get_identity_flags_includes_segments_in_evaluation_context(
-    mocker: MockerFixture,
+def test_get_identity_flags_applies_identity_overrides(
     local_eval_flagsmith: Flagsmith,
 ) -> None:
-    # Given
-    mock_get_evaluation_result = mocker.patch(
-        "flagsmith.flagsmith.engine.get_evaluation_result",
-        autospec=True,
-    )
-
-    expected_evaluation_result = {
-        "flags": {
-            "some_feature": {
-                "name": "some_feature",
-                "enabled": True,
-                "value": "some-feature-state-value",
-                "metadata": {"id": 1},
-            }
-        },
-        "segments": [],
-    }
-
-    identifier = "identifier"
-    traits = {"some_trait": "some_value"}
-
-    mock_get_evaluation_result.return_value = expected_evaluation_result
+    # Given the fixture env.json declares an identity override for "overridden-id".
 
     # When
-    local_eval_flagsmith.get_identity_flags(identifier, traits)
+    identity_flags = local_eval_flagsmith.get_identity_flags(
+        "overridden-id"
+    ).all_flags()
 
-    # Then
-    # Verify segments are present in the context passed to the engine for identity flags
-    call_args = mock_get_evaluation_result.call_args
-    context = call_args[1]["context"]
-    assert "segments" in context
+    # Then: the override wins over the base feature value.
+    assert identity_flags[0].feature_name == "some_feature"
+    assert identity_flags[0].enabled is False
+    assert identity_flags[0].value == "some-overridden-value"
+
+    # And a non-overridden identity still gets the base value.
+    default_flags = local_eval_flagsmith.get_identity_flags("other-id").all_flags()
+    assert default_flags[0].enabled is True
+    assert default_flags[0].value == "some-value"
 
 
 @responses.activate()

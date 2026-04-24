@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import typing
 from dataclasses import dataclass, field
 
@@ -7,19 +8,24 @@ from flagsmith.analytics import AnalyticsProcessor, PipelineAnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
 from flagsmith.types import SDKEvaluationResult, SDKFlagResult
 
+# dataclass(slots=True) is only available on 3.10+; we still support 3.9.
+_DATACLASS_KWARGS: typing.Dict[str, bool] = (
+    {"slots": True} if sys.version_info >= (3, 10) else {}
+)
 
-@dataclass
+
+@dataclass(**_DATACLASS_KWARGS)
 class BaseFlag:
     enabled: bool
     value: typing.Union[str, int, float, bool, None]
 
 
-@dataclass
+@dataclass(**_DATACLASS_KWARGS)
 class DefaultFlag(BaseFlag):
     is_default: bool = field(default=True)
 
 
-@dataclass
+@dataclass(**_DATACLASS_KWARGS)
 class Flag(BaseFlag):
     feature_id: int
     feature_name: str
@@ -73,12 +79,19 @@ class Flags:
         identity_identifier: typing.Optional[str] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
+        # Inlined Flag construction: local eval always produces metadata so
+        # we can skip the per-flag helper call and its redundant branching.
+        flag_cls = Flag
+        flags: typing.Dict[str, Flag] = {}
+        for flag_name, flag_result in evaluation_result["flags"].items():
+            flags[flag_name] = flag_cls(
+                enabled=flag_result["enabled"],
+                value=flag_result["value"],
+                feature_name=flag_name,
+                feature_id=flag_result["metadata"]["id"],
+            )
         return cls(
-            flags={
-                flag_name: flag
-                for flag_name, flag_result in evaluation_result["flags"].items()
-                if (flag := Flag.from_evaluation_result(flag_result))
-            },
+            flags=flags,
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
             _pipeline_analytics_processor=pipeline_analytics_processor,
