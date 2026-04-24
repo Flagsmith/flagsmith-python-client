@@ -5,6 +5,7 @@ import typing
 import pytest
 import requests
 import responses
+from flag_engine import engine
 from pytest_mock import MockerFixture
 from responses import matchers
 
@@ -15,7 +16,7 @@ from flagsmith.exceptions import (
     FlagsmithAPIError,
     FlagsmithFeatureDoesNotExistError,
 )
-from flagsmith.models import DefaultFlag, Flags
+from flagsmith.models import DefaultFlag, Flag, Flags
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
 
@@ -190,9 +191,11 @@ def test_get_identity_flags_uses_local_environment_when_available(
     evaluation_context: SDKEvaluationContext,
     mocker: MockerFixture,
 ) -> None:
-    # Given
+    # Given: the eager rollback path; this test pins the engine call
+    # shape, so bypass the lazy default to exercise it.
     flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
+    flagsmith.lazy_identity_evaluation = False
     mock_engine = mocker.patch("flagsmith.flagsmith.engine")
 
     expected_evaluation_result = {
@@ -231,7 +234,9 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     mocker: MockerFixture,
     local_eval_flagsmith: Flagsmith,
 ) -> None:
-    # Given
+    # Given: eager rollback path — this test asserts what goes into the
+    # engine call directly.
+    local_eval_flagsmith.lazy_identity_evaluation = False
     mock_get_evaluation_result = mocker.patch(
         "flagsmith.flagsmith.engine.get_evaluation_result",
         autospec=True,
@@ -262,6 +267,52 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     call_args = mock_get_evaluation_result.call_args
     context = call_args[1]["context"]
     assert "segments" in context
+
+
+def test_get_identity_flags__lazy_by_default__does_not_run_bulk_engine_call(
+    local_eval_flagsmith: Flagsmith,
+    mocker: MockerFixture,
+) -> None:
+    # Given: the lazy path is on by default.
+    assert local_eval_flagsmith.lazy_identity_evaluation is True
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When we ask for identity flags but never touch a specific flag...
+    flags = local_eval_flagsmith.get_identity_flags("someone")
+
+    # Then: no engine bulk eval has run, and nothing is materialised.
+    assert spy.call_count == 0
+    assert flags.flags == {}
+
+    # And: touching one flag populates only that flag via the lazy resolver.
+    flag = flags.get_flag("some_feature")
+    assert isinstance(flag, Flag)
+    assert flag.feature_name == "some_feature"
+    assert set(flags.flags.keys()) == {"some_feature"}
+    # Still no bulk call — we resolved via engine primitives directly.
+    assert spy.call_count == 0
+
+
+def test_get_identity_flags__lazy_disabled__falls_back_to_eager_path(
+    requests_session_response_ok: None,
+    server_api_key: str,
+    mocker: MockerFixture,
+) -> None:
+    # Given: lazy evaluation is explicitly turned off (rollback kwarg).
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        environment_refresh_interval_seconds=0.1,
+        lazy_identity_evaluation=False,
+    )
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When
+    flags = flagsmith.get_identity_flags("someone")
+
+    # Then: the bulk evaluation ran up-front and every flag is resolved.
+    assert spy.call_count == 1
+    assert set(flags.flags.keys()) == {"some_feature"}
 
 
 @responses.activate()
