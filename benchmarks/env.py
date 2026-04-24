@@ -21,7 +21,7 @@ def build_environment(
     with_multivariate: int = 0,
 ) -> dict[str, typing.Any]:
     with open(TEMPLATE_PATH) as f:
-        env = json.load(f)
+        env: dict[str, typing.Any] = json.load(f)
 
     # Base feature state to clone.
     base_fs = copy.deepcopy(env["feature_states"][0])

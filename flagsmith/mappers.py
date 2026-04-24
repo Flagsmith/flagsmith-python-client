@@ -278,4 +278,5 @@ def _map_environment_document_feature_states_to_feature_contexts(
 
 
 def _variant_priority(variant: typing.Mapping[str, typing.Any]) -> int:
-    return variant["priority"]
+    priority: int = variant["priority"]
+    return priority

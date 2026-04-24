@@ -19,19 +19,26 @@ import json
 import pstats
 import statistics
 import time
-from typing import Callable
+from typing import Callable, cast
 
 from benchmarks.env import build_environment
 from flagsmith import Flagsmith
+from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import map_environment_document_to_context
 
 
 def _make_client(n_features: int, with_multivariate: int = 0) -> Flagsmith:
-    env_doc = build_environment(
-        n_features=n_features,
-        with_multivariate=with_multivariate,
+    env_doc = cast(
+        EnvironmentModel,
+        build_environment(
+            n_features=n_features,
+            with_multivariate=with_multivariate,
+        ),
     )
     # Build a local-eval client without hitting the network / starting polling.
+    # The property setter on ``_evaluation_context`` initialises all the
+    # derived caches we need; everything else below is what ``Flagsmith.__init__``
+    # would otherwise set during its real construction path.
     client = Flagsmith.__new__(Flagsmith)
     client.offline_mode = False
     client.enable_local_evaluation = True
@@ -40,10 +47,6 @@ def _make_client(n_features: int, with_multivariate: int = 0) -> Flagsmith:
     client.enable_realtime_updates = False
     client._analytics_processor = None
     client._pipeline_analytics_processor = None
-    client._Flagsmith__evaluation_context = None
-    client._environment_context_without_segments = None
-    client._environment_flags_cache = None
-    client._identity_flags_match_environment = False
     client._environment_updated_at = None
     client._evaluation_context = map_environment_document_to_context(env_doc)
     return client
