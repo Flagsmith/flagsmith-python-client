@@ -83,7 +83,6 @@ class Flagsmith:
         offline_handler: typing.Optional[OfflineHandler] = None,
         enable_realtime_updates: bool = False,
         application_metadata: typing.Optional[ApplicationMetadata] = None,
-        lazy_identity_evaluation: bool = True,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
@@ -112,11 +111,6 @@ class Flagsmith:
             default_flag_handler if offline_mode is not set and using remote evaluation.
         :param enable_realtime_updates: Use real-time functionality via SSE as opposed to polling the API
         :param application_metadata: Optional metadata about the client application.
-        :param lazy_identity_evaluation: When True (default), ``get_identity_flags``
-            returns a lazy ``Flags`` that resolves flags on first access using a
-            precomputed segment-overrides index, rather than evaluating every
-            feature in the environment up-front. Set to False to opt back into
-            the legacy eager path if you hit a regression.
         """
 
         self.offline_mode = offline_mode
@@ -125,7 +119,6 @@ class Flagsmith:
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
-        self.lazy_identity_evaluation = lazy_identity_evaluation
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
         self._pipeline_analytics_processor: typing.Optional[
             PipelineAnalyticsProcessor
@@ -441,25 +434,12 @@ class Flagsmith:
             identifier=identifier,
             traits=traits,
         )
-        if self.lazy_identity_evaluation:
-            # Lazy path: defer per-feature evaluation until the caller
-            # actually reads a flag. Hot for callers that only read one
-            # or a few flags out of a large environment.
-            return Flags.from_evaluation_context(
-                context=context,
-                overrides_index=self._segment_overrides_index,
-                analytics_processor=self._analytics_processor,
-                default_flag_handler=self.default_flag_handler,
-                pipeline_analytics_processor=self._pipeline_analytics_processor,
-                identity_identifier=identifier,
-                traits=resolve_trait_values(traits),
-            )
-        evaluation_result = engine.get_evaluation_result(
+        # Lazy: defer per-feature evaluation until the caller actually reads
+        # a flag. Hot for callers that only read one or a few flags out of a
+        # large environment.
+        return Flags.from_evaluation_context(
             context=context,
-        )
-
-        return Flags.from_evaluation_result(
-            evaluation_result=evaluation_result,
+            overrides_index=self._segment_overrides_index,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
             pipeline_analytics_processor=self._pipeline_analytics_processor,
