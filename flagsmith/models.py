@@ -3,11 +3,8 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, field
 
+from flag_engine import engine
 from flag_engine.context.types import SegmentContext
-from flag_engine.segments.evaluator import (
-    get_flag_result_from_context,
-    is_context_in_segment,
-)
 
 from flagsmith.analytics import AnalyticsProcessor, PipelineAnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
@@ -186,16 +183,20 @@ class Flags:
         """
         Get a list of all Flag objects.
 
-        In lazy mode, this forces resolution of every feature the caller
-        hasn't already touched — same end state and cost as eager, but
-        only paid when someone actually asks for the full set.
+        In lazy mode, the caller has signalled they want every flag, so
+        we run the bulk evaluator once on the full context and copy the
+        results into the per-flag cache. Cheaper than asking the engine
+        for each feature one at a time.
 
         :return: list of Flag objects.
         """
         if self._context is not None and not self._fully_materialised:
-            for feature_name in self._context.get("features") or {}:
+            result = engine.get_evaluation_result(self._context)
+            for feature_name, flag_result in result["flags"].items():
                 if feature_name not in self.flags:
-                    self.flags[feature_name] = self._resolve_flag(feature_name)
+                    self.flags[feature_name] = Flag.from_evaluation_result(
+                        flag_result,
+                    )
             self._fully_materialised = True
         return list(self.flags.values())
 
@@ -265,11 +266,14 @@ class Flags:
     def _resolve_flag(self, feature_name: str) -> Flag:
         """Evaluate a single feature against the lazy context.
 
-        Uses the precomputed reverse index to walk only segments that
-        could override this feature; falls through to the feature's
-        default when no matching override is found. Byte-for-byte
-        equivalent to what ``engine.get_evaluation_result`` would
-        produce for this one feature.
+        Goes through the engine's public ``get_evaluation_result`` so
+        identity-key enrichment, multivariate hashing, percentage-split
+        rules and override-priority handling all stay where they
+        belong (in the engine). The performance win comes from passing
+        a *trimmed* context — just the queried feature plus the segments
+        that could override it, looked up in O(1) via the precomputed
+        reverse index — so the engine's full pipeline runs against an
+        input small enough to evaluate in ~1 µs.
         """
         context = self._context
         overrides_index = self._overrides_index
@@ -277,38 +281,16 @@ class Flags:
         # non-None checks; assert here so type checkers can narrow.
         assert context is not None and overrides_index is not None
 
-        feature_context = context["features"][feature_name]
-
-        # Find the winning override, if any, by walking only the segments
-        # that target this feature and keeping the lowest-priority match.
-        best: typing.Optional[
-            typing.Tuple[float, typing.Mapping[str, typing.Any], str]
-        ] = None
-        for segment_context in overrides_index.get(feature_name, ()):
-            if not is_context_in_segment(context, segment_context):
-                continue
-            for override in segment_context.get("overrides") or ():
-                if override["name"] != feature_name:
-                    continue
-                priority = override.get("priority", float("inf"))
-                if best is None or priority < best[0]:
-                    best = (priority, override, segment_context["name"])
-
-        if best is not None:
-            flag_result = get_flag_result_from_context(
-                context,
-                typing.cast(typing.Any, best[1]),
-                reason=f"TARGETING_MATCH; segment={best[2]}",
-            )
-        else:
-            flag_result = get_flag_result_from_context(
-                context,
-                feature_context,
-                reason="DEFAULT",
-            )
-        return Flag.from_evaluation_result(
-            typing.cast(SDKFlagResult, flag_result),
-        )
+        trimmed: SDKEvaluationContext = {
+            **context,
+            "features": {feature_name: context["features"][feature_name]},
+            "segments": {
+                segment_context["key"]: segment_context
+                for segment_context in overrides_index.get(feature_name, ())
+            },
+        }
+        result = engine.get_evaluation_result(trimmed)
+        return Flag.from_evaluation_result(result["flags"][feature_name])
 
 
 @dataclass

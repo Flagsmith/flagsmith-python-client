@@ -269,7 +269,7 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     assert "segments" in context
 
 
-def test_get_identity_flags__lazy_by_default__does_not_run_bulk_engine_call(
+def test_get_identity_flags__lazy_by_default__resolves_one_flag_at_a_time(
     local_eval_flagsmith: Flagsmith,
     mocker: MockerFixture,
 ) -> None:
@@ -277,20 +277,23 @@ def test_get_identity_flags__lazy_by_default__does_not_run_bulk_engine_call(
     assert local_eval_flagsmith.lazy_identity_evaluation is True
     spy = mocker.spy(engine, "get_evaluation_result")
 
-    # When we ask for identity flags but never touch a specific flag...
+    # When: we ask for identity flags but never touch a specific flag...
     flags = local_eval_flagsmith.get_identity_flags("someone")
 
-    # Then: no engine bulk eval has run, and nothing is materialised.
+    # Then: nothing has been evaluated yet — no engine call, empty cache.
     assert spy.call_count == 0
     assert flags.flags == {}
 
-    # And: touching one flag populates only that flag via the lazy resolver.
+    # And: touching one flag triggers exactly one engine call against a
+    # *trimmed* context (the queried feature only), not the full env.
     flag = flags.get_flag("some_feature")
     assert isinstance(flag, Flag)
     assert flag.feature_name == "some_feature"
     assert set(flags.flags.keys()) == {"some_feature"}
-    # Still no bulk call — we resolved via engine primitives directly.
-    assert spy.call_count == 0
+
+    assert spy.call_count == 1
+    trimmed_context = spy.call_args.kwargs.get("context") or spy.call_args.args[0]
+    assert set(trimmed_context["features"]) == {"some_feature"}
 
 
 def test_get_identity_flags__lazy_disabled__falls_back_to_eager_path(
