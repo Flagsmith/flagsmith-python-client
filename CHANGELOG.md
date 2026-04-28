@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.2.0...v5.3.0) (2026-04-28)
+
+### Features
+
+- Lazy identity-flag evaluation in local-eval mode
+  ([#200](https://github.com/Flagsmith/flagsmith-python-client/issues/200))
+  ([f7750bb](https://github.com/Flagsmith/flagsmith-python-client/commit/f7750bbd4d3548fe5446a7e3e3a54c702ab9247d))
+
+### CI
+
+- pre-commit autoupdate ([#192](https://github.com/Flagsmith/flagsmith-python-client/issues/192))
+  ([51852fe](https://github.com/Flagsmith/flagsmith-python-client/commit/51852fe5875b917b834a57113ff97231a4bbb1ca))
+
+### Other
+
+- **deps:** bump urllib3 from 2.6.0 to 2.6.3 ([#190](https://github.com/Flagsmith/flagsmith-python-client/issues/190))
+  ([0a4490f](https://github.com/Flagsmith/flagsmith-python-client/commit/0a4490fdaebe90811ef4bd4570ec1ec6027263bc))
+
 ## [5.2.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.1.1...v5.2.0) (2026-04-15)
 
 ### Features
