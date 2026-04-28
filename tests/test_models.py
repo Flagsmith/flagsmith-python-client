@@ -179,9 +179,9 @@ LazyContextFactory = typing.Callable[..., SDKEvaluationContext]
 def lazy_context_factory() -> LazyContextFactory:
     """Factory for minimal evaluation contexts used by the lazy-Flags tests.
 
-    The returned context has a ``target`` feature with a single segment
-    override (matches when ``tier == segment_match_value``, priority 0)
-    plus ``extra_features`` no-override "noise" features whose values
+    The returned context has a `target` feature with a single segment
+    override (matches when `tier == segment_match_value`, priority 0)
+    plus `extra_features` no-override "noise" features whose values
     should come straight off the base feature context.
     """
 
@@ -259,7 +259,7 @@ def lazy_context(
 
 @pytest.fixture
 def lazy_flags(lazy_context: SDKEvaluationContext) -> Flags:
-    """Lazy ``Flags`` built from the default context, no analytics, no handler."""
+    """Lazy `Flags` built from the default context, no analytics, no handler."""
     return Flags.from_evaluation_context(
         context=lazy_context,
         overrides_index=build_segment_overrides_index(lazy_context),

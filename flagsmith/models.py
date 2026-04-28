@@ -88,11 +88,11 @@ class Flags:
     _pipeline_analytics_processor: typing.Optional[PipelineAnalyticsProcessor] = None
     _identity_identifier: typing.Optional[str] = None
     _traits: typing.Optional[typing.Dict[str, typing.Any]] = None
-    # Lazy-evaluation state. When ``_context`` is set, ``flags`` is a
+    # Lazy-evaluation state. When `_context` is set, `flags` is a
     # per-feature memo rather than a fully-materialised snapshot; unseen
     # features are resolved on demand via the engine primitives and
-    # cached back into ``flags``. Left as ``None`` by the eager code
-    # paths (``from_evaluation_result`` / ``from_api_flags``).
+    # cached back into `flags`. Left as `None` by the eager code
+    # paths (`from_evaluation_result` / `from_api_flags`).
     _context: typing.Optional[SDKEvaluationContext] = None
     _overrides_index: typing.Optional[SegmentOverridesIndex] = None
     _fully_materialised: bool = False
@@ -135,10 +135,10 @@ class Flags:
         identity_identifier: typing.Optional[str] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
-        """Build a lazy ``Flags`` backed by an evaluation context.
+        """Build a lazy `Flags` backed by an evaluation context.
 
         No engine work is done here — flags are resolved on first access
-        via :meth:`_resolve_flag`. Reusing the same ``overrides_index``
+        via :meth:`_resolve_flag`. Reusing the same `overrides_index`
         across calls amortises its construction cost (it's rebuilt only
         when the environment doc refreshes, not per identity).
         """
@@ -231,7 +231,7 @@ class Flags:
         try:
             flag = self.flags[feature_name]
         except KeyError:
-            # Lazy path: if this ``Flags`` wraps an evaluation context and
+            # Lazy path: if this `Flags` wraps an evaluation context and
             # the feature exists in it, resolve and memoise now. Otherwise
             # fall through to the default_flag_handler / not-found error,
             # preserving the eager-mode behaviour byte-for-byte.
@@ -266,7 +266,7 @@ class Flags:
     def _resolve_flag(self, feature_name: str) -> Flag:
         """Evaluate a single feature against the lazy context.
 
-        Goes through the engine's public ``get_evaluation_result`` so
+        Goes through the engine's public `get_evaluation_result` so
         identity-key enrichment, multivariate hashing, percentage-split
         rules and override-priority handling all stay where they
         belong (in the engine). The performance win comes from passing
@@ -277,7 +277,7 @@ class Flags:
         """
         context = self._context
         overrides_index = self._overrides_index
-        # ``get_flag`` / ``all_flags`` gate this call behind the same
+        # `get_flag` / `all_flags` gate this call behind the same
         # non-None checks; assert here so type checkers can narrow.
         assert context is not None and overrides_index is not None
 

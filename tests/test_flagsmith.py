@@ -194,8 +194,8 @@ def test_get_identity_flags_uses_local_environment_when_available(
     # Given
     flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
-    # ``Flags`` materialises identity flags via ``engine.get_evaluation_result``
-    # imported from ``flagsmith.models``, so patch it where it's actually used.
+    # `Flags` materialises identity flags via `engine.get_evaluation_result`
+    # imported from `flagsmith.models`, so patch it where it's actually used.
     mock_get_evaluation_result = mocker.patch(
         "flagsmith.models.engine.get_evaluation_result",
         autospec=True,
@@ -260,8 +260,8 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
 
     mock_get_evaluation_result.return_value = expected_evaluation_result
 
-    # When: ``all_flags`` triggers the bulk evaluation path on the lazy
-    # ``Flags`` object, which is where the full identity context — segments
+    # When: `all_flags` triggers the bulk evaluation path on the lazy
+    # `Flags` object, which is where the full identity context — segments
     # included — is passed to the engine.
     local_eval_flagsmith.get_identity_flags(identifier, traits).all_flags()
 
