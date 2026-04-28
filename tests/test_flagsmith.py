@@ -5,6 +5,7 @@ import typing
 import pytest
 import requests
 import responses
+from flag_engine import engine
 from pytest_mock import MockerFixture
 from responses import matchers
 
@@ -15,7 +16,7 @@ from flagsmith.exceptions import (
     FlagsmithAPIError,
     FlagsmithFeatureDoesNotExistError,
 )
-from flagsmith.models import DefaultFlag, Flags
+from flagsmith.models import DefaultFlag, Flag, Flags
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
 
@@ -193,47 +194,10 @@ def test_get_identity_flags_uses_local_environment_when_available(
     # Given
     flagsmith._evaluation_context = evaluation_context
     flagsmith.enable_local_evaluation = True
-    mock_engine = mocker.patch("flagsmith.flagsmith.engine")
-
-    expected_evaluation_result = {
-        "flags": {
-            "some_feature": {
-                "name": "some_feature",
-                "enabled": True,
-                "value": "some-feature-state-value",
-                "metadata": {"id": 1},
-            }
-        },
-        "segments": [],
-    }
-
-    identifier = "identifier"
-    traits = {"some_trait": "some_value"}
-
-    mock_engine.get_evaluation_result.return_value = expected_evaluation_result
-
-    # When
-    identity_flags = flagsmith.get_identity_flags(identifier, traits).all_flags()
-
-    # Then
-    mock_engine.get_evaluation_result.assert_called_once()
-    call_args = mock_engine.get_evaluation_result.call_args
-    context = call_args[1]["context"]
-    assert context["identity"]["identifier"] == identifier
-    assert context["identity"]["traits"]["some_trait"] == "some_value"
-    assert "some_trait" in context["identity"]["traits"]
-
-    assert identity_flags[0].enabled is True
-    assert identity_flags[0].value == "some-feature-state-value"
-
-
-def test_get_identity_flags_includes_segments_in_evaluation_context(
-    mocker: MockerFixture,
-    local_eval_flagsmith: Flagsmith,
-) -> None:
-    # Given
+    # `Flags` materialises identity flags via `engine.get_evaluation_result`
+    # imported from `flagsmith.models`, so patch it where it's actually used.
     mock_get_evaluation_result = mocker.patch(
-        "flagsmith.flagsmith.engine.get_evaluation_result",
+        "flagsmith.models.engine.get_evaluation_result",
         autospec=True,
     )
 
@@ -255,13 +219,82 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     mock_get_evaluation_result.return_value = expected_evaluation_result
 
     # When
-    local_eval_flagsmith.get_identity_flags(identifier, traits)
+    identity_flags = flagsmith.get_identity_flags(identifier, traits).all_flags()
 
     # Then
-    # Verify segments are present in the context passed to the engine for identity flags
+    mock_get_evaluation_result.assert_called_once()
     call_args = mock_get_evaluation_result.call_args
-    context = call_args[1]["context"]
+    context = call_args[0][0] if call_args.args else call_args[1]["context"]
+    assert context["identity"]["identifier"] == identifier
+    assert context["identity"]["traits"]["some_trait"] == "some_value"
+    assert "some_trait" in context["identity"]["traits"]
+
+    assert identity_flags[0].enabled is True
+    assert identity_flags[0].value == "some-feature-state-value"
+
+
+def test_get_identity_flags_includes_segments_in_evaluation_context(
+    mocker: MockerFixture,
+    local_eval_flagsmith: Flagsmith,
+) -> None:
+    # Given
+    mock_get_evaluation_result = mocker.patch(
+        "flagsmith.models.engine.get_evaluation_result",
+        autospec=True,
+    )
+
+    expected_evaluation_result = {
+        "flags": {
+            "some_feature": {
+                "name": "some_feature",
+                "enabled": True,
+                "value": "some-feature-state-value",
+                "metadata": {"id": 1},
+            }
+        },
+        "segments": [],
+    }
+
+    identifier = "identifier"
+    traits = {"some_trait": "some_value"}
+
+    mock_get_evaluation_result.return_value = expected_evaluation_result
+
+    # When: `all_flags` triggers the bulk evaluation path on the lazy
+    # `Flags` object, which is where the full identity context — segments
+    # included — is passed to the engine.
+    local_eval_flagsmith.get_identity_flags(identifier, traits).all_flags()
+
+    # Then: segments are present in the context passed to the engine for
+    # identity flags (in contrast to the env-flags path, which strips them).
+    call_args = mock_get_evaluation_result.call_args
+    context = call_args[0][0] if call_args.args else call_args[1]["context"]
     assert "segments" in context
+
+
+def test_get_identity_flags__resolves_one_flag_at_a_time(
+    local_eval_flagsmith: Flagsmith,
+    mocker: MockerFixture,
+) -> None:
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When: we ask for identity flags but never touch a specific flag...
+    flags = local_eval_flagsmith.get_identity_flags("someone")
+
+    # Then: nothing has been evaluated yet — no engine call, empty cache.
+    assert spy.call_count == 0
+    assert flags.flags == {}
+
+    # And: touching one flag triggers exactly one engine call against a
+    # *trimmed* context (the queried feature only), not the full env.
+    flag = flags.get_flag("some_feature")
+    assert isinstance(flag, Flag)
+    assert flag.feature_name == "some_feature"
+    assert set(flags.flags.keys()) == {"some_feature"}
+
+    assert spy.call_count == 1
+    trimmed_context = spy.call_args.kwargs.get("context") or spy.call_args.args[0]
+    assert set(trimmed_context["features"]) == {"some_feature"}
 
 
 @responses.activate()

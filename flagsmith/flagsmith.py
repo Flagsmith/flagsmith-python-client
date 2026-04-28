@@ -21,7 +21,13 @@ from flagsmith.mappers import (
     map_segment_results_to_identity_segments,
     resolve_trait_values,
 )
-from flagsmith.models import DefaultFlag, Flags, Segment
+from flagsmith.models import (
+    DefaultFlag,
+    Flags,
+    Segment,
+    SegmentOverridesIndex,
+    build_segment_overrides_index,
+)
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager
@@ -117,7 +123,8 @@ class Flagsmith:
         self._pipeline_analytics_processor: typing.Optional[
             PipelineAnalyticsProcessor
         ] = None
-        self._evaluation_context: typing.Optional[SDKEvaluationContext] = None
+        self.__evaluation_context: typing.Optional[SDKEvaluationContext] = None
+        self._segment_overrides_index: SegmentOverridesIndex = {}
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation
@@ -356,6 +363,26 @@ class Flagsmith:
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
 
+    @property
+    def _evaluation_context(self) -> typing.Optional[SDKEvaluationContext]:
+        return self.__evaluation_context
+
+    @_evaluation_context.setter
+    def _evaluation_context(
+        self, context: typing.Optional[SDKEvaluationContext]
+    ) -> None:
+        """Swap in a new evaluation context and rebuild the overrides index.
+
+        The index maps feature_name -> segments that override it. Built once
+        per refresh and reused across every subsequent per-identity lazy
+        resolution; rebuilding here keeps it in sync with the current doc
+        without any hot-path cost.
+        """
+        self.__evaluation_context = context
+        self._segment_overrides_index = (
+            build_segment_overrides_index(context) if context is not None else {}
+        )
+
     def _get_headers(
         self,
         environment_key: str,
@@ -407,12 +434,12 @@ class Flagsmith:
             identifier=identifier,
             traits=traits,
         )
-        evaluation_result = engine.get_evaluation_result(
+        # Lazy: defer per-feature evaluation until the caller actually reads
+        # a flag. Hot for callers that only read one or a few flags out of a
+        # large environment.
+        return Flags.from_evaluation_context(
             context=context,
-        )
-
-        return Flags.from_evaluation_result(
-            evaluation_result=evaluation_result,
+            overrides_index=self._segment_overrides_index,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
             pipeline_analytics_processor=self._pipeline_analytics_processor,
