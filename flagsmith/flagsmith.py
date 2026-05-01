@@ -235,7 +235,6 @@ class Flagsmith:
                 EnvironmentDataPollingManager(
                     main=self,
                     refresh_interval_seconds=self.environment_refresh_interval_seconds,
-                    daemon=True,
                 )
             )
 
