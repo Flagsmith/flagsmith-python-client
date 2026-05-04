@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitScopeDisabled"
+  ],
+  "ignorePresets": [
+    ":semanticPrefixFixDepsChoreOthers"
+  ],
+  "semanticCommitType": "deps",
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "pip_requirements": {
+    "enabled": false
+  },
+  "pip-compile": {
+    "enabled": false
+  },
+  "pep621": {
+    "enabled": false
+  },
+  "git-submodules": {
+    "enabled": true
+  },
+  "reviewers": [
+    "flagsmith/flagsmith-back-end"
+  ]
+}
