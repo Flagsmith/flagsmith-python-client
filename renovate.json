@@ -1,27 +1,20 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":semanticCommitScopeDisabled"
-  ],
-  "ignorePresets": [
-    ":semanticPrefixFixDepsChoreOthers"
-  ],
-  "semanticCommitType": "deps",
-  "vulnerabilityAlerts": {
-    "enabled": true
-  },
-  "reviewers": [
-    "flagsmith/flagsmith-back-end"
-  ],
-  "packageRules": [
-    {
-      "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
-      "enabled": false
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended", ":semanticCommitScopeDisabled"],
+    "ignorePresets": [":semanticPrefixFixDepsChoreOthers"],
+    "semanticCommitType": "deps",
+    "vulnerabilityAlerts": {
+        "enabled": true
     },
-    {
-      "matchPackageNames": ["flagsmith-flag-engine"],
-      "enabled": true
-    }
-  ]
+    "reviewers": ["flagsmith/flagsmith-back-end"],
+    "packageRules": [
+        {
+            "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
+            "enabled": false
+        },
+        {
+            "matchPackageNames": ["flagsmith-flag-engine"],
+            "enabled": true
+        }
+    ]
 }
