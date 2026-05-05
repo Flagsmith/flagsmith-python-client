@@ -1,25 +1,28 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":semanticCommitScopeDisabled"
-  ],
-  "ignorePresets": [
-    ":semanticPrefixFixDepsChoreOthers"
-  ],
-  "semanticCommitType": "deps",
-  "reviewers": [
-    "flagsmith/flagsmith-back-end"
-  ],
-  "packageRules": [
-    {
-      "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
-      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pin", "rollback", "bump", "replacement", "lockFileMaintenance"],
-      "enabled": false
-    },
-    {
-      "matchPackageNames": ["flagsmith-flag-engine"],
-      "enabled": true
-    }
-  ]
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended", ":semanticCommitScopeDisabled"],
+    "ignorePresets": [":semanticPrefixFixDepsChoreOthers"],
+    "semanticCommitType": "deps",
+    "reviewers": ["flagsmith/flagsmith-back-end"],
+    "packageRules": [
+        {
+            "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
+            "matchUpdateTypes": [
+                "major",
+                "minor",
+                "patch",
+                "digest",
+                "pin",
+                "rollback",
+                "bump",
+                "replacement",
+                "lockFileMaintenance"
+            ],
+            "enabled": false
+        },
+        {
+            "matchPackageNames": ["flagsmith-flag-engine"],
+            "enabled": true
+        }
+    ]
 }
