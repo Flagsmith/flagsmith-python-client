@@ -5,7 +5,6 @@ from pathlib import Path
 import pyjson5
 import pytest
 from _pytest.mark import ParameterSet
-
 from flag_engine.context.types import EvaluationContext
 from flag_engine.engine import get_evaluation_result
 from flag_engine.result.types import EvaluationResult
