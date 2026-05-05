@@ -8,9 +8,6 @@
     ":semanticPrefixFixDepsChoreOthers"
   ],
   "semanticCommitType": "deps",
-  "reviewers": [
-    "flagsmith/flagsmith-back-end"
-  ],
   "packageRules": [
     {
       "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
