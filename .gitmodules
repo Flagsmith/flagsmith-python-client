@@ -1,0 +1,4 @@
+[submodule "tests/engine/engine-test-data"]
+	path = tests/engine/engine-test-data
+	url = https://github.com/Flagsmith/engine-test-data.git
+	branch = v3.6.0

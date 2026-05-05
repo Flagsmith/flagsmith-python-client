@@ -30,6 +30,7 @@ pre-commit = { version = "^4.2.0", python = ">=3.9,<4" }
 responses = "^0.24.1"
 types-requests = "^2.32"
 pyfakefs = "^5.9.2"
+pyjson5 = "^2.0.0"
 
 [tool.mypy]
 exclude = ["example/*"]
