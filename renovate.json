@@ -5,7 +5,7 @@
     "semanticCommitType": "deps",
     "packageRules": [
         {
-            "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
+            "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry", "github-actions"],
             "matchUpdateTypes": [
                 "major",
                 "minor",
