@@ -8,15 +8,13 @@
     ":semanticPrefixFixDepsChoreOthers"
   ],
   "semanticCommitType": "deps",
-  "vulnerabilityAlerts": {
-    "enabled": true
-  },
   "reviewers": [
     "flagsmith/flagsmith-back-end"
   ],
   "packageRules": [
     {
       "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry"],
+      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pin", "rollback", "bump", "replacement", "lockFileMaintenance"],
       "enabled": false
     },
     {
