@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.3.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.3.0...v5.3.1) (2026-05-06)
+
+
+### CI
+
+* disable github-actions manager in renovate ([#211](https://github.com/Flagsmith/flagsmith-python-client/issues/211)) ([0d601c4](https://github.com/Flagsmith/flagsmith-python-client/commit/0d601c47e1317d43eb7a54bcb0939f6ee886b457))
+* migrated dependabot to renovate ([#205](https://github.com/Flagsmith/flagsmith-python-client/issues/205)) ([f205538](https://github.com/Flagsmith/flagsmith-python-client/commit/f20553833f9dc95179ffe3e21efec098b96af274))
+
+
+### Dependency Updates
+
+* update actions/checkout action to v6 ([#209](https://github.com/Flagsmith/flagsmith-python-client/issues/209)) ([b1f5a7e](https://github.com/Flagsmith/flagsmith-python-client/commit/b1f5a7ea8a745b588c4a95464dcc97b0bbdeb67d))
+* update dependency flagsmith-flag-engine to v10.1.0 ([#212](https://github.com/Flagsmith/flagsmith-python-client/issues/212)) ([1b77e1d](https://github.com/Flagsmith/flagsmith-python-client/commit/1b77e1df47a1caa9dbba8fe7d80f43f5331ea629))
+
 ## [5.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.2.0...v5.3.0) (2026-04-28)
 
 ### Features
