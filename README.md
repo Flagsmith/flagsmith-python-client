@@ -12,9 +12,8 @@ For full documentation visit
 
 ### Sending flag analytics to a different host than evaluations
 
-When evaluating flags through an Edge Proxy (or another host that does not handle
-the analytics endpoint), pass `analytics_url` to send flag analytics directly to the
-core Flagsmith API while keeping flag evaluations on the proxy:
+When evaluating flags through an Edge Proxy (or another host that does not handle the analytics endpoint), pass
+`analytics_url` to send flag analytics directly to the core Flagsmith API while keeping flag evaluations on the proxy:
 
 ```python
 from flagsmith import Flagsmith
@@ -28,8 +27,7 @@ flagsmith = Flagsmith(
 )
 ```
 
-When `analytics_url` is unset, analytics continue to post to
-`<api_url>/analytics/flags/` as before.
+When `analytics_url` is unset, analytics continue to post to `<api_url>/analytics/flags/` as before.
 
 ## Contributing
 

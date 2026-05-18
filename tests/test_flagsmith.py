@@ -1201,12 +1201,8 @@ def test_flagsmith_posts_analytics_to_analytics_url_when_set(
         enable_analytics=True,
     )
 
-    expected_analytics_url = (
-        "http://core-api.flagsmith.com/api/v1/analytics/flags/"
-    )
-    responses.add(
-        method="GET", url=flagsmith.environment_flags_url, body=flags_json
-    )
+    expected_analytics_url = "http://core-api.flagsmith.com/api/v1/analytics/flags/"
+    responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
     responses.add(method="POST", url=expected_analytics_url, status=200)
 
     # When the customer-facing evaluation API is exercised. This is the path
