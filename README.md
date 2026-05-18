@@ -10,6 +10,27 @@ The SDK for Python applications for [https://www.flagsmith.com/](https://www.fla
 For full documentation visit
 [https://docs.flagsmith.com/clients/server-side?language=python](https://docs.flagsmith.com/clients/server-side?language=python).
 
+### Sending flag analytics to a different host than evaluations
+
+When evaluating flags through an Edge Proxy (or another host that does not handle
+the analytics endpoint), pass `analytics_url` to send flag analytics directly to the
+core Flagsmith API while keeping flag evaluations on the proxy:
+
+```python
+from flagsmith import Flagsmith
+
+flagsmith = Flagsmith(
+    environment_key="<your API key>",
+    api_url="https://edge-proxy.internal/api/v1/",
+    analytics_url="https://edge.api.flagsmith.com/api/v1/analytics/flags/",
+    enable_local_evaluation=True,
+    enable_analytics=True,
+)
+```
+
+When `analytics_url` is unset, analytics continue to post to
+`<api_url>/analytics/flags/` as before.
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull

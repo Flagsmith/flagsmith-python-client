@@ -1178,3 +1178,56 @@ def test_get_experiment_flag_falls_back_to_value_without_variant(
         traits=None,
         metadata=None,
     )
+
+
+@responses.activate()
+def test_flagsmith_posts_analytics_to_analytics_url_when_set(
+    api_key: str, flags_json: str, mocker: MockerFixture
+) -> None:
+    # Given a Flagsmith client pointed at an Edge Proxy for flag evaluations,
+    # with analytics_url overriding the analytics endpoint to the core API.
+    # analytics_url is intentionally written without a trailing slash to
+    # exercise the constructor's normalisation.
+    #
+    # We swap the fire-and-forget FuturesSession for a plain requests.Session
+    # so the analytics POST happens synchronously on the test thread and is
+    # observable via responses.calls; without this swap the worker thread can
+    # race the assertions.
+    mocker.patch("flagsmith.analytics.session", requests.Session())
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        api_url="http://edge-proxy.internal/api/v1/",
+        analytics_url="http://core-api.flagsmith.com/api/v1/analytics/flags",
+        enable_analytics=True,
+    )
+
+    expected_analytics_url = (
+        "http://core-api.flagsmith.com/api/v1/analytics/flags/"
+    )
+    responses.add(
+        method="GET", url=flagsmith.environment_flags_url, body=flags_json
+    )
+    responses.add(method="POST", url=expected_analytics_url, status=200)
+
+    # When the customer-facing evaluation API is exercised. This is the path
+    # that triggers track_feature internally (Flags.get_flag in models.py).
+    flags = flagsmith.get_environment_flags()
+    assert flags.is_feature_enabled("some_feature") is True
+
+    # Force the flush deterministically rather than waiting on ANALYTICS_TIMER.
+    assert flagsmith._analytics_processor is not None
+    flagsmith._analytics_processor.flush()
+
+    # Then exactly one analytics POST landed on the override host (with the
+    # trailing slash applied), carried the tracked feature payload, and the
+    # Edge Proxy never received an analytics request.
+    analytics_calls = [
+        call for call in responses.calls if call.request.method == "POST"
+    ]
+    assert len(analytics_calls) == 1
+    request = analytics_calls[0].request
+    assert request.url == expected_analytics_url
+    assert "edge-proxy" not in request.url
+    assert request.body is not None
+    assert json.loads(request.body) == {"some_feature": 1}
+    assert request.headers["X-Environment-Key"] == api_key

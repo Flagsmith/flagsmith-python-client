@@ -70,6 +70,7 @@ class Flagsmith:
         environment_key: typing.Optional[str] = None,
         api_url: typing.Optional[str] = None,
         realtime_api_url: typing.Optional[str] = None,
+        analytics_url: typing.Optional[str] = None,
         custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
         request_timeout_seconds: typing.Optional[int] = 10,
         enable_local_evaluation: bool = False,
@@ -92,6 +93,11 @@ class Flagsmith:
             Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
         :param realtime_api_url: Override the URL of the Flagsmith real-time API
+        :param analytics_url: Override the URL used for flag analytics requests when
+            enable_analytics is True. When unset, analytics are posted to
+            ``<api_url>/analytics/flags/``. Set this when api_url points at a host that
+            does not handle analytics (for example, the Edge Proxy) so analytics can be
+            sent directly to the core Flagsmith API.
         :param custom_headers: Additional headers to add to requests made to the
             Flagsmith API
         :param request_timeout_seconds: Number of seconds to wait for a request to
@@ -182,6 +188,10 @@ class Flagsmith:
                 else f"{realtime_api_url}/"
             )
 
+            if analytics_url and not analytics_url.endswith("/"):
+                analytics_url = f"{analytics_url}/"
+            self.analytics_url = analytics_url
+
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
 
@@ -201,6 +211,7 @@ class Flagsmith:
             self._initialise_analytics(
                 environment_key=environment_key,
                 enable_analytics=enable_analytics,
+                analytics_url=self.analytics_url,
             )
             self._initialise_events(
                 environment_key=environment_key,
@@ -212,10 +223,14 @@ class Flagsmith:
         self,
         environment_key: str,
         enable_analytics: bool,
+        analytics_url: typing.Optional[str] = None,
     ) -> None:
         if enable_analytics:
             self._analytics_processor = AnalyticsProcessor(
-                environment_key, self.api_url, timeout=self.request_timeout_seconds
+                environment_key,
+                self.api_url,
+                timeout=self.request_timeout_seconds,
+                analytics_url=analytics_url,
             )
 
     def _initialise_events(
