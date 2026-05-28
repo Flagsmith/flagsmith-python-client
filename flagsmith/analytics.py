@@ -72,24 +72,22 @@ class AnalyticsProcessor:
 
 
 @dataclass
-class PipelineAnalyticsConfig:
+class EventProcessorConfig:
     analytics_server_url: str
     max_buffer_items: int = 1000
     flush_interval_seconds: float = 10.0
 
 
-class PipelineAnalyticsProcessor:
+class EventProcessor:
     """
-    Buffered analytics processor that sends per-evaluation and custom events
-    to the Flagsmith pipeline analytics endpoint in batches.
-
-    Evaluation events are deduplicated within each flush window. Events are
-    flushed periodically via a background timer or when the buffer is full.
+    Buffered event processor that batches custom events and POSTs them to the
+    Flagsmith event endpoint. Flushes on a background timer or when the buffer
+    fills.
     """
 
     def __init__(
         self,
-        config: PipelineAnalyticsConfig,
+        config: EventProcessorConfig,
         environment_key: str,
     ) -> None:
         url = config.analytics_server_url
@@ -101,44 +99,10 @@ class PipelineAnalyticsProcessor:
         self._flush_interval_seconds = config.flush_interval_seconds
 
         self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
-        self._dedup_keys: typing.Dict[str, str] = {}
         self._lock = threading.Lock()
         self._timer: typing.Optional[threading.Timer] = None
 
-    def record_evaluation_event(
-        self,
-        flag_key: str,
-        enabled: bool,
-        value: typing.Any,
-        identity_identifier: typing.Optional[str] = None,
-        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
-    ) -> None:
-        fingerprint = f"{identity_identifier or 'none'}|{enabled}|{value}"
-        should_flush = False
-
-        with self._lock:
-            if self._dedup_keys.get(flag_key) == fingerprint:
-                return
-            self._dedup_keys[flag_key] = fingerprint
-            self._buffer.append(
-                {
-                    "event_id": flag_key,
-                    "event_type": "flag_evaluation",
-                    "evaluated_at": int(time.time() * 1000),
-                    "identity_identifier": identity_identifier,
-                    "enabled": enabled,
-                    "value": value,
-                    "traits": dict(traits) if traits else None,
-                    "metadata": {"sdk_version": __version__},
-                }
-            )
-            if len(self._buffer) >= self._max_buffer:
-                should_flush = True
-
-        if should_flush:
-            self.flush()
-
-    def record_custom_event(
+    def track_event(
         self,
         event_name: str,
         identity_identifier: typing.Optional[str] = None,
@@ -172,7 +136,6 @@ class PipelineAnalyticsProcessor:
                 return
             events = self._buffer
             self._buffer = []
-            self._dedup_keys.clear()
 
         payload = json.dumps(
             {"events": events, "environment_key": self._environment_key}

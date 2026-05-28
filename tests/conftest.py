@@ -13,8 +13,8 @@ from pytest_mock import MockerFixture
 from flagsmith import Flagsmith
 from flagsmith.analytics import (
     AnalyticsProcessor,
-    PipelineAnalyticsConfig,
-    PipelineAnalyticsProcessor,
+    EventProcessor,
+    EventProcessorConfig,
 )
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import map_environment_document_to_context
@@ -31,16 +31,16 @@ def analytics_processor() -> AnalyticsProcessor:
 
 
 @pytest.fixture()
-def pipeline_analytics_config() -> PipelineAnalyticsConfig:
-    return PipelineAnalyticsConfig(analytics_server_url="http://test_analytics/")
+def event_processor_config() -> EventProcessorConfig:
+    return EventProcessorConfig(analytics_server_url="http://test_analytics/")
 
 
 @pytest.fixture()
-def pipeline_analytics_processor(
-    pipeline_analytics_config: PipelineAnalyticsConfig,
-) -> PipelineAnalyticsProcessor:
-    return PipelineAnalyticsProcessor(
-        config=pipeline_analytics_config,
+def event_processor(
+    event_processor_config: EventProcessorConfig,
+) -> EventProcessor:
+    return EventProcessor(
+        config=event_processor_config,
         environment_key="test_key",
     )
 
