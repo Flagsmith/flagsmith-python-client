@@ -2,10 +2,7 @@ import json
 from concurrent.futures import Future
 from unittest import mock
 
-from flagsmith.analytics import (
-    EventProcessor,
-    EventProcessorConfig,
-)
+from flagsmith.analytics import EventProcessor, EventProcessorConfig
 
 
 def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
