@@ -995,9 +995,7 @@ def test_track_exposure_event_delegates_to_event_processor(
     config = EventProcessorConfig(analytics_server_url="http://test/")
     flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
 
-    mock_track = mocker.patch.object(
-        flagsmith._event_processor, "track_exposure_event"
-    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
 
     flagsmith.track_exposure_event(
         "checkout_v2",
@@ -1024,9 +1022,7 @@ def test_get_experiment_flag_returns_flag_and_tracks_exposure(
     config = EventProcessorConfig(analytics_server_url="http://test/")
     flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
 
-    mock_track = mocker.patch.object(
-        flagsmith._event_processor, "track_exposure_event"
-    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
 
     result = flagsmith.get_experiment_flag(
@@ -1063,9 +1059,7 @@ def test_get_experiment_flag_skips_exposure_for_default_flag(
         event_processor_config=config,
         default_flag_handler=default_flag_handler,
     )
-    mock_track = mocker.patch.object(
-        flagsmith._event_processor, "track_exposure_event"
-    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
     responses.add(
         method="POST",
         url=flagsmith.identities_url,
