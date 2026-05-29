@@ -85,9 +85,7 @@ def test_track_exposure_event_uses_explicit_timestamp(
 
 
 def test_auto_flush_on_buffer_full() -> None:
-    config = EventProcessorConfig(
-        events_api_url="http://test/", max_buffer_items=5
-    )
+    config = EventProcessorConfig(events_api_url="http://test/", max_buffer_items=5)
     processor = EventProcessor(config=config, environment_key="key")
 
     with mock.patch("flagsmith.analytics.session"):
