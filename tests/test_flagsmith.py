@@ -953,7 +953,7 @@ def test_flagsmith__init__expected_headers_sent(
 
 def test_track_event_raises_without_config(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key)
-    with pytest.raises(ValueError, match="Event processor is not configured"):
+    with pytest.raises(ValueError, match="Events must be enabled"):
         flagsmith.track_event("purchase")
 
 
@@ -1009,7 +1009,7 @@ def test_track_event_delegates_to_event_processor(
 
 def test_track_exposure_event_raises_without_config(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key)
-    with pytest.raises(ValueError, match="Event processor is not configured"):
+    with pytest.raises(ValueError, match="Events must be enabled"):
         flagsmith.track_exposure_event("checkout_v2")
 
 
@@ -1039,6 +1039,14 @@ def test_track_exposure_event_delegates_to_event_processor(
         metadata={"source": "homepage"},
         timestamp=None,
     )
+
+
+def test_get_experiment_flag_raises_without_events_enabled(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key)
+    with pytest.raises(ValueError, match="Events must be enabled"):
+        flagsmith.get_experiment_flag(
+            feature_name="some_feature", identifier="user1"
+        )
 
 
 @responses.activate()

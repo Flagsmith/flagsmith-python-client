@@ -358,6 +358,8 @@ class Flagsmith:
         (i.e. the feature was not present and was served via the
         `default_flag_handler`), to keep experimentation data clean.
         """
+        if not self._event_processor:
+            raise ValueError("Events must be enabled to use experiment flags.")
         flag = self.get_identity_flags(identifier, traits).get_flag(feature_name)
         if not flag.is_default:
             self.track_exposure_event(
@@ -378,10 +380,7 @@ class Flagsmith:
         timestamp: typing.Optional[datetime] = None,
     ) -> None:
         if not self._event_processor:
-            raise ValueError(
-                "Event processor is not configured. "
-                "Set enable_events=True to use track_event."
-            )
+            raise ValueError("Events must be enabled to track events.")
         self._event_processor.track_event(
             event=event,
             identifier=identifier,
@@ -401,10 +400,7 @@ class Flagsmith:
         timestamp: typing.Optional[datetime] = None,
     ) -> None:
         if not self._event_processor:
-            raise ValueError(
-                "Event processor is not configured. "
-                "Set enable_events=True to use track_exposure_event."
-            )
+            raise ValueError("Events must be enabled to track exposure events.")
         self._event_processor.track_exposure_event(
             feature_name=feature_name,
             identifier=identifier,
