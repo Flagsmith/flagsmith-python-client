@@ -161,9 +161,7 @@ class EventProcessor:
                     "value": value,
                     "traits": dict(traits) if traits else None,
                     "metadata": {**(metadata or {}), "sdk_version": __version__},
-                    "timestamp": int(
-                        (timestamp or datetime.now()).timestamp() * 1000
-                    ),
+                    "timestamp": int((timestamp or datetime.now()).timestamp() * 1000),
                 }
             )
             if len(self._buffer) >= self._max_buffer:
