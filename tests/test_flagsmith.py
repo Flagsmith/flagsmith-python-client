@@ -967,14 +967,116 @@ def test_track_event_delegates_to_event_processor(
 
     flagsmith.track_event(
         "purchase",
-        identity_identifier="user1",
+        identifier="user1",
+        value=99.5,
         traits={"plan": {"value": "premium", "transient": True}},
         metadata={"amount": 99},
     )
 
     mock_track.assert_called_once_with(
-        event_name="purchase",
-        identity_identifier="user1",
+        event="purchase",
+        identifier="user1",
+        value=99.5,
         traits={"plan": "premium"},
         metadata={"amount": 99},
+        timestamp=None,
     )
+
+
+def test_track_exposure_event_raises_without_config(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key)
+    with pytest.raises(ValueError, match="Event processor is not configured"):
+        flagsmith.track_exposure_event("checkout_v2")
+
+
+def test_track_exposure_event_delegates_to_event_processor(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    config = EventProcessorConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
+
+    mock_track = mocker.patch.object(
+        flagsmith._event_processor, "track_exposure_event"
+    )
+
+    flagsmith.track_exposure_event(
+        "checkout_v2",
+        identifier="user1",
+        value="variant_b",
+        traits={"plan": {"value": "premium", "transient": True}},
+        metadata={"source": "homepage"},
+    )
+
+    mock_track.assert_called_once_with(
+        feature_name="checkout_v2",
+        identifier="user1",
+        value="variant_b",
+        traits={"plan": "premium"},
+        metadata={"source": "homepage"},
+        timestamp=None,
+    )
+
+
+@responses.activate()
+def test_get_experiment_flag_returns_flag_and_tracks_exposure(
+    mocker: MockerFixture, api_key: str, identities_json: str
+) -> None:
+    config = EventProcessorConfig(analytics_server_url="http://test/")
+    flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
+
+    mock_track = mocker.patch.object(
+        flagsmith._event_processor, "track_exposure_event"
+    )
+    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
+
+    result = flagsmith.get_experiment_flag(
+        feature_name="some_feature",
+        identifier="user1",
+        traits={"plan": "premium"},
+    )
+
+    assert isinstance(result, Flag)
+    assert result.is_default is False
+    assert result.feature_name == "some_feature"
+    assert result.value == "some-value"
+    mock_track.assert_called_once_with(
+        feature_name="some_feature",
+        identifier="user1",
+        value="some-value",
+        traits={"plan": "premium"},
+        metadata=None,
+        timestamp=None,
+    )
+
+
+@responses.activate()
+def test_get_experiment_flag_skips_exposure_for_default_flag(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    config = EventProcessorConfig(analytics_server_url="http://test/")
+
+    def default_flag_handler(feature_name: str) -> DefaultFlag:
+        return DefaultFlag(enabled=True, value="default-variant")
+
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        event_processor_config=config,
+        default_flag_handler=default_flag_handler,
+    )
+    mock_track = mocker.patch.object(
+        flagsmith._event_processor, "track_exposure_event"
+    )
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=json.dumps({"flags": [], "traits": []}),
+    )
+
+    result = flagsmith.get_experiment_flag(
+        feature_name="missing_feature", identifier="user1"
+    )
+
+    assert isinstance(result, DefaultFlag)
+    assert result.is_default is True
+    assert result.value == "default-variant"
+    mock_track.assert_not_called()

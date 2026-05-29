@@ -23,6 +23,7 @@ from flagsmith.mappers import (
 )
 from flagsmith.models import (
     DefaultFlag,
+    Flag,
     Flags,
     Segment,
     SegmentOverridesIndex,
@@ -322,12 +323,37 @@ class Flagsmith:
 
         return map_segment_results_to_identity_segments(evaluation_result["segments"])
 
+    def get_experiment_flag(
+        self,
+        feature_name: str,
+        identifier: str,
+        traits: typing.Optional[TraitMapping] = None,
+    ) -> typing.Union[DefaultFlag, Flag]:
+        """
+        Resolve a flag for an identity and record an exposure event.
+
+        Skips the exposure event when the resolved flag is a `DefaultFlag`
+        (i.e. the feature was not present and was served via the
+        `default_flag_handler`), to keep experimentation data clean.
+        """
+        flag = self.get_identity_flags(identifier, traits).get_flag(feature_name)
+        if not flag.is_default:
+            self.track_exposure_event(
+                feature_name=feature_name,
+                identifier=identifier,
+                value=str(flag.value) if flag.value is not None else None,
+                traits=traits,
+            )
+        return flag
+
     def track_event(
         self,
-        event_name: str,
-        identity_identifier: typing.Optional[str] = None,
+        event: str,
+        identifier: typing.Optional[str] = None,
+        value: typing.Optional[typing.Union[str, int, float]] = None,
         traits: typing.Optional[TraitMapping] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        timestamp: typing.Optional[datetime] = None,
     ) -> None:
         if not self._event_processor:
             raise ValueError(
@@ -335,10 +361,35 @@ class Flagsmith:
                 "Provide event_processor_config to use track_event."
             )
         self._event_processor.track_event(
-            event_name=event_name,
-            identity_identifier=identity_identifier,
+            event=event,
+            identifier=identifier,
+            value=value,
             traits=resolve_trait_values(traits),
             metadata=metadata,
+            timestamp=timestamp,
+        )
+
+    def track_exposure_event(
+        self,
+        feature_name: str,
+        identifier: typing.Optional[str] = None,
+        value: typing.Optional[str] = None,
+        traits: typing.Optional[TraitMapping] = None,
+        metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        timestamp: typing.Optional[datetime] = None,
+    ) -> None:
+        if not self._event_processor:
+            raise ValueError(
+                "Event processor is not configured. "
+                "Provide event_processor_config to use track_exposure_event."
+            )
+        self._event_processor.track_exposure_event(
+            feature_name=feature_name,
+            identifier=identifier,
+            value=value,
+            traits=resolve_trait_values(traits),
+            metadata=metadata,
+            timestamp=timestamp,
         )
 
     def update_environment(self) -> None:

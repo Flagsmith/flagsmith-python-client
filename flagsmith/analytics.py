@@ -2,7 +2,6 @@ import atexit
 import json
 import logging
 import threading
-import time
 import typing
 from dataclasses import dataclass
 from datetime import datetime
@@ -104,22 +103,64 @@ class EventProcessor:
 
     def track_event(
         self,
-        event_name: str,
-        identity_identifier: typing.Optional[str] = None,
+        event: str,
+        identifier: typing.Optional[str] = None,
+        value: typing.Optional[typing.Union[str, int, float]] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        timestamp: typing.Optional[datetime] = None,
+    ) -> None:
+        self._buffer_event(
+            event_id=event,
+            event_type="custom_event",
+            identifier=identifier,
+            value=value,
+            traits=traits,
+            metadata=metadata,
+            timestamp=timestamp,
+        )
+
+    def track_exposure_event(
+        self,
+        feature_name: str,
+        identifier: typing.Optional[str] = None,
+        value: typing.Optional[str] = None,
+        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        timestamp: typing.Optional[datetime] = None,
+    ) -> None:
+        self._buffer_event(
+            event_id=feature_name,
+            event_type="flag_exposure",
+            identifier=identifier,
+            value=value,
+            traits=traits,
+            metadata=metadata,
+            timestamp=timestamp,
+        )
+
+    def _buffer_event(
+        self,
+        event_id: str,
+        event_type: str,
+        identifier: typing.Optional[str],
+        value: typing.Optional[typing.Union[str, int, float]],
+        traits: typing.Optional[typing.Dict[str, typing.Any]],
+        metadata: typing.Optional[typing.Dict[str, typing.Any]],
+        timestamp: typing.Optional[datetime],
     ) -> None:
         should_flush = False
-
         with self._lock:
             self._buffer.append(
                 {
-                    "event_id": event_name,
-                    "event_type": "custom_event",
-                    "evaluated_at": int(time.time() * 1000),
-                    "identity_identifier": identity_identifier,
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "evaluated_at": int(
+                        (timestamp or datetime.now()).timestamp() * 1000
+                    ),
+                    "identity_identifier": identifier,
                     "enabled": None,
-                    "value": None,
+                    "value": value,
                     "traits": dict(traits) if traits else None,
                     "metadata": {**(metadata or {}), "sdk_version": __version__},
                 }
