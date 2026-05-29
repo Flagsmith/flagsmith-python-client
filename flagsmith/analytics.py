@@ -17,6 +17,8 @@ ANALYTICS_ENDPOINT: typing.Final[str] = "analytics/flags/"
 # Used to control how often we send data(in seconds)
 ANALYTICS_TIMER: typing.Final[int] = 10
 
+FLAG_EXPOSURE_EVENT: typing.Final[str] = "$flag_exposure"
+
 session = FuturesSession(max_workers=4)
 
 
@@ -92,7 +94,7 @@ class EventProcessor:
         url = config.analytics_server_url
         if not url.endswith("/"):
             url = f"{url}/"
-        self._batch_endpoint = f"{url}v1/analytics/batch"
+        self._batch_endpoint = f"{url}v1/events"
         self._environment_key = environment_key
         self._max_buffer = config.max_buffer_items
         self._flush_interval_seconds = config.flush_interval_seconds
@@ -111,8 +113,8 @@ class EventProcessor:
         timestamp: typing.Optional[datetime] = None,
     ) -> None:
         self._buffer_event(
-            event_id=event,
-            event_type="custom_event",
+            event=event,
+            feature_name=None,
             identifier=identifier,
             value=value,
             traits=traits,
@@ -130,8 +132,8 @@ class EventProcessor:
         timestamp: typing.Optional[datetime] = None,
     ) -> None:
         self._buffer_event(
-            event_id=feature_name,
-            event_type="flag_exposure",
+            event=FLAG_EXPOSURE_EVENT,
+            feature_name=feature_name,
             identifier=identifier,
             value=value,
             traits=traits,
@@ -141,8 +143,8 @@ class EventProcessor:
 
     def _buffer_event(
         self,
-        event_id: str,
-        event_type: str,
+        event: str,
+        feature_name: typing.Optional[str],
         identifier: typing.Optional[str],
         value: typing.Optional[typing.Union[str, int, float]],
         traits: typing.Optional[typing.Dict[str, typing.Any]],
@@ -153,16 +155,15 @@ class EventProcessor:
         with self._lock:
             self._buffer.append(
                 {
-                    "event_id": event_id,
-                    "event_type": event_type,
-                    "evaluated_at": int(
-                        (timestamp or datetime.now()).timestamp() * 1000
-                    ),
-                    "identity_identifier": identifier,
-                    "enabled": None,
+                    "event": event,
+                    "feature_name": feature_name,
+                    "identifier": identifier,
                     "value": value,
                     "traits": dict(traits) if traits else None,
                     "metadata": {**(metadata or {}), "sdk_version": __version__},
+                    "timestamp": int(
+                        (timestamp or datetime.now()).timestamp() * 1000
+                    ),
                 }
             )
             if len(self._buffer) >= self._max_buffer:
@@ -178,9 +179,7 @@ class EventProcessor:
             events = self._buffer
             self._buffer = []
 
-        payload = json.dumps(
-            {"events": events, "environment_key": self._environment_key}
-        )
+        payload = json.dumps({"events": events})
         try:
             future = session.post(
                 self._batch_endpoint,

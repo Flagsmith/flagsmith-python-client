@@ -3,7 +3,11 @@ from concurrent.futures import Future
 from datetime import datetime, timezone
 from unittest import mock
 
-from flagsmith.analytics import EventProcessor, EventProcessorConfig
+from flagsmith.analytics import (
+    FLAG_EXPOSURE_EVENT,
+    EventProcessor,
+    EventProcessorConfig,
+)
 
 
 def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
@@ -18,15 +22,14 @@ def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
 
     assert len(event_processor._buffer) == 2
     event = event_processor._buffer[0]
-    assert event["event_id"] == "purchase"
-    assert event["event_type"] == "custom_event"
-    assert event["identity_identifier"] == "user1"
-    assert event["enabled"] is None
+    assert event["event"] == "purchase"
+    assert event["feature_name"] is None
+    assert event["identifier"] == "user1"
     assert event["value"] == 99.5
     assert event["traits"] == {"plan": "premium"}
     assert event["metadata"]["sku"] == "abc"
     assert "sdk_version" in event["metadata"]
-    assert isinstance(event["evaluated_at"], int)
+    assert isinstance(event["timestamp"], int)
 
 
 def test_track_event_defaults_timestamp_to_now(
@@ -36,7 +39,7 @@ def test_track_event_defaults_timestamp_to_now(
     event_processor.track_event(event="ping")
     after = int(datetime.now().timestamp() * 1000)
 
-    assert before <= event_processor._buffer[0]["evaluated_at"] <= after
+    assert before <= event_processor._buffer[0]["timestamp"] <= after
 
 
 def test_track_event_uses_explicit_timestamp(
@@ -46,10 +49,10 @@ def test_track_event_uses_explicit_timestamp(
 
     event_processor.track_event(event="ping", timestamp=ts)
 
-    assert event_processor._buffer[0]["evaluated_at"] == int(ts.timestamp() * 1000)
+    assert event_processor._buffer[0]["timestamp"] == int(ts.timestamp() * 1000)
 
 
-def test_track_exposure_event_buffers_with_flag_exposure_type(
+def test_track_exposure_event_buffers_with_flag_exposure_event_name(
     event_processor: EventProcessor,
 ) -> None:
     event_processor.track_exposure_event(
@@ -62,9 +65,9 @@ def test_track_exposure_event_buffers_with_flag_exposure_type(
 
     assert len(event_processor._buffer) == 1
     event = event_processor._buffer[0]
-    assert event["event_id"] == "checkout_v2"
-    assert event["event_type"] == "flag_exposure"
-    assert event["identity_identifier"] == "user1"
+    assert event["event"] == FLAG_EXPOSURE_EVENT == "$flag_exposure"
+    assert event["feature_name"] == "checkout_v2"
+    assert event["identifier"] == "user1"
     assert event["value"] == "variant_b"
     assert event["traits"] == {"plan": "premium"}
     assert event["metadata"]["source"] == "homepage"
@@ -78,7 +81,7 @@ def test_track_exposure_event_uses_explicit_timestamp(
 
     event_processor.track_exposure_event(feature_name="checkout_v2", timestamp=ts)
 
-    assert event_processor._buffer[0]["evaluated_at"] == int(ts.timestamp() * 1000)
+    assert event_processor._buffer[0]["timestamp"] == int(ts.timestamp() * 1000)
 
 
 def test_auto_flush_on_buffer_full() -> None:
@@ -101,7 +104,7 @@ def test_flush_sends_correct_http_request(event_processor: EventProcessor) -> No
 
     mock_session.post.assert_called_once()
     call_kwargs = mock_session.post.call_args
-    assert call_kwargs[0][0] == "http://test_analytics/v1/analytics/batch"
+    assert call_kwargs[0][0] == "http://test_analytics/v1/events"
 
     headers = call_kwargs[1]["headers"]
     assert headers["X-Environment-Key"] == "test_key"
@@ -109,9 +112,9 @@ def test_flush_sends_correct_http_request(event_processor: EventProcessor) -> No
     assert "flagsmith-python-client/" in headers["Flagsmith-SDK-User-Agent"]
 
     body = json.loads(call_kwargs[1]["data"])
-    assert body["environment_key"] == "test_key"
+    assert "environment_key" not in body
     assert len(body["events"]) == 1
-    assert body["events"][0]["event_id"] == "purchase"
+    assert body["events"][0]["event"] == "purchase"
 
 
 def test_flush_noop_when_empty(event_processor: EventProcessor) -> None:
@@ -131,7 +134,7 @@ def test_failed_flush_requeues_events(event_processor: EventProcessor) -> None:
         event_processor.flush()
 
     assert len(event_processor._buffer) == 1
-    assert event_processor._buffer[0]["event_id"] == "purchase"
+    assert event_processor._buffer[0]["event"] == "purchase"
 
 
 def test_start_stop_lifecycle() -> None:
