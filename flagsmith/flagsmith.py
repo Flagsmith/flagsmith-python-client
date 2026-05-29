@@ -75,6 +75,7 @@ class Flagsmith:
         environment_refresh_interval_seconds: typing.Union[int, float] = 60,
         retries: typing.Optional[Retry] = None,
         enable_analytics: bool = False,
+        enable_events: bool = False,
         event_processor_config: typing.Optional[EventProcessorConfig] = None,
         default_flag_handler: typing.Optional[
             typing.Callable[[str], DefaultFlag]
@@ -101,6 +102,12 @@ class Flagsmith:
             Flagsmith API
         :param enable_analytics: if enabled, sends additional requests to the Flagsmith
             API to power flag analytics charts
+        :param enable_events: if enabled, starts an event processor that buffers
+            and sends events (custom and flag-exposure) to the Flagsmith events
+            API, powering experimentation analytics.
+        :param event_processor_config: optional configuration for the event
+            processor (URL override for self-hosted, buffer/flush tuning). Only
+            valid when ``enable_events=True``.
         :param default_flag_handler: callable which will be used in the case where
             flags cannot be retrieved from the API or a non-existent feature is
             requested
@@ -137,6 +144,11 @@ class Flagsmith:
         if enable_realtime_updates and not enable_local_evaluation:
             raise ValueError(
                 "Can only use realtime updates when running in local evaluation mode."
+            )
+
+        if event_processor_config is not None and not enable_events:
+            raise ValueError(
+                "event_processor_config can only be set when enable_events=True."
             )
 
         if self.offline_handler:
@@ -188,6 +200,10 @@ class Flagsmith:
             self._initialise_analytics(
                 environment_key=environment_key,
                 enable_analytics=enable_analytics,
+            )
+            self._initialise_events(
+                environment_key=environment_key,
+                enable_events=enable_events,
                 event_processor_config=event_processor_config,
             )
 
@@ -195,15 +211,21 @@ class Flagsmith:
         self,
         environment_key: str,
         enable_analytics: bool,
-        event_processor_config: typing.Optional[EventProcessorConfig],
     ) -> None:
         if enable_analytics:
             self._analytics_processor = AnalyticsProcessor(
                 environment_key, self.api_url, timeout=self.request_timeout_seconds
             )
-        if event_processor_config:
+
+    def _initialise_events(
+        self,
+        environment_key: str,
+        enable_events: bool,
+        event_processor_config: typing.Optional[EventProcessorConfig],
+    ) -> None:
+        if enable_events:
             self._event_processor = EventProcessor(
-                config=event_processor_config,
+                config=event_processor_config or EventProcessorConfig(),
                 environment_key=environment_key,
             )
             self._event_processor.start()
@@ -358,7 +380,7 @@ class Flagsmith:
         if not self._event_processor:
             raise ValueError(
                 "Event processor is not configured. "
-                "Provide event_processor_config to use track_event."
+                "Set enable_events=True to use track_event."
             )
         self._event_processor.track_event(
             event=event,
@@ -381,7 +403,7 @@ class Flagsmith:
         if not self._event_processor:
             raise ValueError(
                 "Event processor is not configured. "
-                "Provide event_processor_config to use track_exposure_event."
+                "Set enable_events=True to use track_exposure_event."
             )
         self._event_processor.track_exposure_event(
             feature_name=feature_name,

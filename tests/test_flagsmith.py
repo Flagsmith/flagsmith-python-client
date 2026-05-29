@@ -957,11 +957,35 @@ def test_track_event_raises_without_config(api_key: str) -> None:
         flagsmith.track_event("purchase")
 
 
+def test_event_processor_config_without_enable_events_raises(api_key: str) -> None:
+    config = EventProcessorConfig(events_api_url="http://test/")
+    with pytest.raises(
+        ValueError,
+        match="event_processor_config can only be set when enable_events=True",
+    ):
+        Flagsmith(environment_key=api_key, event_processor_config=config)
+
+
+def test_enable_events_without_config_uses_default(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    try:
+        assert flagsmith._event_processor is not None
+        assert (
+            flagsmith._event_processor._batch_endpoint
+            == "https://events.api.flagsmith.com/v1/events"
+        )
+    finally:
+        if flagsmith._event_processor:
+            flagsmith._event_processor.stop()
+
+
 def test_track_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:
     config = EventProcessorConfig(events_api_url="http://test/")
-    flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_event")
 
@@ -993,7 +1017,9 @@ def test_track_exposure_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:
     config = EventProcessorConfig(events_api_url="http://test/")
-    flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
 
@@ -1020,7 +1046,9 @@ def test_get_experiment_flag_returns_flag_and_tracks_exposure(
     mocker: MockerFixture, api_key: str, identities_json: str
 ) -> None:
     config = EventProcessorConfig(events_api_url="http://test/")
-    flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
@@ -1056,6 +1084,7 @@ def test_get_experiment_flag_skips_exposure_for_default_flag(
 
     flagsmith = Flagsmith(
         environment_key=api_key,
+        enable_events=True,
         event_processor_config=config,
         default_flag_handler=default_flag_handler,
     )
