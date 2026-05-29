@@ -19,6 +19,8 @@ ANALYTICS_TIMER: typing.Final[int] = 10
 
 FLAG_EXPOSURE_EVENT: typing.Final[str] = "$flag_exposure"
 
+DEFAULT_EVENT_API_URL: typing.Final[str] = "https://events.api.flagsmith.com/"
+
 session = FuturesSession(max_workers=4)
 
 
@@ -74,7 +76,7 @@ class AnalyticsProcessor:
 
 @dataclass
 class EventProcessorConfig:
-    analytics_server_url: str
+    events_api_url: str = DEFAULT_EVENT_API_URL
     max_buffer_items: int = 1000
     flush_interval_seconds: float = 10.0
 
@@ -91,7 +93,7 @@ class EventProcessor:
         config: EventProcessorConfig,
         environment_key: str,
     ) -> None:
-        url = config.analytics_server_url
+        url = config.events_api_url
         if not url.endswith("/"):
             url = f"{url}/"
         self._batch_endpoint = f"{url}v1/events"

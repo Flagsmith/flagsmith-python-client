@@ -32,7 +32,7 @@ def analytics_processor() -> AnalyticsProcessor:
 
 @pytest.fixture()
 def event_processor_config() -> EventProcessorConfig:
-    return EventProcessorConfig(analytics_server_url="http://test_analytics/")
+    return EventProcessorConfig(events_api_url="http://test_analytics/")
 
 
 @pytest.fixture()

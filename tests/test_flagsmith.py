@@ -960,7 +960,7 @@ def test_track_event_raises_without_config(api_key: str) -> None:
 def test_track_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:
-    config = EventProcessorConfig(analytics_server_url="http://test/")
+    config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_event")
@@ -992,7 +992,7 @@ def test_track_exposure_event_raises_without_config(api_key: str) -> None:
 def test_track_exposure_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:
-    config = EventProcessorConfig(analytics_server_url="http://test/")
+    config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
@@ -1019,7 +1019,7 @@ def test_track_exposure_event_delegates_to_event_processor(
 def test_get_experiment_flag_returns_flag_and_tracks_exposure(
     mocker: MockerFixture, api_key: str, identities_json: str
 ) -> None:
-    config = EventProcessorConfig(analytics_server_url="http://test/")
+    config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(environment_key=api_key, event_processor_config=config)
 
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
@@ -1049,7 +1049,7 @@ def test_get_experiment_flag_returns_flag_and_tracks_exposure(
 def test_get_experiment_flag_skips_exposure_for_default_flag(
     mocker: MockerFixture, api_key: str
 ) -> None:
-    config = EventProcessorConfig(analytics_server_url="http://test/")
+    config = EventProcessorConfig(events_api_url="http://test/")
 
     def default_flag_handler(feature_name: str) -> DefaultFlag:
         return DefaultFlag(enabled=True, value="default-variant")

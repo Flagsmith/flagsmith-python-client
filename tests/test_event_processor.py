@@ -86,7 +86,7 @@ def test_track_exposure_event_uses_explicit_timestamp(
 
 def test_auto_flush_on_buffer_full() -> None:
     config = EventProcessorConfig(
-        analytics_server_url="http://test/", max_buffer_items=5
+        events_api_url="http://test/", max_buffer_items=5
     )
     processor = EventProcessor(config=config, environment_key="key")
 
@@ -139,7 +139,7 @@ def test_failed_flush_requeues_events(event_processor: EventProcessor) -> None:
 
 def test_start_stop_lifecycle() -> None:
     config = EventProcessorConfig(
-        analytics_server_url="http://test/", flush_interval_seconds=100
+        events_api_url="http://test/", flush_interval_seconds=100
     )
     processor = EventProcessor(config=config, environment_key="key")
 
