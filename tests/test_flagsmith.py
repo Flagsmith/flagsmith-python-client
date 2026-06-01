@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 from responses import matchers
 
 from flagsmith import Flagsmith, __version__
-from flagsmith.analytics import PipelineAnalyticsConfig
+from flagsmith.analytics import EventProcessorConfig
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.exceptions import (
     FlagsmithAPIError,
@@ -953,88 +953,166 @@ def test_flagsmith__init__expected_headers_sent(
 
 def test_track_event_raises_without_config(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key)
-    with pytest.raises(ValueError, match="Pipeline analytics is not configured"):
+    with pytest.raises(ValueError, match="Events must be enabled"):
         flagsmith.track_event("purchase")
 
 
-@responses.activate()
-def test_pipeline_analytics_records_events(
-    mocker: MockerFixture, api_key: str, flags_json: str
+def test_track_event_rejects_reserved_prefix(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    try:
+        with pytest.raises(ValueError, match='reserved "\\$" prefix'):
+            flagsmith.track_event("$made_up")
+    finally:
+        if flagsmith._event_processor:
+            flagsmith._event_processor.stop()
+
+
+def test_event_processor_config_without_enable_events_raises(api_key: str) -> None:
+    config = EventProcessorConfig(events_api_url="http://test/")
+    with pytest.raises(
+        ValueError,
+        match="event_processor_config can only be set when enable_events=True",
+    ):
+        Flagsmith(environment_key=api_key, event_processor_config=config)
+
+
+def test_enable_events_without_config_uses_default(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    try:
+        assert flagsmith._event_processor is not None
+        assert (
+            flagsmith._event_processor._batch_endpoint
+            == "https://events.api.flagsmith.com/v1/events"
+        )
+    finally:
+        if flagsmith._event_processor:
+            flagsmith._event_processor.stop()
+
+
+def test_track_event_delegates_to_event_processor(
+    mocker: MockerFixture, api_key: str
 ) -> None:
-    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
-    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
-
-    mock_eval = mocker.patch.object(
-        flagsmith._pipeline_analytics_processor, "record_evaluation_event"
-    )
-    mock_custom = mocker.patch.object(
-        flagsmith._pipeline_analytics_processor, "record_custom_event"
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
     )
 
-    responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
-    flags = flagsmith.get_environment_flags()
-    flags.get_flag("some_feature")
-
-    mock_eval.assert_called_once_with(
-        flag_key="some_feature",
-        enabled=True,
-        value="some-value",
-        identity_identifier=None,
-        traits=None,
-    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_event")
 
     flagsmith.track_event(
         "purchase",
-        identity_identifier="user1",
+        identifier="user1",
+        value=99.5,
+        traits={"plan": {"value": "premium", "transient": True}},
+        metadata={"amount": 99},
+    )
+
+    mock_track.assert_called_once_with(
+        event="purchase",
+        identifier="user1",
+        value=99.5,
         traits={"plan": "premium"},
         metadata={"amount": 99},
     )
 
-    mock_custom.assert_called_once_with(
-        event_name="purchase",
-        identity_identifier="user1",
+
+def test_track_exposure_event_raises_without_config(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key)
+    with pytest.raises(ValueError, match="Events must be enabled"):
+        flagsmith.track_exposure_event("checkout_v2")
+
+
+def test_track_exposure_event_delegates_to_event_processor(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    flagsmith.track_exposure_event(
+        "checkout_v2",
+        identifier="user1",
+        value="variant_b",
+        traits={"plan": {"value": "premium", "transient": True}},
+        metadata={"source": "homepage"},
+    )
+
+    mock_track.assert_called_once_with(
+        feature_name="checkout_v2",
+        identifier="user1",
+        value="variant_b",
         traits={"plan": "premium"},
-        metadata={"amount": 99},
+        metadata={"source": "homepage"},
+    )
+
+
+def test_get_experiment_flag_raises_without_events_enabled(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key)
+    with pytest.raises(ValueError, match="Events must be enabled"):
+        flagsmith.get_experiment_flag(feature_name="some_feature", identifier="user1")
+
+
+@responses.activate()
+def test_get_experiment_flag_returns_flag_and_tracks_exposure(
+    mocker: MockerFixture, api_key: str, identities_json: str
+) -> None:
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
+
+    result = flagsmith.get_experiment_flag(
+        feature_name="some_feature",
+        identifier="user1",
+        traits={"plan": "premium"},
+    )
+
+    assert isinstance(result, Flag)
+    assert result.is_default is False
+    assert result.feature_name == "some_feature"
+    assert result.value == "some-value"
+    mock_track.assert_called_once_with(
+        feature_name="some_feature",
+        identifier="user1",
+        value="some-value",
+        traits={"plan": "premium"},
+        metadata=None,
     )
 
 
 @responses.activate()
-def test_identity_flags_records_evaluation_with_resolved_traits(
-    mocker: MockerFixture, api_key: str, identities_json: str
+def test_get_experiment_flag_skips_exposure_for_default_flag(
+    mocker: MockerFixture, api_key: str
 ) -> None:
-    config = PipelineAnalyticsConfig(analytics_server_url="http://test/")
-    flagsmith = Flagsmith(environment_key=api_key, pipeline_analytics_config=config)
+    config = EventProcessorConfig(events_api_url="http://test/")
 
-    mock_record = mocker.patch.object(
-        flagsmith._pipeline_analytics_processor, "record_evaluation_event"
+    def default_flag_handler(feature_name: str) -> DefaultFlag:
+        return DefaultFlag(enabled=True, value="default-variant")
+
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=config,
+        default_flag_handler=default_flag_handler,
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=json.dumps({"flags": [], "traits": []}),
     )
 
-    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
-    responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
-
-    flags = flagsmith.get_identity_flags("user123", traits={"plan": "premium"})
-    flags.get_flag("some_feature")
-
-    mock_record.assert_called_once_with(
-        flag_key="some_feature",
-        enabled=True,
-        value="some-value",
-        identity_identifier="user123",
-        traits={"plan": "premium"},
+    result = flagsmith.get_experiment_flag(
+        feature_name="missing_feature", identifier="user1"
     )
 
-    mock_record.reset_mock()
-
-    flags = flagsmith.get_identity_flags(
-        "user123",
-        traits={"plan": {"value": "premium", "transient": True}},
-    )
-    flags.get_flag("some_feature")
-
-    mock_record.assert_called_once_with(
-        flag_key="some_feature",
-        enabled=True,
-        value="some-value",
-        identity_identifier="user123",
-        traits={"plan": "premium"},
-    )
+    assert isinstance(result, DefaultFlag)
+    assert result.is_default is True
+    assert result.value == "default-variant"
+    mock_track.assert_not_called()

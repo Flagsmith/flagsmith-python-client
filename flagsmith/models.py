@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from flag_engine import engine
 from flag_engine.context.types import SegmentContext
 
-from flagsmith.analytics import AnalyticsProcessor, PipelineAnalyticsProcessor
+from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
 from flagsmith.types import (
     FeatureMetadata,
@@ -85,9 +85,6 @@ class Flags:
     flags: typing.Dict[str, Flag] = field(default_factory=dict)
     default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]] = None
     _analytics_processor: typing.Optional[AnalyticsProcessor] = None
-    _pipeline_analytics_processor: typing.Optional[PipelineAnalyticsProcessor] = None
-    _identity_identifier: typing.Optional[str] = None
-    _traits: typing.Optional[typing.Dict[str, typing.Any]] = None
     # Lazy-evaluation state. When `_context` is set, `flags` is a
     # per-feature memo rather than a fully-materialised snapshot; unseen
     # features are resolved on demand via the engine primitives and
@@ -103,11 +100,6 @@ class Flags:
         evaluation_result: SDKEvaluationResult,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        pipeline_analytics_processor: typing.Optional[
-            PipelineAnalyticsProcessor
-        ] = None,
-        identity_identifier: typing.Optional[str] = None,
-        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
         return cls(
             flags={
@@ -117,9 +109,6 @@ class Flags:
             },
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
-            _pipeline_analytics_processor=pipeline_analytics_processor,
-            _identity_identifier=identity_identifier,
-            _traits=traits,
         )
 
     @classmethod
@@ -129,11 +118,6 @@ class Flags:
         overrides_index: SegmentOverridesIndex,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        pipeline_analytics_processor: typing.Optional[
-            PipelineAnalyticsProcessor
-        ] = None,
-        identity_identifier: typing.Optional[str] = None,
-        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
         """Build a lazy `Flags` backed by an evaluation context.
 
@@ -146,9 +130,6 @@ class Flags:
             flags={},
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
-            _pipeline_analytics_processor=pipeline_analytics_processor,
-            _identity_identifier=identity_identifier,
-            _traits=traits,
             _context=context,
             _overrides_index=overrides_index,
         )
@@ -159,11 +140,6 @@ class Flags:
         api_flags: typing.Sequence[typing.Mapping[str, typing.Any]],
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
-        pipeline_analytics_processor: typing.Optional[
-            PipelineAnalyticsProcessor
-        ] = None,
-        identity_identifier: typing.Optional[str] = None,
-        traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> Flags:
         flags = {
             flag_data["feature"]["name"]: Flag.from_api_flag(flag_data)
@@ -174,9 +150,6 @@ class Flags:
             flags=flags,
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
-            _pipeline_analytics_processor=pipeline_analytics_processor,
-            _identity_identifier=identity_identifier,
-            _traits=traits,
         )
 
     def all_flags(self) -> typing.List[Flag]:
@@ -251,15 +224,6 @@ class Flags:
 
         if self._analytics_processor and hasattr(flag, "feature_name"):
             self._analytics_processor.track_feature(flag.feature_name)
-
-        if self._pipeline_analytics_processor and hasattr(flag, "feature_name"):
-            self._pipeline_analytics_processor.record_evaluation_event(
-                flag_key=flag.feature_name,
-                enabled=flag.enabled,
-                value=flag.value,
-                identity_identifier=self._identity_identifier,
-                traits=self._traits,
-            )
 
         return flag
 
