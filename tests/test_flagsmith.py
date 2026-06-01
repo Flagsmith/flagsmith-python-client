@@ -957,6 +957,16 @@ def test_track_event_raises_without_config(api_key: str) -> None:
         flagsmith.track_event("purchase")
 
 
+def test_track_event_rejects_reserved_prefix(api_key: str) -> None:
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    try:
+        with pytest.raises(ValueError, match='reserved "\\$" prefix'):
+            flagsmith.track_event("$made_up")
+    finally:
+        if flagsmith._event_processor:
+            flagsmith._event_processor.stop()
+
+
 def test_event_processor_config_without_enable_events_raises(api_key: str) -> None:
     config = EventProcessorConfig(events_api_url="http://test/")
     with pytest.raises(

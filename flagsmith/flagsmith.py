@@ -9,6 +9,7 @@ from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
 from flagsmith.analytics import (
+    FLAG_EXPOSURE_EVENT,
     AnalyticsProcessor,
     EventProcessor,
     EventProcessorConfig,
@@ -380,6 +381,11 @@ class Flagsmith:
     ) -> None:
         if not self._event_processor:
             raise ValueError("Events must be enabled to track events.")
+        if event.startswith("$") and event != FLAG_EXPOSURE_EVENT:
+            raise ValueError(
+                f'Event name "{event}" uses the reserved "$" prefix '
+                "but is not a known system event."
+            )
         self._event_processor.track_event(
             event=event,
             identifier=identifier,
