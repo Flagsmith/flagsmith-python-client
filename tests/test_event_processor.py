@@ -1,6 +1,6 @@
 import json
 from concurrent.futures import Future
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import mock
 
 from flagsmith.analytics import (
@@ -42,16 +42,6 @@ def test_track_event_defaults_timestamp_to_now(
     assert before <= event_processor._buffer[0]["timestamp"] <= after
 
 
-def test_track_event_uses_explicit_timestamp(
-    event_processor: EventProcessor,
-) -> None:
-    ts = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-
-    event_processor.track_event(event="ping", timestamp=ts)
-
-    assert event_processor._buffer[0]["timestamp"] == int(ts.timestamp() * 1000)
-
-
 def test_track_exposure_event_buffers_with_flag_exposure_event_name(
     event_processor: EventProcessor,
 ) -> None:
@@ -72,16 +62,6 @@ def test_track_exposure_event_buffers_with_flag_exposure_event_name(
     assert event["traits"] == {"plan": "premium"}
     assert event["metadata"]["source"] == "homepage"
     assert "sdk_version" in event["metadata"]
-
-
-def test_track_exposure_event_uses_explicit_timestamp(
-    event_processor: EventProcessor,
-) -> None:
-    ts = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-
-    event_processor.track_exposure_event(feature_name="checkout_v2", timestamp=ts)
-
-    assert event_processor._buffer[0]["timestamp"] == int(ts.timestamp() * 1000)
 
 
 def test_auto_flush_on_buffer_full() -> None:

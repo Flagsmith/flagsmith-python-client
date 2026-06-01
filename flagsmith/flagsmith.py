@@ -377,7 +377,6 @@ class Flagsmith:
         value: typing.Optional[typing.Union[str, int, float]] = None,
         traits: typing.Optional[TraitMapping] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        timestamp: typing.Optional[datetime] = None,
     ) -> None:
         if not self._event_processor:
             raise ValueError("Events must be enabled to track events.")
@@ -387,7 +386,6 @@ class Flagsmith:
             value=value,
             traits=resolve_trait_values(traits),
             metadata=metadata,
-            timestamp=timestamp,
         )
 
     def track_exposure_event(
@@ -397,7 +395,6 @@ class Flagsmith:
         value: typing.Optional[str] = None,
         traits: typing.Optional[TraitMapping] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        timestamp: typing.Optional[datetime] = None,
     ) -> None:
         if not self._event_processor:
             raise ValueError("Events must be enabled to track exposure events.")
@@ -407,7 +404,6 @@ class Flagsmith:
             value=value,
             traits=resolve_trait_values(traits),
             metadata=metadata,
-            timestamp=timestamp,
         )
 
     def update_environment(self) -> None:

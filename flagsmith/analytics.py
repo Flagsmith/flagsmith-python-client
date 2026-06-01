@@ -112,7 +112,6 @@ class EventProcessor:
         value: typing.Optional[typing.Union[str, int, float]] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        timestamp: typing.Optional[datetime] = None,
     ) -> None:
         self._buffer_event(
             event=event,
@@ -121,7 +120,6 @@ class EventProcessor:
             value=value,
             traits=traits,
             metadata=metadata,
-            timestamp=timestamp,
         )
 
     def track_exposure_event(
@@ -131,7 +129,6 @@ class EventProcessor:
         value: typing.Optional[str] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        timestamp: typing.Optional[datetime] = None,
     ) -> None:
         self._buffer_event(
             event=FLAG_EXPOSURE_EVENT,
@@ -140,7 +137,6 @@ class EventProcessor:
             value=value,
             traits=traits,
             metadata=metadata,
-            timestamp=timestamp,
         )
 
     def _buffer_event(
@@ -151,7 +147,6 @@ class EventProcessor:
         value: typing.Optional[typing.Union[str, int, float]],
         traits: typing.Optional[typing.Dict[str, typing.Any]],
         metadata: typing.Optional[typing.Dict[str, typing.Any]],
-        timestamp: typing.Optional[datetime],
     ) -> None:
         should_flush = False
         with self._lock:
@@ -163,7 +158,7 @@ class EventProcessor:
                     "value": value,
                     "traits": dict(traits) if traits else None,
                     "metadata": {**(metadata or {}), "sdk_version": __version__},
-                    "timestamp": int((timestamp or datetime.now()).timestamp() * 1000),
+                    "timestamp": int(datetime.now().timestamp() * 1000),
                 }
             )
             if len(self._buffer) >= self._max_buffer:

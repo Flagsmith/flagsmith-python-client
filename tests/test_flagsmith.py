@@ -1003,7 +1003,6 @@ def test_track_event_delegates_to_event_processor(
         value=99.5,
         traits={"plan": "premium"},
         metadata={"amount": 99},
-        timestamp=None,
     )
 
 
@@ -1037,7 +1036,6 @@ def test_track_exposure_event_delegates_to_event_processor(
         value="variant_b",
         traits={"plan": "premium"},
         metadata={"source": "homepage"},
-        timestamp=None,
     )
 
 
@@ -1075,7 +1073,6 @@ def test_get_experiment_flag_returns_flag_and_tracks_exposure(
         value="some-value",
         traits={"plan": "premium"},
         metadata=None,
-        timestamp=None,
     )
 
 
