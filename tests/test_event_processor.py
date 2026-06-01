@@ -25,11 +25,29 @@ def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
     assert event["event"] == "purchase"
     assert event["feature_name"] is None
     assert event["identifier"] == "user1"
-    assert event["value"] == 99.5
+    assert event["value"] == "99.5"
     assert event["traits"] == {"plan": "premium"}
     assert event["metadata"]["sku"] == "abc"
     assert "sdk_version" in event["metadata"]
     assert isinstance(event["timestamp"], int)
+
+
+def test_buffer_stringifies_non_string_values(
+    event_processor: EventProcessor,
+) -> None:
+    event_processor.track_event(event="purchase", value=99.5)
+    event_processor.track_event(event="opt_in", value=True)
+    event_processor.track_event(event="count", value=3)
+    event_processor.track_event(event="variant", value="control")
+    event_processor.track_event(event="empty")
+
+    assert [e["value"] for e in event_processor._buffer] == [
+        "99.5",
+        "True",
+        "3",
+        "control",
+        None,
+    ]
 
 
 def test_track_event_defaults_timestamp_to_now(

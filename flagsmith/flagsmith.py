@@ -365,7 +365,7 @@ class Flagsmith:
             self.track_exposure_event(
                 feature_name=feature_name,
                 identifier=identifier,
-                value=str(flag.value) if flag.value is not None else None,
+                value=flag.value,
                 traits=traits,
             )
         return flag
@@ -374,7 +374,7 @@ class Flagsmith:
         self,
         event: str,
         identifier: typing.Optional[str] = None,
-        value: typing.Optional[typing.Union[str, int, float]] = None,
+        value: typing.Optional[typing.Union[str, int, float, bool]] = None,
         traits: typing.Optional[TraitMapping] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> None:
@@ -392,7 +392,7 @@ class Flagsmith:
         self,
         feature_name: str,
         identifier: typing.Optional[str] = None,
-        value: typing.Optional[str] = None,
+        value: typing.Optional[typing.Union[str, int, float, bool]] = None,
         traits: typing.Optional[TraitMapping] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> None:

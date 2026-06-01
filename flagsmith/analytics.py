@@ -109,7 +109,7 @@ class EventProcessor:
         self,
         event: str,
         identifier: typing.Optional[str] = None,
-        value: typing.Optional[typing.Union[str, int, float]] = None,
+        value: typing.Optional[typing.Union[str, int, float, bool]] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> None:
@@ -126,7 +126,7 @@ class EventProcessor:
         self,
         feature_name: str,
         identifier: typing.Optional[str] = None,
-        value: typing.Optional[str] = None,
+        value: typing.Optional[typing.Union[str, int, float, bool]] = None,
         traits: typing.Optional[typing.Dict[str, typing.Any]] = None,
         metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> None:
@@ -144,7 +144,7 @@ class EventProcessor:
         event: str,
         feature_name: typing.Optional[str],
         identifier: typing.Optional[str],
-        value: typing.Optional[typing.Union[str, int, float]],
+        value: typing.Optional[typing.Union[str, int, float, bool]],
         traits: typing.Optional[typing.Dict[str, typing.Any]],
         metadata: typing.Optional[typing.Dict[str, typing.Any]],
     ) -> None:
@@ -155,7 +155,7 @@ class EventProcessor:
                     "event": event,
                     "feature_name": feature_name,
                     "identifier": identifier,
-                    "value": value,
+                    "value": str(value) if value is not None else None,
                     "traits": dict(traits) if traits else None,
                     "metadata": {**(metadata or {}), "sdk_version": __version__},
                     "timestamp": int(datetime.now().timestamp() * 1000),
