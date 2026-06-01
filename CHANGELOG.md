@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.4.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.3.1...v5.4.0) (2026-06-01)
+
+
+### Features
+
+* experimentation surface — track_event, track_exposure_event, get_experiment_flag ([#220](https://github.com/Flagsmith/flagsmith-python-client/issues/220)) ([7307b83](https://github.com/Flagsmith/flagsmith-python-client/commit/7307b835b65d100ccb753fec5b89d68a7d86f999))
+
+
+### CI
+
+* pre-commit autoupdate ([#216](https://github.com/Flagsmith/flagsmith-python-client/issues/216)) ([57dc7f4](https://github.com/Flagsmith/flagsmith-python-client/commit/57dc7f4ec6471949e12eba2ed9e17bd8b2dc7609))
+
 ## [5.3.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.3.0...v5.3.1) (2026-05-06)
 
 ### CI
