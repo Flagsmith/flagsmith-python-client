@@ -51,6 +51,7 @@ class DefaultFlag(BaseFlag):
 class Flag(BaseFlag):
     feature_id: int
     feature_name: str
+    variant: typing.Optional[str] = None
     is_default: bool = field(default=False)
 
     @classmethod
@@ -64,6 +65,7 @@ class Flag(BaseFlag):
                 value=flag_result["value"],
                 feature_name=flag_result["name"],
                 feature_id=metadata["id"],
+                variant=flag_result.get("variant"),
             )
         raise ValueError(
             "FlagResult metadata is missing. Cannot create Flag instance. "
@@ -77,6 +79,7 @@ class Flag(BaseFlag):
             value=flag_data["feature_state_value"],
             feature_name=flag_data["feature"]["name"],
             feature_id=flag_data["feature"]["id"],
+            variant=flag_data.get("variant"),
         )
 
 

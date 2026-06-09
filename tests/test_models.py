@@ -22,6 +22,7 @@ def test_flag_from_evaluation_result() -> None:
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
+        "variant": "control",
         "metadata": {"id": 123},
     }
 
@@ -34,6 +35,25 @@ def test_flag_from_evaluation_result() -> None:
     assert flag.feature_name == "test_feature"
     assert flag.feature_id == 123
     assert flag.is_default is False
+    assert flag.variant == "control"
+
+
+def test_flag_from_evaluation_result__no_variant__is_none() -> None:
+    # Given
+    flag_result: SDKFlagResult = {
+        "enabled": True,
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
+        "variant": None,
+        "metadata": {"id": 123},
+    }
+
+    # When
+    flag = Flag.from_evaluation_result(flag_result)
+
+    # Then
+    assert flag.variant is None
 
 
 @pytest.mark.parametrize(
@@ -47,6 +67,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "variant": None,
                     "metadata": {"id": 1},
                 }
             },
@@ -59,6 +80,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "variant": None,
                     "metadata": {"id": 1},
                 }
             },
@@ -71,6 +93,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature1",
                     "reason": "DEFAULT",
                     "value": "value1",
+                    "variant": None,
                     "metadata": {"id": 1},
                 },
                 "feature2": {
@@ -78,6 +101,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature2",
                     "reason": "DEFAULT",
                     "value": "value2",
+                    "variant": None,
                     "metadata": {"id": 2},
                 },
                 "feature3": {
@@ -85,6 +109,7 @@ def test_flag_from_evaluation_result() -> None:
                     "name": "feature3",
                     "reason": "DEFAULT",
                     "value": 42,
+                    "variant": None,
                     "metadata": {"id": 3},
                 },
             },
@@ -136,6 +161,7 @@ def test_flag_from_evaluation_result_value_types(
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": value,
+        "variant": None,
         "metadata": {"id": 123},
     }
 
@@ -153,11 +179,43 @@ def test_flag_from_evaluation_result_missing_metadata__raises_expected() -> None
         "name": "test_feature",
         "reason": "DEFAULT",
         "value": "test-value",
+        "variant": None,
     }
 
     # When & Then
     with pytest.raises(ValueError):
         Flag.from_evaluation_result(flag_result)
+
+
+def test_flag_from_api_flag__sets_variant() -> None:
+    # Given
+    flag_data = {
+        "enabled": True,
+        "feature_state_value": "test-value",
+        "feature": {"name": "test_feature", "id": 123},
+        "variant": "control",
+    }
+
+    # When
+    flag = Flag.from_api_flag(flag_data)
+
+    # Then
+    assert flag.variant == "control"
+
+
+def test_flag_from_api_flag__no_variant__is_none() -> None:
+    # Given - the REST API may not include `variant`
+    flag_data = {
+        "enabled": True,
+        "feature_state_value": "test-value",
+        "feature": {"name": "test_feature", "id": 123},
+    }
+
+    # When
+    flag = Flag.from_api_flag(flag_data)
+
+    # Then
+    assert flag.variant is None
 
 
 def test_get_flag_without_pipeline_processor() -> None:
@@ -197,6 +255,7 @@ def lazy_context_factory() -> LazyContextFactory:
                 "name": "target",
                 "enabled": False,
                 "value": "base-value",
+                "variant": None,
                 "metadata": {"id": 1},
             },
         }
@@ -206,6 +265,7 @@ def lazy_context_factory() -> LazyContextFactory:
                 "name": f"noise_{i}",
                 "enabled": True,
                 "value": f"noise-value-{i}",
+                "variant": None,
                 "metadata": {"id": 100 + i},
             }
         return {
