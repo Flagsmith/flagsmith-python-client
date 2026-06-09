@@ -959,12 +959,8 @@ def test_track_event_raises_without_config(api_key: str) -> None:
 
 def test_track_event_rejects_reserved_prefix(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
-    try:
-        with pytest.raises(ValueError, match='reserved "\\$" prefix'):
-            flagsmith.track_event("$made_up")
-    finally:
-        if flagsmith._event_processor:
-            flagsmith._event_processor.stop()
+    with pytest.raises(ValueError, match='reserved "\\$" prefix'):
+        flagsmith.track_event("$made_up")
 
 
 def test_event_processor_config_without_enable_events_raises(api_key: str) -> None:
@@ -978,15 +974,11 @@ def test_event_processor_config_without_enable_events_raises(api_key: str) -> No
 
 def test_enable_events_without_config_uses_default(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
-    try:
-        assert flagsmith._event_processor is not None
-        assert (
-            flagsmith._event_processor._batch_endpoint
-            == "https://events.api.flagsmith.com/v1/events"
-        )
-    finally:
-        if flagsmith._event_processor:
-            flagsmith._event_processor.stop()
+    assert flagsmith._event_processor is not None
+    assert (
+        flagsmith._event_processor._batch_endpoint
+        == "https://events.api.flagsmith.com/v1/events"
+    )
 
 
 def test_track_event_delegates_to_event_processor(

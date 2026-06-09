@@ -23,6 +23,32 @@ from flagsmith.types import SDKEvaluationContext
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
+@pytest.fixture(autouse=True)
+def stop_flagsmith_background_threads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[None, None, None]:
+    # Flagsmith starts polling, streaming and event-processor background
+    # threads. Track every instance created during a test and stop its threads
+    # on teardown so they don't leak across the suite (mirroring __del__, but
+    # deterministically rather than at GC).
+    instances: typing.List[Flagsmith] = []
+    original_init = Flagsmith.__init__
+
+    def tracking_init(self: Flagsmith, *args: typing.Any, **kwargs: typing.Any) -> None:
+        instances.append(self)
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(Flagsmith, "__init__", tracking_init)
+    yield
+    for flagsmith in instances:
+        if getattr(flagsmith, "environment_data_polling_manager_thread", None):
+            flagsmith.environment_data_polling_manager_thread.stop()
+        if getattr(flagsmith, "event_stream_thread", None):
+            flagsmith.event_stream_thread.stop()
+        if flagsmith._event_processor:
+            flagsmith._event_processor.stop()
+
+
 @pytest.fixture()
 def analytics_processor() -> AnalyticsProcessor:
     return AnalyticsProcessor(
