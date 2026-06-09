@@ -1116,3 +1116,73 @@ def test_get_experiment_flag_skips_exposure_for_default_flag(
     assert result.is_default is True
     assert result.value == "default-variant"
     mock_track.assert_not_called()
+
+
+def test_get_experiment_flag_uses_variant_as_exposure_value(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given - a resolved flag carrying a variant
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+    flag = Flag(
+        enabled=True,
+        value="blue",
+        feature_name="checkout_v2",
+        feature_id=1,
+        variant="control",
+    )
+    mocker.patch.object(
+        flagsmith,
+        "get_identity_flags",
+        return_value=Flags(flags={"checkout_v2": flag}),
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    flagsmith.get_experiment_flag(feature_name="checkout_v2", identifier="user1")
+
+    # Then - the exposure value is the variant, not the flag value
+    mock_track.assert_called_once_with(
+        feature_name="checkout_v2",
+        identifier="user1",
+        value="control",
+        traits=None,
+        metadata=None,
+    )
+
+
+def test_get_experiment_flag_falls_back_to_value_without_variant(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given - a resolved flag with no variant
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+    flag = Flag(
+        enabled=True,
+        value="blue",
+        feature_name="checkout_v2",
+        feature_id=1,
+        variant=None,
+    )
+    mocker.patch.object(
+        flagsmith,
+        "get_identity_flags",
+        return_value=Flags(flags={"checkout_v2": flag}),
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    flagsmith.get_experiment_flag(feature_name="checkout_v2", identifier="user1")
+
+    # Then - the exposure value falls back to the flag value
+    mock_track.assert_called_once_with(
+        feature_name="checkout_v2",
+        identifier="user1",
+        value="blue",
+        traits=None,
+        metadata=None,
+    )

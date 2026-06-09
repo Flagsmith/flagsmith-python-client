@@ -362,11 +362,11 @@ class Flagsmith:
         if not self._event_processor:
             raise ValueError("Events must be enabled to use experiment flags.")
         flag = self.get_identity_flags(identifier, traits).get_flag(feature_name)
-        if not flag.is_default:
+        if isinstance(flag, Flag):
             self.track_exposure_event(
                 feature_name=feature_name,
                 identifier=identifier,
-                value=flag.value,
+                value=flag.variant if flag.variant is not None else flag.value,
                 traits=traits,
             )
         return flag
