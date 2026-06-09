@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import sseclient
 from flag_engine.context.types import (
     FeatureContext,
+    FeatureValue,
     SegmentContext,
     SegmentRule,
     StrValueSegmentCondition,
@@ -245,11 +246,13 @@ def _map_environment_document_feature_states_to_feature_contexts(
         if multivariate_feature_state_values := feature_state.get(
             "multivariate_feature_state_values"
         ):
-            feature_context["variants"] = [
-                {
-                    "value": multivariate_feature_state_value[
-                        "multivariate_feature_option"
-                    ]["value"],
+            variants: list[FeatureValue] = []
+            for multivariate_feature_state_value in multivariate_feature_state_values:
+                multivariate_feature_option = multivariate_feature_state_value[
+                    "multivariate_feature_option"
+                ]
+                variant: FeatureValue = {
+                    "value": multivariate_feature_option["value"],
                     "weight": multivariate_feature_state_value["percentage_allocation"],
                     "priority": (
                         multivariate_feature_state_value.get("id")
@@ -258,8 +261,10 @@ def _map_environment_document_feature_states_to_feature_contexts(
                         ).int
                     ),
                 }
-                for multivariate_feature_state_value in multivariate_feature_state_values
-            ]
+                if (key := multivariate_feature_option.get("key")) is not None:
+                    variant["key"] = key
+                variants.append(variant)
+            feature_context["variants"] = variants
 
         if feature_segment := feature_state.get("feature_segment"):
             feature_context["priority"] = feature_segment["priority"]

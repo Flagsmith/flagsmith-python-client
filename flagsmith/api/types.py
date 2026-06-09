@@ -39,6 +39,7 @@ class FeatureSegmentModel(typing.TypedDict):
 
 class MultivariateFeatureOptionModel(typing.TypedDict):
     value: str
+    key: NotRequired[typing.Optional[str]]
 
 
 class MultivariateFeatureStateValueModel(typing.TypedDict):
