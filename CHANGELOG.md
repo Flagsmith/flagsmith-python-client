@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.5.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.4.0...v5.5.0) (2026-06-09)
+
+### Features
+
+- surface the selected variant on flags ([#221](https://github.com/Flagsmith/flagsmith-python-client/issues/221))
+  ([7fc7224](https://github.com/Flagsmith/flagsmith-python-client/commit/7fc722421e4036820fa656e7a4c38c11f0bd62f3))
+- use the variant as the exposure event value ([#222](https://github.com/Flagsmith/flagsmith-python-client/issues/222))
+  ([1438708](https://github.com/Flagsmith/flagsmith-python-client/commit/14387080a1836b7f5b9e368d7b3f125447752e16))
+
 ## [5.4.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.3.1...v5.4.0) (2026-06-01)
 
 ### Features
