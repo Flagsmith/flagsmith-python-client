@@ -178,19 +178,13 @@ class Flagsmith:
             self.session.proxies.update(proxies or {})
             retries = retries or Retry(total=3, backoff_factor=0.1)
 
-            api_url = api_url or DEFAULT_API_URL
-            self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
-
-            realtime_api_url = realtime_api_url or DEFAULT_REALTIME_API_URL
-            self.realtime_api_url = (
-                realtime_api_url
-                if realtime_api_url.endswith("/")
-                else f"{realtime_api_url}/"
+            self.api_url = self._ensure_trailing_slash(api_url or DEFAULT_API_URL)
+            self.realtime_api_url = self._ensure_trailing_slash(
+                realtime_api_url or DEFAULT_REALTIME_API_URL
             )
-
-            if analytics_url and not analytics_url.endswith("/"):
-                analytics_url = f"{analytics_url}/"
-            self.analytics_url = analytics_url
+            self.analytics_url = (
+                self._ensure_trailing_slash(analytics_url) if analytics_url else None
+            )
 
             self.request_timeout_seconds = request_timeout_seconds
             self.session.mount(self.api_url, HTTPAdapter(max_retries=retries))
@@ -218,6 +212,10 @@ class Flagsmith:
                 enable_events=enable_events,
                 event_processor_config=event_processor_config,
             )
+
+    @staticmethod
+    def _ensure_trailing_slash(url: str) -> str:
+        return url if url.endswith("/") else f"{url}/"
 
     def _initialise_analytics(
         self,
