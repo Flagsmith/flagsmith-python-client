@@ -42,6 +42,7 @@ class EventStreamManager(threading.Thread):
 
             except Exception:
                 logger.exception("Error opening or reading from the event stream")
+                self._stop_event.wait(1)
 
     def stop(self) -> None:
         self._stop_event.set()
