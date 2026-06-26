@@ -795,8 +795,15 @@ def test_stream_not_used_by_default(
 
 
 def test_stream_used_when_enable_realtime_updates_is_true(
-    requests_session_response_ok: None, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str, mocker: MockerFixture
 ) -> None:
+    # Given
+    # Keep the stream worker off the network so it stays idle until torn down.
+    mocker.patch(
+        "flagsmith.streaming_manager.requests.get",
+        side_effect=requests.exceptions.ReadTimeout(),
+    )
+
     # When
     flagsmith = Flagsmith(
         environment_key=server_api_key,
