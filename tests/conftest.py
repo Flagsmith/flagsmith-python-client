@@ -40,9 +40,6 @@ def stop_flagsmith_background_threads(
 
     monkeypatch.setattr(Flagsmith, "__init__", tracking_init)
     yield
-    # Join, not just stop: pyfakefs is not thread-safe, so a thread that is
-    # still winding down races with the filesystem patching the next test
-    # performs (and, under pytest>=8.1, surfaces as a thread-exception error).
     for flagsmith in instances:
         if polling := getattr(
             flagsmith, "environment_data_polling_manager_thread", None

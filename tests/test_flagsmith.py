@@ -798,7 +798,6 @@ def test_stream_used_when_enable_realtime_updates_is_true(
     requests_session_response_ok: None, server_api_key: str, mocker: MockerFixture
 ) -> None:
     # Given
-    # Keep the stream worker off the network so it stays idle until torn down.
     mocker.patch(
         "flagsmith.streaming_manager.requests.get",
         side_effect=requests.exceptions.ReadTimeout(),

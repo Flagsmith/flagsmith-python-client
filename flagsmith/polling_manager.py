@@ -24,14 +24,10 @@ class EnvironmentDataPollingManager(threading.Thread):
         self.refresh_interval_seconds = refresh_interval_seconds
 
     def run(self) -> None:
-        # Wait on the stop event rather than sleeping so stop() interrupts
-        # the interval immediately and the thread can be joined promptly.
         while not self._stop_event.is_set():
             try:
                 self.main.update_environment()
             except Exception:
-                # Never let an unexpected error kill the polling thread; log
-                # it and try again on the next interval.
                 logger.exception("Error updating environment")
             self._stop_event.wait(self.refresh_interval_seconds)
 
