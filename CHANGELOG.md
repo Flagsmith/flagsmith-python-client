@@ -1,5 +1,42 @@
 # Changelog
 
+## [6.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.5.0...v6.0.0) (2026-06-26)
+
+### ⚠ BREAKING CHANGES
+
+- drop Python 3.9 support to allow urllib3 >=2.7.0
+  ([#227](https://github.com/Flagsmith/flagsmith-python-client/issues/227))
+
+### Features
+
+- only track exposure when experiment feature is enabled
+  ([#226](https://github.com/Flagsmith/flagsmith-python-client/issues/226))
+  ([30112aa](https://github.com/Flagsmith/flagsmith-python-client/commit/30112aa187af66c00171000b199e158c88142b7c))
+
+### Bug Fixes
+
+- Background threads leaking across tests ([#229](https://github.com/Flagsmith/flagsmith-python-client/issues/229))
+  ([0615a9d](https://github.com/Flagsmith/flagsmith-python-client/commit/0615a9d760b047ae8a02dec8ac412f171e9e7f5e))
+
+### CI
+
+- pre-commit autoupdate ([#219](https://github.com/Flagsmith/flagsmith-python-client/issues/219))
+  ([134e6b6](https://github.com/Flagsmith/flagsmith-python-client/commit/134e6b65ebe11e89a37ae2d1c98b487871d5a216))
+
+### Dependency Updates
+
+- drop Python 3.9 support to allow urllib3 &gt;=2.7.0
+  ([#227](https://github.com/Flagsmith/flagsmith-python-client/issues/227))
+  ([814e67e](https://github.com/Flagsmith/flagsmith-python-client/commit/814e67ef1e1e5905dfcfdfd3e629cdf3fc7855e6))
+
+### Other
+
+- **deps-dev:** bump pytest from 7.4.4 to 9.0.3
+  ([#228](https://github.com/Flagsmith/flagsmith-python-client/issues/228))
+  ([f00eff9](https://github.com/Flagsmith/flagsmith-python-client/commit/f00eff954527e5d031789be7a33466c05f9d1adb))
+- **deps:** bump idna from 3.10 to 3.15 ([#218](https://github.com/Flagsmith/flagsmith-python-client/issues/218))
+  ([4d71722](https://github.com/Flagsmith/flagsmith-python-client/commit/4d71722421d3692af07d68bbf71216b4de1b2eed))
+
 ## [5.5.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.4.0...v5.5.0) (2026-06-09)
 
 ### Features
