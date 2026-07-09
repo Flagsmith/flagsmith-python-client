@@ -1280,6 +1280,8 @@ def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
         if call.request.method == "POST" and call.request.url == expected_analytics_url
     ]
     assert len(analytics_posts) == 1
+
+
 def test_get_experiment_flag_skips_exposure_for_disabled_feature(
     mocker: MockerFixture, api_key: str
 ) -> None:
