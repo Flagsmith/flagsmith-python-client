@@ -41,10 +41,14 @@ def stop_flagsmith_background_threads(
     monkeypatch.setattr(Flagsmith, "__init__", tracking_init)
     yield
     for flagsmith in instances:
-        if getattr(flagsmith, "environment_data_polling_manager_thread", None):
-            flagsmith.environment_data_polling_manager_thread.stop()
-        if getattr(flagsmith, "event_stream_thread", None):
-            flagsmith.event_stream_thread.stop()
+        if polling := getattr(
+            flagsmith, "environment_data_polling_manager_thread", None
+        ):
+            polling.stop()
+            polling.join(timeout=5)
+        if stream := getattr(flagsmith, "event_stream_thread", None):
+            stream.stop()
+            stream.join(timeout=5)
         if flagsmith._event_processor:
             flagsmith._event_processor.stop()
 

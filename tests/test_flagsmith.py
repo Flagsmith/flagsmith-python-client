@@ -795,8 +795,14 @@ def test_stream_not_used_by_default(
 
 
 def test_stream_used_when_enable_realtime_updates_is_true(
-    requests_session_response_ok: None, server_api_key: str
+    requests_session_response_ok: None, server_api_key: str, mocker: MockerFixture
 ) -> None:
+    # Given
+    mocker.patch(
+        "flagsmith.streaming_manager.requests.get",
+        side_effect=requests.exceptions.ReadTimeout(),
+    )
+
     # When
     flagsmith = Flagsmith(
         environment_key=server_api_key,
@@ -1274,3 +1280,33 @@ def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
         if call.request.method == "POST" and call.request.url == expected_analytics_url
     ]
     assert len(analytics_posts) == 1
+def test_get_experiment_flag_skips_exposure_for_disabled_feature(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given - a resolved flag for a disabled feature
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+    flag = Flag(
+        enabled=False,
+        value="blue",
+        feature_name="checkout_v2",
+        feature_id=1,
+        variant="control",
+    )
+    mocker.patch.object(
+        flagsmith,
+        "get_identity_flags",
+        return_value=Flags(flags={"checkout_v2": flag}),
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    result = flagsmith.get_experiment_flag(
+        feature_name="checkout_v2", identifier="user1"
+    )
+
+    # Then - the flag is returned but no exposure event is tracked
+    assert result is flag
+    mock_track.assert_not_called()

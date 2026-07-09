@@ -370,12 +370,13 @@ class Flagsmith:
 
         Skips the exposure event when the resolved flag is a `DefaultFlag`
         (i.e. the feature was not present and was served via the
-        `default_flag_handler`), to keep experimentation data clean.
+        `default_flag_handler`) or when the feature is disabled, to keep
+        experimentation data clean.
         """
         if not self._event_processor:
             raise ValueError("Events must be enabled to use experiment flags.")
         flag = self.get_identity_flags(identifier, traits).get_flag(feature_name)
-        if isinstance(flag, Flag):
+        if isinstance(flag, Flag) and flag.enabled:
             self.track_exposure_event(
                 feature_name=feature_name,
                 identifier=identifier,

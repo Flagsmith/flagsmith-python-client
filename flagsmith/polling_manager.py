@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 import typing
 
 if typing.TYPE_CHECKING:
@@ -26,8 +25,11 @@ class EnvironmentDataPollingManager(threading.Thread):
 
     def run(self) -> None:
         while not self._stop_event.is_set():
-            self.main.update_environment()
-            time.sleep(self.refresh_interval_seconds)
+            try:
+                self.main.update_environment()
+            except Exception:
+                logger.exception("Error updating environment")
+            self._stop_event.wait(self.refresh_interval_seconds)
 
     def stop(self) -> None:
         self._stop_event.set()

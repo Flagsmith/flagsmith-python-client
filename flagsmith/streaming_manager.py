@@ -40,8 +40,9 @@ class EventStreamManager(threading.Thread):
                     for event in sse_client.events():
                         self.on_event(map_sse_event_to_stream_event(event))
 
-            except (requests.RequestException, ValueError, TypeError):
+            except Exception:
                 logger.exception("Error opening or reading from the event stream")
+                self._stop_event.wait(1)
 
     def stop(self) -> None:
         self._stop_event.set()
