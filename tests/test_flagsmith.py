@@ -1190,15 +1190,7 @@ def test_get_experiment_flag_falls_back_to_value_without_variant(
 def test_flagsmith_posts_analytics_to_analytics_url_when_set(
     api_key: str, flags_json: str, mocker: MockerFixture
 ) -> None:
-    # Given a Flagsmith client pointed at an Edge Proxy for flag evaluations,
-    # with analytics_url overriding the analytics endpoint to the core API.
-    # analytics_url is intentionally written without a trailing slash to
-    # exercise the constructor's normalisation.
-    #
-    # We swap the fire-and-forget FuturesSession for a plain requests.Session
-    # so the analytics POST happens synchronously on the test thread and is
-    # observable via responses.calls; without this swap the worker thread can
-    # race the assertions.
+    # Given
     mocker.patch("flagsmith.analytics.session", requests.Session())
     flagsmith = Flagsmith(
         environment_key=api_key,
@@ -1211,20 +1203,13 @@ def test_flagsmith_posts_analytics_to_analytics_url_when_set(
     responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
     responses.add(method="POST", url=expected_analytics_url, status=200)
 
-    # When the customer-facing evaluation API is exercised. This is the path
-    # that triggers track_feature internally (Flags.get_flag in models.py).
+    # When
     flags = flagsmith.get_environment_flags()
     assert flags.is_feature_enabled("some_feature") is True
-
-    # Force the flush deterministically rather than waiting on ANALYTICS_TIMER.
     assert flagsmith._analytics_processor is not None
     flagsmith._analytics_processor.flush()
 
-    # Then exactly one analytics POST landed on the override host (with the
-    # trailing slash applied), carried the tracked feature payload, and the
-    # Edge Proxy never received an analytics request. We filter by the exact
-    # analytics URL rather than counting all POSTs, because the module-global
-    # analytics session can leak background requests from other tests.
+    # Then
     analytics_posts = [
         call
         for call in responses.calls
@@ -1248,12 +1233,7 @@ def test_flagsmith_posts_analytics_to_analytics_url_when_set(
 def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
     api_key: str, flags_json: str, mocker: MockerFixture
 ) -> None:
-    # Given a Flagsmith client with analytics enabled but no analytics_url
-    # override. This is the backwards-compatible default: analytics must keep
-    # posting to <api_url>/analytics/flags/, derived from api_url alone.
-    #
-    # As above, swap the FuturesSession for a synchronous requests.Session so
-    # the analytics POST is observable on the test thread.
+    # Given
     mocker.patch("flagsmith.analytics.session", requests.Session())
     flagsmith = Flagsmith(
         environment_key=api_key,
@@ -1265,15 +1245,13 @@ def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
     responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
     responses.add(method="POST", url=expected_analytics_url, status=200)
 
-    # When the evaluation API is exercised and analytics flushed deterministically.
+    # When
     flags = flagsmith.get_environment_flags()
     assert flags.is_feature_enabled("some_feature") is True
     assert flagsmith._analytics_processor is not None
     flagsmith._analytics_processor.flush()
 
-    # Then exactly one analytics POST landed on the api_url-derived endpoint.
-    # Filter by the exact URL to stay robust against background requests leaked
-    # by the module-global analytics session in other tests.
+    # Then
     analytics_posts = [
         call
         for call in responses.calls
