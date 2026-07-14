@@ -31,7 +31,11 @@ class AnalyticsProcessor:
     """
 
     def __init__(
-        self, environment_key: str, base_api_url: str, timeout: typing.Optional[int] = 3
+        self,
+        environment_key: str,
+        base_api_url: str,
+        timeout: typing.Optional[int] = 3,
+        analytics_url: typing.Optional[str] = None,
     ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
@@ -41,8 +45,13 @@ class AnalyticsProcessor:
         :param base_api_url: base api url to override when using self hosted version
         :param timeout: used to tell requests to stop waiting for a response after a
             given number of seconds
+        :param analytics_url: full URL of the flag analytics endpoint, used to override
+            the default ``<base_api_url>/analytics/flags/``. Intended for deployments
+            where flag evaluation traffic and analytics traffic must go to different
+            hosts (for example, evaluating through the Edge Proxy while sending
+            analytics to the core API).
         """
-        self.analytics_endpoint = base_api_url + ANALYTICS_ENDPOINT
+        self.analytics_endpoint = analytics_url or (base_api_url + ANALYTICS_ENDPOINT)
         self.environment_key = environment_key
         self._last_flushed = datetime.now()
         self.analytics_data: typing.MutableMapping[str, typing.Any] = {}

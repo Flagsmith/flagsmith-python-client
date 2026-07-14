@@ -70,6 +70,7 @@ class Flagsmith:
         environment_key: typing.Optional[str] = None,
         api_url: typing.Optional[str] = None,
         realtime_api_url: typing.Optional[str] = None,
+        analytics_url: typing.Optional[str] = None,
         custom_headers: typing.Optional[typing.Dict[str, typing.Any]] = None,
         request_timeout_seconds: typing.Optional[int] = 10,
         enable_local_evaluation: bool = False,
@@ -92,6 +93,11 @@ class Flagsmith:
             Required unless offline_mode is True.
         :param api_url: Override the URL of the Flagsmith API to communicate with
         :param realtime_api_url: Override the URL of the Flagsmith real-time API
+        :param analytics_url: Override the URL used for flag analytics requests when
+            enable_analytics is True. When unset, analytics are posted to
+            ``<api_url>/analytics/flags/``. Set this when api_url points at a host that
+            does not handle analytics (for example, the Edge Proxy) so analytics can be
+            sent directly to the core Flagsmith API.
         :param custom_headers: Additional headers to add to requests made to the
             Flagsmith API
         :param request_timeout_seconds: Number of seconds to wait for a request to
@@ -172,14 +178,12 @@ class Flagsmith:
             self.session.proxies.update(proxies or {})
             retries = retries or Retry(total=3, backoff_factor=0.1)
 
-            api_url = api_url or DEFAULT_API_URL
-            self.api_url = api_url if api_url.endswith("/") else f"{api_url}/"
-
-            realtime_api_url = realtime_api_url or DEFAULT_REALTIME_API_URL
-            self.realtime_api_url = (
-                realtime_api_url
-                if realtime_api_url.endswith("/")
-                else f"{realtime_api_url}/"
+            self.api_url = self._ensure_trailing_slash(api_url or DEFAULT_API_URL)
+            self.realtime_api_url = self._ensure_trailing_slash(
+                realtime_api_url or DEFAULT_REALTIME_API_URL
+            )
+            self.analytics_url = (
+                self._ensure_trailing_slash(analytics_url) if analytics_url else None
             )
 
             self.request_timeout_seconds = request_timeout_seconds
@@ -201,6 +205,7 @@ class Flagsmith:
             self._initialise_analytics(
                 environment_key=environment_key,
                 enable_analytics=enable_analytics,
+                analytics_url=self.analytics_url,
             )
             self._initialise_events(
                 environment_key=environment_key,
@@ -208,14 +213,22 @@ class Flagsmith:
                 event_processor_config=event_processor_config,
             )
 
+    @staticmethod
+    def _ensure_trailing_slash(url: str) -> str:
+        return url if url.endswith("/") else f"{url}/"
+
     def _initialise_analytics(
         self,
         environment_key: str,
         enable_analytics: bool,
+        analytics_url: typing.Optional[str] = None,
     ) -> None:
         if enable_analytics:
             self._analytics_processor = AnalyticsProcessor(
-                environment_key, self.api_url, timeout=self.request_timeout_seconds
+                environment_key,
+                self.api_url,
+                timeout=self.request_timeout_seconds,
+                analytics_url=analytics_url,
             )
 
     def _initialise_events(

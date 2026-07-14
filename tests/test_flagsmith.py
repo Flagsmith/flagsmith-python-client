@@ -1186,6 +1186,80 @@ def test_get_experiment_flag_falls_back_to_value_without_variant(
     )
 
 
+@responses.activate()
+def test_flagsmith_posts_analytics_to_analytics_url_when_set(
+    api_key: str, flags_json: str, mocker: MockerFixture
+) -> None:
+    # Given
+    mocker.patch("flagsmith.analytics.session", requests.Session())
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        api_url="http://edge-proxy.internal/api/v1/",
+        analytics_url="http://core-api.flagsmith.com/api/v1/analytics/flags",
+        enable_analytics=True,
+    )
+
+    expected_analytics_url = "http://core-api.flagsmith.com/api/v1/analytics/flags/"
+    responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
+    responses.add(method="POST", url=expected_analytics_url, status=200)
+
+    # When
+    flags = flagsmith.get_environment_flags()
+    assert flags.is_feature_enabled("some_feature") is True
+    assert flagsmith._analytics_processor is not None
+    flagsmith._analytics_processor.flush()
+
+    # Then
+    analytics_posts = [
+        call
+        for call in responses.calls
+        if call.request.method == "POST" and call.request.url == expected_analytics_url
+    ]
+    assert len(analytics_posts) == 1
+    request = analytics_posts[0].request
+    assert request.body is not None
+    assert json.loads(request.body) == {"some_feature": 1}
+    assert request.headers["X-Environment-Key"] == api_key
+    assert not [
+        call
+        for call in responses.calls
+        if call.request.method == "POST"
+        and call.request.url
+        and "edge-proxy" in call.request.url
+    ]
+
+
+@responses.activate()
+def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
+    api_key: str, flags_json: str, mocker: MockerFixture
+) -> None:
+    # Given
+    mocker.patch("flagsmith.analytics.session", requests.Session())
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        api_url="http://core-api.flagsmith.com/api/v1/",
+        enable_analytics=True,
+    )
+
+    expected_analytics_url = "http://core-api.flagsmith.com/api/v1/analytics/flags/"
+    responses.add(method="GET", url=flagsmith.environment_flags_url, body=flags_json)
+    responses.add(method="POST", url=expected_analytics_url, status=200)
+
+    # When
+    flags = flagsmith.get_environment_flags()
+    assert flags.is_feature_enabled("some_feature") is True
+    assert flagsmith._analytics_processor is not None
+    flagsmith._analytics_processor.flush()
+
+    # Then
+    analytics_posts = [
+        call
+        for call in responses.calls
+        if call.request.method == "POST" and call.request.url == expected_analytics_url
+    ]
+    assert len(analytics_posts) == 1
+
+
 def test_get_experiment_flag_skips_exposure_for_disabled_feature(
     mocker: MockerFixture, api_key: str
 ) -> None:
