@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.1.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.0.0...v6.1.0) (2026-07-14)
+
+### Features
+
+- add analytics_url to send flag analytics to a different host
+  ([#215](https://github.com/Flagsmith/flagsmith-python-client/issues/215))
+  ([2da1a5e](https://github.com/Flagsmith/flagsmith-python-client/commit/2da1a5ec79d309e7789aef681d56479baf335496))
+
+### CI
+
+- pre-commit autoupdate ([#230](https://github.com/Flagsmith/flagsmith-python-client/issues/230))
+  ([896390d](https://github.com/Flagsmith/flagsmith-python-client/commit/896390dcae3352bb429ba89ddc9a79572d0d60b7))
+
 ## [6.0.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v5.5.0...v6.0.0) (2026-06-26)
 
 ### ⚠ BREAKING CHANGES
