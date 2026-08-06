@@ -12,6 +12,7 @@
             "project": 1
         },
         "feature_state_value": "some-value",
+        "reason": "DEFAULT",
         "enabled": true,
         "environment": 1,
         "identity": null,
