@@ -20,6 +20,7 @@
                 "project": 1
             },
             "feature_state_value": "some-value",
+            "variant": "treatment",
             "enabled": true,
             "environment": 1,
             "identity": null,

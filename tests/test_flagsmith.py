@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import typing
 
@@ -1020,6 +1021,27 @@ def test_track_exposure_event_raises_without_config(api_key: str) -> None:
         flagsmith.track_exposure_event("checkout_v2")
 
 
+def test_track_exposure_event__no_identifier__exposure_not_sent(
+    mocker: MockerFixture,
+    api_key: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    flagsmith.track_exposure_event("checkout_v2", value="variant_b")
+
+    # Then
+    mock_track.assert_not_called()
+    assert "an exposure requires an identifier" in caplog.text
+
+
 def test_track_exposure_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:
@@ -1054,9 +1076,10 @@ def test_get_experiment_flag_raises_without_events_enabled(api_key: str) -> None
 
 
 @responses.activate()
-def test_get_experiment_flag_returns_flag_and_tracks_exposure(
+def test_get_experiment_flag__variant__returns_flag_and_tracks_exposure(
     mocker: MockerFixture, api_key: str, identities_json: str
 ) -> None:
+    # Given
     config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(
         environment_key=api_key, enable_events=True, event_processor_config=config
@@ -1065,29 +1088,33 @@ def test_get_experiment_flag_returns_flag_and_tracks_exposure(
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
     responses.add(method="POST", url=flagsmith.identities_url, body=identities_json)
 
+    # When
     result = flagsmith.get_experiment_flag(
         feature_name="some_feature",
         identifier="user1",
         traits={"plan": "premium"},
     )
 
+    # Then
     assert isinstance(result, Flag)
     assert result.is_default is False
     assert result.feature_name == "some_feature"
     assert result.value == "some-value"
+    assert result.variant == "treatment"
     mock_track.assert_called_once_with(
         feature_name="some_feature",
         identifier="user1",
-        value="some-value",
+        value="treatment",
         traits={"plan": "premium"},
         metadata=None,
     )
 
 
 @responses.activate()
-def test_get_experiment_flag_skips_exposure_for_default_flag(
-    mocker: MockerFixture, api_key: str
+def test_get_experiment_flag__default_flag__skips_exposure(
+    mocker: MockerFixture, api_key: str, caplog: pytest.LogCaptureFixture
 ) -> None:
+    # Given
     config = EventProcessorConfig(events_api_url="http://test/")
 
     def default_flag_handler(feature_name: str) -> DefaultFlag:
@@ -1106,20 +1133,27 @@ def test_get_experiment_flag_skips_exposure_for_default_flag(
         body=json.dumps({"flags": [], "traits": []}),
     )
 
-    result = flagsmith.get_experiment_flag(
-        feature_name="missing_feature", identifier="user1"
-    )
+    # When
+    with caplog.at_level(logging.DEBUG, logger="flagsmith.flagsmith"):
+        result = flagsmith.get_experiment_flag(
+            feature_name="missing_feature", identifier="user1"
+        )
 
+    # Then
     assert isinstance(result, DefaultFlag)
     assert result.is_default is True
     assert result.value == "default-variant"
     mock_track.assert_not_called()
+    assert (
+        "Not sending $flag_exposure for feature missing_feature: feature not found."
+        in caplog.messages
+    )
 
 
-def test_get_experiment_flag_uses_variant_as_exposure_value(
+def test_get_experiment_flag__variant__used_as_exposure_value(
     mocker: MockerFixture, api_key: str
 ) -> None:
-    # Given - a resolved flag carrying a variant
+    # Given
     config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(
         environment_key=api_key, enable_events=True, event_processor_config=config
@@ -1141,7 +1175,7 @@ def test_get_experiment_flag_uses_variant_as_exposure_value(
     # When
     flagsmith.get_experiment_flag(feature_name="checkout_v2", identifier="user1")
 
-    # Then - the exposure value is the variant, not the flag value
+    # Then
     mock_track.assert_called_once_with(
         feature_name="checkout_v2",
         identifier="user1",
@@ -1151,10 +1185,10 @@ def test_get_experiment_flag_uses_variant_as_exposure_value(
     )
 
 
-def test_get_experiment_flag_falls_back_to_value_without_variant(
-    mocker: MockerFixture, api_key: str
+def test_get_experiment_flag__no_variant__skips_exposure(
+    mocker: MockerFixture, api_key: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    # Given - a resolved flag with no variant
+    # Given
     config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(
         environment_key=api_key, enable_events=True, event_processor_config=config
@@ -1174,15 +1208,17 @@ def test_get_experiment_flag_falls_back_to_value_without_variant(
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
 
     # When
-    flagsmith.get_experiment_flag(feature_name="checkout_v2", identifier="user1")
+    with caplog.at_level(logging.DEBUG, logger="flagsmith.flagsmith"):
+        result = flagsmith.get_experiment_flag(
+            feature_name="checkout_v2", identifier="user1"
+        )
 
-    # Then - the exposure value falls back to the flag value
-    mock_track.assert_called_once_with(
-        feature_name="checkout_v2",
-        identifier="user1",
-        value="blue",
-        traits=None,
-        metadata=None,
+    # Then
+    assert result is flag
+    mock_track.assert_not_called()
+    assert (
+        "Not sending $flag_exposure for feature checkout_v2: flag has no variant."
+        in caplog.messages
     )
 
 
@@ -1260,10 +1296,10 @@ def test_flagsmith_posts_analytics_to_api_url_when_analytics_url_unset(
     assert len(analytics_posts) == 1
 
 
-def test_get_experiment_flag_skips_exposure_for_disabled_feature(
-    mocker: MockerFixture, api_key: str
+def test_get_experiment_flag__disabled_feature__skips_exposure(
+    mocker: MockerFixture, api_key: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    # Given - a resolved flag for a disabled feature
+    # Given
     config = EventProcessorConfig(events_api_url="http://test/")
     flagsmith = Flagsmith(
         environment_key=api_key, enable_events=True, event_processor_config=config
@@ -1283,10 +1319,15 @@ def test_get_experiment_flag_skips_exposure_for_disabled_feature(
     mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
 
     # When
-    result = flagsmith.get_experiment_flag(
-        feature_name="checkout_v2", identifier="user1"
-    )
+    with caplog.at_level(logging.DEBUG, logger="flagsmith.flagsmith"):
+        result = flagsmith.get_experiment_flag(
+            feature_name="checkout_v2", identifier="user1"
+        )
 
-    # Then - the flag is returned but no exposure event is tracked
+    # Then
     assert result is flag
     mock_track.assert_not_called()
+    assert (
+        "Not sending $flag_exposure for feature checkout_v2: feature is disabled."
+        in caplog.messages
+    )

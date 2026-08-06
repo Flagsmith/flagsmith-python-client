@@ -83,6 +83,12 @@ class AnalyticsProcessor:
             self.flush()
 
 
+class ExposureKey(typing.NamedTuple):
+    feature_name: typing.Optional[str]
+    identifier: typing.Optional[str]
+    value: typing.Optional[str]
+
+
 @dataclass
 class EventProcessorConfig:
     events_api_url: str = DEFAULT_EVENT_API_URL
@@ -111,6 +117,7 @@ class EventProcessor:
         self._flush_interval_seconds = config.flush_interval_seconds
 
         self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
+        self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
         self._lock = threading.Lock()
         self._timer: typing.Optional[threading.Timer] = None
 
@@ -159,6 +166,24 @@ class EventProcessor:
     ) -> None:
         should_flush = False
         with self._lock:
+            if event == FLAG_EXPOSURE_EVENT:
+                # An exposure is defined by who saw which variant of which
+                # feature; equal exposures within one flush interval add no
+                # information, so only the first is buffered.
+                exposure_key = ExposureKey(
+                    feature_name=feature_name,
+                    identifier=identifier,
+                    value=str(value) if value is not None else None,
+                )
+                if exposure_key in self._buffered_exposure_keys:
+                    logger.debug(
+                        "Skipping duplicate %s event for feature %s, identifier %s",
+                        FLAG_EXPOSURE_EVENT,
+                        feature_name,
+                        identifier,
+                    )
+                    return
+                self._buffered_exposure_keys.add(exposure_key)
             self._buffer.append(
                 {
                     "event": event,
@@ -182,6 +207,7 @@ class EventProcessor:
                 return
             events = self._buffer
             self._buffer = []
+            self._buffered_exposure_keys.clear()
 
         payload = json.dumps({"events": events})
         try:

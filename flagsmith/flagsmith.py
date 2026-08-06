@@ -368,19 +368,38 @@ class Flagsmith:
         """
         Resolve a flag for an identity and record an exposure event.
 
-        Skips the exposure event when the resolved flag is a `DefaultFlag`
-        (i.e. the feature was not present and was served via the
-        `default_flag_handler`) or when the feature is disabled, to keep
-        experimentation data clean.
+        The exposure event's ``value`` is the flag's variant key. It is only
+        sent when the flag exists, is enabled and carries a variant; any
+        other outcome is logged and skipped to keep experimentation data
+        clean. A `DefaultFlag` served via the `default_flag_handler` counts
+        as the feature not existing.
         """
         if not self._event_processor:
             raise ValueError("Events must be enabled to use experiment flags.")
         flag = self.get_identity_flags(identifier, traits).get_flag(feature_name)
-        if isinstance(flag, Flag) and flag.enabled:
+        if not isinstance(flag, Flag):
+            logger.debug(
+                "Not sending %s for feature %s: feature not found.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+        elif not flag.enabled:
+            logger.debug(
+                "Not sending %s for feature %s: feature is disabled.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+        elif flag.variant is None:
+            logger.debug(
+                "Not sending %s for feature %s: flag has no variant.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+        else:
             self.track_exposure_event(
                 feature_name=feature_name,
                 identifier=identifier,
-                value=flag.variant if flag.variant is not None else flag.value,
+                value=flag.variant,
                 traits=traits,
             )
         return flag
@@ -418,6 +437,14 @@ class Flagsmith:
     ) -> None:
         if not self._event_processor:
             raise ValueError("Events must be enabled to track exposure events.")
+        if not identifier:
+            logger.warning(
+                "Not sending %s for feature %s: an exposure requires an"
+                " identifier to reconcile with conversion events.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+            return
         self._event_processor.track_exposure_event(
             feature_name=feature_name,
             identifier=identifier,

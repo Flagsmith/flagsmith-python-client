@@ -82,6 +82,72 @@ def test_track_exposure_event_buffers_with_flag_exposure_event_name(
     assert "sdk_version" in event["metadata"]
 
 
+def test_track_exposure_event__equal_events_in_flush_interval__deduplicated(
+    event_processor: EventProcessor,
+) -> None:
+    # Given / When
+    for _ in range(3):
+        event_processor.track_exposure_event(
+            feature_name="checkout_v2",
+            identifier="user1",
+            value="variant_b",
+        )
+
+    # Then
+    assert len(event_processor._buffer) == 1
+
+
+def test_track_exposure_event__differing_events__not_deduplicated(
+    event_processor: EventProcessor,
+) -> None:
+    # Given / When
+    event_processor.track_exposure_event(
+        feature_name="checkout_v2", identifier="user1", value="variant_b"
+    )
+    event_processor.track_exposure_event(
+        feature_name="checkout_v2", identifier="user2", value="variant_b"
+    )
+    event_processor.track_exposure_event(
+        feature_name="checkout_v2", identifier="user1", value="variant_a"
+    )
+    event_processor.track_exposure_event(
+        feature_name="banner_test", identifier="user1", value="variant_b"
+    )
+
+    # Then
+    assert len(event_processor._buffer) == 4
+
+
+def test_track_exposure_event__equal_event_after_flush__buffered_again(
+    event_processor: EventProcessor,
+) -> None:
+    # Given
+    with mock.patch("flagsmith.analytics.session"):
+        event_processor.track_exposure_event(
+            feature_name="checkout_v2", identifier="user1", value="variant_b"
+        )
+        event_processor.flush()
+
+        # When
+        event_processor.track_exposure_event(
+            feature_name="checkout_v2", identifier="user1", value="variant_b"
+        )
+
+    # Then
+    assert len(event_processor._buffer) == 1
+
+
+def test_track_event__equal_events__not_deduplicated(
+    event_processor: EventProcessor,
+) -> None:
+    # Given / When
+    event_processor.track_event(event="purchase", identifier="user1", value="99.5")
+    event_processor.track_event(event="purchase", identifier="user1", value="99.5")
+
+    # Then
+    assert len(event_processor._buffer) == 2
+
+
 def test_auto_flush_on_buffer_full() -> None:
     config = EventProcessorConfig(events_api_url="http://test/", max_buffer_items=5)
     processor = EventProcessor(config=config, environment_key="key")
