@@ -1021,6 +1021,27 @@ def test_track_exposure_event_raises_without_config(api_key: str) -> None:
         flagsmith.track_exposure_event("checkout_v2")
 
 
+def test_track_exposure_event__no_identifier__exposure_not_sent(
+    mocker: MockerFixture,
+    api_key: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    flagsmith.track_exposure_event("checkout_v2", value="variant_b")
+
+    # Then
+    mock_track.assert_not_called()
+    assert "an exposure requires an identifier" in caplog.text
+
+
 def test_track_exposure_event_delegates_to_event_processor(
     mocker: MockerFixture, api_key: str
 ) -> None:

@@ -437,6 +437,14 @@ class Flagsmith:
     ) -> None:
         if not self._event_processor:
             raise ValueError("Events must be enabled to track exposure events.")
+        if not identifier:
+            logger.warning(
+                "Not sending %s for feature %s: an exposure requires an"
+                " identifier to reconcile with conversion events.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+            return
         self._event_processor.track_exposure_event(
             feature_name=feature_name,
             identifier=identifier,
