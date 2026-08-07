@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.2.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.1.0...v6.2.0) (2026-08-07)
+
+### Features
+
+- Surface engine evaluation reason on flags ([#236](https://github.com/Flagsmith/flagsmith-python-client/issues/236))
+  ([71128a4](https://github.com/Flagsmith/flagsmith-python-client/commit/71128a4c0d6af6ba5ca473fd69a0d321db56976b))
+
+### Bug Fixes
+
+- Exposure events sent without a variant and duplicated within a flush interval
+  ([#233](https://github.com/Flagsmith/flagsmith-python-client/issues/233))
+  ([2c5e20e](https://github.com/Flagsmith/flagsmith-python-client/commit/2c5e20e4c39d4f51563d3c6b473cca69d8ba23c3))
+
 ## [6.1.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.0.0...v6.1.0) (2026-07-14)
 
 ### Features
