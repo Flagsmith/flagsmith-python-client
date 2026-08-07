@@ -20,6 +20,7 @@
                 "project": 1
             },
             "feature_state_value": "some-value",
+            "reason": "SPLIT; weight=50.0",
             "variant": "treatment",
             "enabled": true,
             "environment": 1,

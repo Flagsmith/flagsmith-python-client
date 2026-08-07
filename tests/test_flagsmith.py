@@ -75,6 +75,7 @@ def test_get_environment_flags_calls_api_when_no_local_environment(
     assert all_flags[0].enabled is True
     assert all_flags[0].value == "some-value"
     assert all_flags[0].feature_name == "some_feature"
+    assert all_flags[0].reason == "DEFAULT"
 
 
 @responses.activate()
@@ -114,6 +115,7 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
+                "reason": "DEFAULT",
                 "metadata": {"id": 1},
             }
         },
@@ -154,6 +156,7 @@ def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
     assert identity_flags[0].enabled is True
     assert identity_flags[0].value == "some-value"
     assert identity_flags[0].feature_name == "some_feature"
+    assert identity_flags[0].reason == "SPLIT; weight=50.0"
 
 
 @responses.activate()
@@ -208,6 +211,7 @@ def test_get_identity_flags_uses_local_environment_when_available(
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
+                "reason": "DEFAULT",
                 "metadata": {"id": 1},
             }
         },
@@ -250,6 +254,7 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
                 "name": "some_feature",
                 "enabled": True,
                 "value": "some-feature-state-value",
+                "reason": "DEFAULT",
                 "metadata": {"id": 1},
             }
         },

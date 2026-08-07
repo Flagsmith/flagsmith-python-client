@@ -36,6 +36,7 @@ def test_flag_from_evaluation_result() -> None:
     assert flag.feature_id == 123
     assert flag.is_default is False
     assert flag.variant == "control"
+    assert flag.reason == "DEFAULT"
 
 
 def test_flag_from_evaluation_result__no_variant__is_none() -> None:
@@ -218,6 +219,37 @@ def test_flag_from_api_flag__no_variant__is_none() -> None:
     assert flag.variant is None
 
 
+def test_flag_from_api_flag__sets_reason() -> None:
+    # Given
+    flag_data = {
+        "enabled": True,
+        "feature_state_value": "test-value",
+        "feature": {"name": "test_feature", "id": 123},
+        "reason": "TARGETING_MATCH; segment=premium",
+    }
+
+    # When
+    flag = Flag.from_api_flag(flag_data)
+
+    # Then
+    assert flag.reason == "TARGETING_MATCH; segment=premium"
+
+
+def test_flag_from_api_flag__no_reason__is_none() -> None:
+    # Given
+    flag_data = {
+        "enabled": True,
+        "feature_state_value": "test-value",
+        "feature": {"name": "test_feature", "id": 123},
+    }
+
+    # When
+    flag = Flag.from_api_flag(flag_data)
+
+    # Then
+    assert flag.reason is None
+
+
 def test_get_flag_without_pipeline_processor() -> None:
     flags = Flags(
         flags={
@@ -335,8 +367,10 @@ def test_lazy_flags__get_flag__applies_matching_segment_override(
     # When: we read the targeted feature.
     target = lazy_flags.get_flag("target")
     # Then: the override wins over the base feature value.
+    assert isinstance(target, Flag)
     assert target.enabled is True
     assert target.value == "premium-value"
+    assert target.reason == "TARGETING_MATCH; segment=premium_segment"
 
 
 def test_lazy_flags__get_flag__skips_non_matching_segment_override(
@@ -355,8 +389,10 @@ def test_lazy_flags__get_flag__skips_non_matching_segment_override(
     target = flags.get_flag("target")
 
     # Then: the override doesn't win and base-value comes through.
+    assert isinstance(target, Flag)
     assert target.enabled is False
     assert target.value == "base-value"
+    assert target.reason == "DEFAULT"
 
 
 def test_lazy_flags__get_flag__caches_per_feature(
