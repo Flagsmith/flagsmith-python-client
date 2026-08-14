@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.2.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.0...v6.2.1) (2026-08-14)
+
+### Bug Fixes
+
+- Identity overrides silently lost during local evaluation
+  ([#240](https://github.com/Flagsmith/flagsmith-python-client/issues/240))
+  ([17e243b](https://github.com/Flagsmith/flagsmith-python-client/commit/17e243b22b833172201c2e1d4bc7e80568b67997))
+
 ## [6.2.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.1.0...v6.2.0) (2026-08-07)
 
 ### Features
