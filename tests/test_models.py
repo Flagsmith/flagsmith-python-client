@@ -466,7 +466,8 @@ def test_lazy_flags__missing_feature__falls_through_to_default_handler(
 def test_build_segment_overrides_index__indexes_only_overriding_segments(
     lazy_context: SDKEvaluationContext,
 ) -> None:
-    # Given: a second segment with no overrides on top of the default context.
+    # Given
+    # a second segment with no overrides on top of the default context
     assert lazy_context["segments"] is not None
     lazy_context["segments"]["no_override_segment"] = {
         "key": "no_override_segment",
@@ -481,9 +482,32 @@ def test_build_segment_overrides_index__indexes_only_overriding_segments(
         ],
     }
 
-    # When: we build the reverse index.
+    # When
+    # we build the reverse index
     index = build_segment_overrides_index(lazy_context)
 
-    # Then: only segments that actually carry an override appear.
+    # Then
+    # only segments that actually carry an override appear,
+    # keyed by their key in the evaluation context
     assert set(index) == {"target"}
-    assert index["target"][0]["name"] == "premium_segment"
+    assert index["target"]["premium_segment"]["name"] == "premium_segment"
+
+
+def test_build_segment_overrides_index__duplicate_segment_key_fields__keeps_both(
+    lazy_context: SDKEvaluationContext,
+) -> None:
+    # Given: a second overriding segment reusing the first segment's `key`
+    # field, as identity-override segments used to do.
+    assert lazy_context["segments"] is not None
+    premium_segment = lazy_context["segments"]["premium_segment"]
+    lazy_context["segments"]["enterprise_segment"] = {
+        **premium_segment,
+        "name": "enterprise_segment",
+    }
+
+    # When
+    index = build_segment_overrides_index(lazy_context)
+
+    # Then
+    # both segments are indexed, neither collapses into the other
+    assert set(index["target"]) == {"premium_segment", "enterprise_segment"}

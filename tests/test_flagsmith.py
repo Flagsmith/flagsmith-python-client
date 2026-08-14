@@ -642,6 +642,22 @@ def test_get_identity_segments__identity_overrides__returns_expected(
     assert segments[0].name == "Test segment"
 
 
+def test_get_identity_flags__local_evaluation_distinct_identity_overrides__returns_expected(
+    local_eval_flagsmith: Flagsmith,
+) -> None:
+    # Given / When
+    first_flag = local_eval_flagsmith.get_identity_flags("overridden-id").get_flag(
+        "some_feature"
+    )
+    second_flag = local_eval_flagsmith.get_identity_flags(
+        "another-overridden-id"
+    ).get_flag("some_feature")
+
+    # Then
+    assert first_flag.value == "some-overridden-value"
+    assert second_flag.value == "another-overridden-value"
+
+
 def test_local_evaluation_requires_server_key() -> None:
     with pytest.raises(ValueError):
         Flagsmith(environment_key="not-a-server-key", enable_local_evaluation=True)

@@ -177,7 +177,7 @@ def _map_identity_overrides_to_segments(
         # Generate a unique key to avoid collisions
         segment_key = str(hash(overrides_key))
         segment_contexts[segment_key] = SegmentContext(
-            key="",  # Identity override segments never use % Split operator
+            key=segment_key,
             name="identity_overrides",
             rules=[
                 {

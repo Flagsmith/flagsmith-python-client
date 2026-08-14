@@ -17,7 +17,7 @@ from flagsmith.types import (
 )
 
 SegmentOverridesIndex = typing.Dict[
-    str, typing.List[SegmentContext[SegmentMetadata, FeatureMetadata]]
+    str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
 ]
 
 
@@ -28,11 +28,16 @@ def build_segment_overrides_index(
 
     Computed once per environment-document refresh so the lazy eval path
     can walk only the segments actually relevant to a given flag.
+
+    Each entry keeps the context's own segment keys, so the trimmed
+    contexts built by `Flags._resolve_flag` stay a faithful subset of
+    the environment. Re-keying them by anything else risks collisions
+    silently dropping segments.
     """
     index: SegmentOverridesIndex = {}
-    for segment_context in (context.get("segments") or {}).values():
+    for segment_key, segment_context in (context.get("segments") or {}).items():
         for override in segment_context.get("overrides") or ():
-            index.setdefault(override["name"], []).append(segment_context)
+            index.setdefault(override["name"], {})[segment_key] = segment_context
     return index
 
 
@@ -254,10 +259,7 @@ class Flags:
         trimmed: SDKEvaluationContext = {
             **context,
             "features": {feature_name: context["features"][feature_name]},
-            "segments": {
-                segment_context["key"]: segment_context
-                for segment_context in overrides_index.get(feature_name, ())
-            },
+            "segments": overrides_index.get(feature_name, {}),
         }
         result = engine.get_evaluation_result(trimmed)
         return Flag.from_evaluation_result(result["flags"][feature_name])

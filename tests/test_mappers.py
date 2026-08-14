@@ -55,3 +55,23 @@ def test_map_environment_document_to_context__null_variant_key__drops_key() -> N
     # Then - the null key is dropped, treated as no key
     variants = context["features"]["mv_feature"]["variants"]
     assert "key" not in variants[0]
+
+
+def test_map_environment_document_to_context__identity_overrides__keys_are_unique(
+    environment: EnvironmentModel,
+) -> None:
+    # Given / When
+    context = map_environment_document_to_context(environment)
+
+    # Then
+    segments = context["segments"] or {}
+    identity_override_keys = {
+        segment_key
+        for segment_key, segment_context in segments.items()
+        if segment_context["name"] == "identity_overrides"
+    }
+    assert len(identity_override_keys) == 2
+    assert all(
+        segments[segment_key]["key"] == segment_key
+        for segment_key in identity_override_keys
+    )
