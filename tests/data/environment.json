@@ -79,6 +79,29 @@
                     "feature_segment": null
                 }
             ]
+        },
+        {
+            "identifier": "another-overridden-id",
+            "identity_uuid": "3a2f0d1e-4b6c-4a58-9a1d-2c5f8e7b6d40",
+            "created_date": "2019-08-27T14:53:45.698555Z",
+            "updated_at": "2023-07-14T16:12:00.000000Z",
+            "environment_api_key": "B62qaMZNwfiqT76p38ggrQ",
+            "identity_features": [
+                {
+                    "id": 2,
+                    "feature": {
+                        "id": 1,
+                        "name": "some_feature",
+                        "type": "STANDARD"
+                    },
+                    "featurestate_uuid": "c1f6ba18-9c2d-4a3e-8f57-1d3b9e0a24c7",
+                    "feature_state_value": "another-overridden-value",
+                    "enabled": false,
+                    "environment": 1,
+                    "identity": null,
+                    "feature_segment": null
+                }
+            ]
         }
     ]
 }
