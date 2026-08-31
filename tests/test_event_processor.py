@@ -171,7 +171,7 @@ def test_flush_sends_correct_http_request(event_processor: EventProcessor) -> No
     headers = call_kwargs[1]["headers"]
     assert headers["X-Environment-Key"] == "test_key"
     assert headers["Content-Type"] == "application/json; charset=utf-8"
-    assert "flagsmith-python-client/" in headers["Flagsmith-SDK-User-Agent"]
+    assert "flagsmith-python-sdk/" in headers["Flagsmith-SDK-User-Agent"]
 
     body = json.loads(call_kwargs[1]["data"])
     assert "environment_key" not in body
