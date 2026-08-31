@@ -41,13 +41,12 @@ from flagsmith.types import (
     TraitMapping,
 )
 from flagsmith.utils.identities import generate_identity_data
-from flagsmith.version import __version__
+from flagsmith.version import DEFAULT_USER_AGENT
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://edge.api.flagsmith.com/api/v1/"
 DEFAULT_REALTIME_API_URL = "https://realtime.flagsmith.com/"
-DEFAULT_USER_AGENT = f"flagsmith-python-sdk/{__version__}"
 
 
 class Flagsmith:

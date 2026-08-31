@@ -8,7 +8,7 @@ from datetime import datetime
 
 from requests_futures.sessions import FuturesSession  # type: ignore
 
-from flagsmith.version import __version__
+from flagsmith.version import DEFAULT_USER_AGENT, __version__
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class EventProcessor:
                 headers={
                     "Content-Type": "application/json; charset=utf-8",
                     "X-Environment-Key": self._environment_key,
-                    "Flagsmith-SDK-User-Agent": f"flagsmith-python-client/{__version__}",
+                    "Flagsmith-SDK-User-Agent": DEFAULT_USER_AGENT,
                 },
             )
         except RuntimeError:
