@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.2.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.2...v6.2.3) (2026-08-31)
+
+### Bug Fixes
+
+- send correct SDK user agent in analytics events
+  ([#246](https://github.com/Flagsmith/flagsmith-python-client/issues/246))
+  ([aa7d7be](https://github.com/Flagsmith/flagsmith-python-client/commit/aa7d7befd2e5685ec1f468d534c8dd78e05bf672))
+
 ## [6.2.2](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.1...v6.2.2) (2026-08-31)
 
 ### CI
