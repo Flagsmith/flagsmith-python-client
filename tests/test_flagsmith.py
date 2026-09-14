@@ -17,7 +17,7 @@ from flagsmith.exceptions import (
     FlagsmithAPIError,
     FlagsmithFeatureDoesNotExistError,
 )
-from flagsmith.models import DefaultFlag, Flag, Flags
+from flagsmith.models import DefaultFlag, ExperimentMetadata, Flag, Flags
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
 
@@ -1122,12 +1122,18 @@ def test_get_experiment_flag__variant__returns_flag_and_tracks_exposure(
     assert result.feature_name == "some_feature"
     assert result.value == "some-value"
     assert result.variant == "treatment"
+    # Taken from hard coded values in tests/data/identities.json
+    assert result.experiment == ExperimentMetadata(
+        id=42,
+        name="Some experiment",
+        in_experiment=True,
+    )
     mock_track.assert_called_once_with(
         feature_name="some_feature",
         identifier="user1",
         value="treatment",
         traits={"plan": "premium"},
-        metadata=None,
+        metadata={"experiment_id": 42},
     )
 
 
@@ -1185,6 +1191,11 @@ def test_get_experiment_flag__variant__used_as_exposure_value(
         feature_name="checkout_v2",
         feature_id=1,
         variant="control",
+        experiment=ExperimentMetadata(
+            id=42,
+            name="New checkout CTA",
+            in_experiment=True,
+        ),
     )
     mocker.patch.object(
         flagsmith,
@@ -1202,12 +1213,25 @@ def test_get_experiment_flag__variant__used_as_exposure_value(
         identifier="user1",
         value="control",
         traits=None,
-        metadata=None,
+        metadata={"experiment_id": 42},
     )
 
 
-def test_get_experiment_flag__no_variant__skips_exposure(
-    mocker: MockerFixture, api_key: str, caplog: pytest.LogCaptureFixture
+@pytest.mark.parametrize(
+    "experiment",
+    [
+        pytest.param(None, id="no-experiment"),
+        pytest.param(
+            ExperimentMetadata(id=42, name="New checkout CTA", in_experiment=False),
+            id="not-enrolled",
+        ),
+    ],
+)
+def test_get_experiment_flag__not_in_experiment__skips_exposure(
+    mocker: MockerFixture,
+    api_key: str,
+    caplog: pytest.LogCaptureFixture,
+    experiment: typing.Optional[ExperimentMetadata],
 ) -> None:
     # Given
     config = EventProcessorConfig(events_api_url="http://test/")
@@ -1219,7 +1243,8 @@ def test_get_experiment_flag__no_variant__skips_exposure(
         value="blue",
         feature_name="checkout_v2",
         feature_id=1,
-        variant=None,
+        variant="control",
+        experiment=experiment,
     )
     mocker.patch.object(
         flagsmith,
@@ -1238,8 +1263,8 @@ def test_get_experiment_flag__no_variant__skips_exposure(
     assert result is flag
     mock_track.assert_not_called()
     assert (
-        "Not sending $flag_exposure for feature checkout_v2: flag has no variant."
-        in caplog.messages
+        "Not sending $flag_exposure for feature checkout_v2:"
+        " identity is not in a running experiment." in caplog.messages
     )
 
 
