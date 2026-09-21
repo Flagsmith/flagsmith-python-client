@@ -4,6 +4,7 @@ import pytest
 
 from flagsmith.models import (
     DefaultFlag,
+    ExperimentMetadata,
     Flag,
     Flags,
     build_segment_overrides_index,
@@ -248,6 +249,55 @@ def test_flag_from_api_flag__no_reason__is_none() -> None:
 
     # Then
     assert flag.reason is None
+
+
+@pytest.mark.parametrize(
+    "metadata, expected_experiment",
+    [
+        pytest.param(
+            {
+                "experiment": {
+                    "id": 42,
+                    "name": "New checkout CTA",
+                    "in_experiment": True,
+                }
+            },
+            ExperimentMetadata(id=42, name="New checkout CTA", in_experiment=True),
+            id="enrolled",
+        ),
+        pytest.param(
+            {
+                "experiment": {
+                    "id": 42,
+                    "name": "New checkout CTA",
+                    "in_experiment": False,
+                }
+            },
+            ExperimentMetadata(id=42, name="New checkout CTA", in_experiment=False),
+            id="not-enrolled",
+        ),
+        pytest.param({"something_else": {"id": 1}}, None, id="other-metadata"),
+        pytest.param(None, None, id="no-metadata"),
+    ],
+)
+def test_flag_from_api_flag__metadata__sets_experiment(
+    metadata: typing.Optional[dict[str, typing.Any]],
+    expected_experiment: typing.Optional[ExperimentMetadata],
+) -> None:
+    # Given
+    flag_data = {
+        "enabled": True,
+        "feature_state_value": "buy-now",
+        "feature": {"name": "test_feature", "id": 123},
+        "variant": "control",
+        **({"metadata": metadata} if metadata is not None else {}),
+    }
+
+    # When
+    flag = Flag.from_api_flag(flag_data)
+
+    # Then
+    assert flag.experiment == expected_experiment
 
 
 def test_get_flag_without_pipeline_processor() -> None:

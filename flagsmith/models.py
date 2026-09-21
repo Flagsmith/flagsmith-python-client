@@ -41,6 +41,28 @@ def build_segment_overrides_index(
     return index
 
 
+@dataclass(frozen=True)
+class ExperimentMetadata:
+    """The running experiment a flag was evaluated under; identity evaluations only."""
+
+    id: int
+    name: str
+    in_experiment: bool
+
+    @classmethod
+    def from_api_metadata(
+        cls,
+        metadata: typing.Optional[typing.Mapping[str, typing.Any]],
+    ) -> typing.Optional[ExperimentMetadata]:
+        if not metadata or not (experiment := metadata.get("experiment")):
+            return None
+        return cls(
+            id=experiment["id"],
+            name=experiment["name"],
+            in_experiment=experiment["in_experiment"],
+        )
+
+
 @dataclass
 class BaseFlag:
     enabled: bool
@@ -59,6 +81,7 @@ class Flag(BaseFlag):
     variant: typing.Optional[str] = None
     reason: typing.Optional[str] = None
     is_default: bool = field(default=False)
+    experiment: typing.Optional[ExperimentMetadata] = None
 
     @classmethod
     def from_evaluation_result(
@@ -88,6 +111,7 @@ class Flag(BaseFlag):
             feature_id=flag_data["feature"]["id"],
             variant=flag_data.get("variant"),
             reason=flag_data.get("reason"),
+            experiment=ExperimentMetadata.from_api_metadata(flag_data.get("metadata")),
         )
 
 
