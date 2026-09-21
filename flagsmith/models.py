@@ -48,7 +48,6 @@ class ExperimentMetadata:
     id: int
     name: str
     in_experiment: bool
-    """Whether the identity is enrolled. `variant` alone cannot tell."""
 
     @classmethod
     def from_api_metadata(
