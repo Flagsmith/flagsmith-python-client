@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.3...v6.3.0) (2026-09-23)
+
+
+### Features
+
+* Flag.experiment and exposure gated on in_experiment ([#249](https://github.com/Flagsmith/flagsmith-python-client/issues/249)) ([62eceb2](https://github.com/Flagsmith/flagsmith-python-client/commit/62eceb2a7dec559f38fd55d8be4d23077aa89a77))
+
+
+### Bug Fixes
+
+* skip exposure event when in-experiment flag has no variant ([#251](https://github.com/Flagsmith/flagsmith-python-client/issues/251)) ([0f5af28](https://github.com/Flagsmith/flagsmith-python-client/commit/0f5af280ecfb4189553477ec214de30d5a72b561))
+
 ## [6.2.3](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.2...v6.2.3) (2026-08-31)
 
 ### Bug Fixes
