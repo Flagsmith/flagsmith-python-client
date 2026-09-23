@@ -369,7 +369,8 @@ class Flagsmith:
 
         The exposure event's ``value`` is the flag's variant key. It is only
         sent when the flag exists, is enabled and the identity is enrolled in
-        the feature's experiment (``flag.experiment.in_experiment``); any
+        the feature's experiment (``flag.experiment.in_experiment``) with a
+        variant; any
         other outcome is logged and skipped to keep experimentation data
         clean. A `DefaultFlag` served via the `default_flag_handler` counts
         as the feature not existing.
@@ -392,6 +393,12 @@ class Flagsmith:
         elif not (flag.experiment and flag.experiment.in_experiment):
             logger.debug(
                 "Not sending %s for feature %s: identity is not in a running experiment.",
+                FLAG_EXPOSURE_EVENT,
+                feature_name,
+            )
+        elif flag.variant is None:
+            logger.debug(
+                "Not sending %s for feature %s: flag has no variant.",
                 FLAG_EXPOSURE_EVENT,
                 feature_name,
             )

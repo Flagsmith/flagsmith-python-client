@@ -1268,6 +1268,46 @@ def test_get_experiment_flag__not_in_experiment__skips_exposure(
     )
 
 
+def test_get_experiment_flag__in_experiment_without_variant__skips_exposure(
+    mocker: MockerFixture, api_key: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Given
+    config = EventProcessorConfig(events_api_url="http://test/")
+    flagsmith = Flagsmith(
+        environment_key=api_key, enable_events=True, event_processor_config=config
+    )
+    flag = Flag(
+        enabled=True,
+        value="blue",
+        feature_name="checkout_v2",
+        feature_id=1,
+        variant=None,
+        experiment=ExperimentMetadata(
+            id=42, name="New checkout CTA", in_experiment=True
+        ),
+    )
+    mocker.patch.object(
+        flagsmith,
+        "get_identity_flags",
+        return_value=Flags(flags={"checkout_v2": flag}),
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    with caplog.at_level(logging.DEBUG, logger="flagsmith.flagsmith"):
+        result = flagsmith.get_experiment_flag(
+            feature_name="checkout_v2", identifier="user1"
+        )
+
+    # Then
+    assert result is flag
+    mock_track.assert_not_called()
+    assert (
+        "Not sending $flag_exposure for feature checkout_v2: flag has no variant."
+        in caplog.messages
+    )
+
+
 @responses.activate()
 def test_flagsmith_posts_analytics_to_analytics_url_when_set(
     api_key: str, flags_json: str, mocker: MockerFixture
