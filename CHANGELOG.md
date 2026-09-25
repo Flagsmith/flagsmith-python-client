@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.3.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.3.0...v6.3.1) (2026-09-25)
+
+
+### CI
+
+* pre-commit autoupdate ([#248](https://github.com/Flagsmith/flagsmith-python-client/issues/248)) ([cdbc47f](https://github.com/Flagsmith/flagsmith-python-client/commit/cdbc47ffaad41228648a18f31463bbf3c0aefc71))
+
+
+### Dependency Updates
+
+* update dependency flagsmith-flag-engine to v11.1.0 ([#252](https://github.com/Flagsmith/flagsmith-python-client/issues/252)) ([ed65702](https://github.com/Flagsmith/flagsmith-python-client/commit/ed657025a2f0aed1386e9f51e54e7a32d44541d4))
+
 ## [6.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.3...v6.3.0) (2026-09-23)
 
 ### Features
