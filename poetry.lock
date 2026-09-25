@@ -328,14 +328,14 @@ files = [
 
 [[package]]
 name = "flagsmith-flag-engine"
-version = "11.0.0"
+version = "11.1.0"
 description = "Flag engine for the Flagsmith API."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flagsmith_flag_engine-11.0.0-py3-none-any.whl", hash = "sha256:f44551326064ae59f9280a39b7392912aa28bfeb8467f84fe95b97dfe4c537b2"},
-    {file = "flagsmith_flag_engine-11.0.0.tar.gz", hash = "sha256:0e00703b092c5b03f12bb4d24850ba0f6f13a7d32fb7a0e720ae80c86c6f2a56"},
+    {file = "flagsmith_flag_engine-11.1.0-py3-none-any.whl", hash = "sha256:a3e68a06b6792559faf897f1cead817716760b33c39283505b37d8cbe3f181c0"},
+    {file = "flagsmith_flag_engine-11.1.0.tar.gz", hash = "sha256:b627a59f5def981aead5f9694161dbf0464ab042464105707076cbef129a9f01"},
 ]
 
 [package.dependencies]
