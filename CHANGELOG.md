@@ -2,21 +2,23 @@
 
 ## [6.3.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.3.0...v6.3.1) (2026-10-06)
 
-
 ### CI
 
-* pre-commit autoupdate ([#248](https://github.com/Flagsmith/flagsmith-python-client/issues/248)) ([cdbc47f](https://github.com/Flagsmith/flagsmith-python-client/commit/cdbc47ffaad41228648a18f31463bbf3c0aefc71))
-* pre-commit autoupdate ([#254](https://github.com/Flagsmith/flagsmith-python-client/issues/254)) ([23c881d](https://github.com/Flagsmith/flagsmith-python-client/commit/23c881d806e7c8bc87c0a9240c9378eabce87eeb))
-
+- pre-commit autoupdate ([#248](https://github.com/Flagsmith/flagsmith-python-client/issues/248))
+  ([cdbc47f](https://github.com/Flagsmith/flagsmith-python-client/commit/cdbc47ffaad41228648a18f31463bbf3c0aefc71))
+- pre-commit autoupdate ([#254](https://github.com/Flagsmith/flagsmith-python-client/issues/254))
+  ([23c881d](https://github.com/Flagsmith/flagsmith-python-client/commit/23c881d806e7c8bc87c0a9240c9378eabce87eeb))
 
 ### Dependency Updates
 
-* update dependency flagsmith-flag-engine to v11.1.0 ([#252](https://github.com/Flagsmith/flagsmith-python-client/issues/252)) ([ed65702](https://github.com/Flagsmith/flagsmith-python-client/commit/ed657025a2f0aed1386e9f51e54e7a32d44541d4))
-
+- update dependency flagsmith-flag-engine to v11.1.0
+  ([#252](https://github.com/Flagsmith/flagsmith-python-client/issues/252))
+  ([ed65702](https://github.com/Flagsmith/flagsmith-python-client/commit/ed657025a2f0aed1386e9f51e54e7a32d44541d4))
 
 ### Other
 
-* **deps:** bump urllib3 from 2.7.0 to 2.8.0 ([#255](https://github.com/Flagsmith/flagsmith-python-client/issues/255)) ([6e48b82](https://github.com/Flagsmith/flagsmith-python-client/commit/6e48b82c6c0e4f31db01765d770015427d0e4a90))
+- **deps:** bump urllib3 from 2.7.0 to 2.8.0 ([#255](https://github.com/Flagsmith/flagsmith-python-client/issues/255))
+  ([6e48b82](https://github.com/Flagsmith/flagsmith-python-client/commit/6e48b82c6c0e4f31db01765d770015427d0e4a90))
 
 ## [6.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.3...v6.3.0) (2026-09-23)
 
