@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import typing
+from urllib.parse import quote
 
 import pytest
 import requests
@@ -55,6 +56,109 @@ def test_update_environment_sets_environment(
     # Then
     assert flagsmith._evaluation_context is not None
     assert flagsmith._evaluation_context == evaluation_context
+
+
+@responses.activate()
+def test_update_environment_paginates_identity_overrides(
+    flagsmith: Flagsmith,
+    environment_json: str,
+) -> None:
+    # Given
+    environment_document = json.loads(environment_json)
+    page_1_override, page_2_override = environment_document["identity_overrides"]
+    page_3_override = {
+        **page_2_override,
+        "identifier": "third-overridden-id",
+        "identity_features": [
+            {
+                **page_2_override["identity_features"][0],
+                "feature_state_value": "third-overridden-value",
+            }
+        ],
+    }
+    environment_document["identity_overrides"] = [page_1_override]
+
+    page_id_2 = "identity_override:1:00000000-0000-0000-0000-000000000002"
+    page_id_3 = "identity_override:1:00000000-0000-0000-0000-000000000003"
+    next_link = '</api/v1/environment-document/?page_id={}>; rel="next"'
+
+    responses.get(
+        flagsmith.environment_url,
+        json=environment_document,
+        match=[matchers.query_param_matcher({})],
+        headers={"Link": next_link.format(quote(page_id_2))},
+    )
+    responses.get(
+        flagsmith.environment_url,
+        json={"identity_overrides": [page_2_override]},
+        match=[matchers.query_param_matcher({"page_id": page_id_2})],
+        headers={"Link": next_link.format(quote(page_id_3))},
+    )
+    responses.get(
+        flagsmith.environment_url,
+        json={"identity_overrides": [page_3_override]},
+        match=[matchers.query_param_matcher({"page_id": page_id_3})],
+    )
+
+    # When
+    flagsmith.update_environment()
+    flagsmith.enable_local_evaluation = True
+
+    # Then
+    assert len(responses.calls) == 3
+    assert flagsmith.get_environment_flags().get_flag("some_feature").value == (
+        "some-value"
+    )
+    for identifier, expected_value in [
+        ("overridden-id", "some-overridden-value"),
+        ("another-overridden-id", "another-overridden-value"),
+        ("third-overridden-id", "third-overridden-value"),
+    ]:
+        flag = flagsmith.get_identity_flags(identifier).get_flag("some_feature")
+        assert flag.enabled is False
+        assert flag.value == expected_value
+
+
+@responses.activate()
+def test_update_environment_single_page_makes_single_request(
+    flagsmith: Flagsmith,
+    environment_json: str,
+    evaluation_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
+
+    # When
+    flagsmith.update_environment()
+
+    # Then
+    assert len(responses.calls) == 1
+    assert flagsmith._evaluation_context == evaluation_context
+
+
+@responses.activate()
+def test_update_environment_warns_when_fetch_slower_than_refresh_interval(
+    flagsmith: Flagsmith,
+    environment_json: str,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
+    mocker.patch("flagsmith.flagsmith.time.monotonic", side_effect=[0.0, 75.2])
+
+    # When
+    with caplog.at_level(logging.WARNING):
+        flagsmith.update_environment()
+
+    # Then
+    [warning_record] = caplog.records
+    assert warning_record.levelname == "WARNING"
+    assert warning_record.message == (
+        "Fetching the environment document took 75.2s, longer than the "
+        "environment refresh interval of 60s; raise the refresh interval or "
+        "reduce the environment size."
+    )
 
 
 @responses.activate()
