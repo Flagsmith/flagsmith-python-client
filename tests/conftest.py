@@ -105,6 +105,7 @@ def requests_session_response_ok(mocker: MockerFixture, environment_json: str) -
 
     mock_environment_document_response = mocker.MagicMock(status_code=200)
     mock_environment_document_response.json.return_value = json.loads(environment_json)
+    mock_environment_document_response.headers = {}
     mock_session.get.return_value = mock_environment_document_response
 
 

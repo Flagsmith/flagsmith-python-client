@@ -1,7 +1,9 @@
 import logging
+import re
+import time
 import typing
 from datetime import datetime
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 import requests
 from flag_engine import engine
@@ -463,9 +465,7 @@ class Flagsmith:
 
     def update_environment(self) -> None:
         try:
-            environment_data = self._get_json_response(
-                self.environment_url, method="GET"
-            )
+            environment_data = self._get_environment_document()
         except FlagsmithAPIError:
             logger.exception("Error retrieving environment document from API")
         else:
@@ -480,6 +480,37 @@ class Flagsmith:
                 )
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
+
+    def _get_environment_document(self) -> typing.Any:
+        start_time = time.monotonic()
+        environment_data, headers = self._get_json_response_and_headers(
+            url=self.environment_url, method="GET"
+        )
+        while page_id := self._get_next_page_id(headers.get("Link", "")):
+            page_data, headers = self._get_json_response_and_headers(
+                url=self.environment_url, method="GET", params={"page_id": page_id}
+            )
+            environment_data.setdefault("identity_overrides", []).extend(
+                page_data.get("identity_overrides", [])
+            )
+
+        elapsed = time.monotonic() - start_time
+        if 0 < self.environment_refresh_interval_seconds < elapsed:
+            logger.warning(
+                "Fetching the environment document took %.1fs, longer than "
+                "the environment refresh interval of %ss; raise the refresh "
+                "interval or reduce the environment size.",
+                elapsed,
+                self.environment_refresh_interval_seconds,
+            )
+        return environment_data
+
+    @staticmethod
+    def _get_next_page_id(link_header: str) -> typing.Optional[str]:
+        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+        if not match:
+            return None
+        return parse_qs(urlsplit(match.group(1)).query).get("page_id", [None])[0]
 
     @property
     def _evaluation_context(self) -> typing.Optional[SDKEvaluationContext]:
@@ -616,13 +647,24 @@ class Flagsmith:
         method: str,
         body: typing.Optional[JsonType] = None,
     ) -> typing.Any:
+        data, _ = self._get_json_response_and_headers(url=url, method=method, body=body)
+        return data
+
+    def _get_json_response_and_headers(
+        self,
+        url: str,
+        method: str,
+        body: typing.Optional[JsonType] = None,
+        params: typing.Optional[typing.Mapping[str, str]] = None,
+    ) -> typing.Tuple[typing.Any, typing.Mapping[str, str]]:
         try:
             request_method = getattr(self.session, method.lower())
+            params_kwargs = {"params": params} if params else {}
             response = request_method(
-                url, json=body, timeout=self.request_timeout_seconds
+                url, json=body, timeout=self.request_timeout_seconds, **params_kwargs
             )
             response.raise_for_status()
-            return response.json()
+            return response.json(), response.headers
         except requests.RequestException as e:
             raise FlagsmithAPIError(
                 "Unable to get valid response from Flagsmith API."
