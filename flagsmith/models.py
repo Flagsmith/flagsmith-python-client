@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import typing
 from dataclasses import dataclass, field
+from functools import lru_cache
 
+import jsonpath_rfc9535
 from flag_engine import engine
-from flag_engine.context.types import SegmentContext
+from flag_engine.context.types import SegmentContext, SegmentRule
+from jsonpath_rfc9535.segments import JSONPathChildSegment
+from jsonpath_rfc9535.selectors import NameSelector
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
@@ -39,6 +43,69 @@ def build_segment_overrides_index(
         for override in segment_context.get("overrides") or ():
             index.setdefault(override["name"], {})[segment_key] = segment_context
     return index
+
+
+@lru_cache(maxsize=1024)
+def _property_may_read_flags(condition_property: str) -> bool:
+    """Whether a condition property may read the engine's `$.flags`.
+
+    Mirrors how the engine reads properties: only those starting with
+    `$.` that compile as JSONPath are queried against the context;
+    anything else is a trait key. The compiled query is then checked
+    the way the engine would run it, rather than by pattern matching.
+
+    Errs on the side of `True`: a false positive only costs a
+    full-context evaluation, whereas a false negative would evaluate a
+    flag without its dependencies. So the property is ruled out only
+    when its first segment selects top-level keys by name, none of them
+    `flags`. Wildcards, filters, indices and descendant segments
+    (`$..`) are all assumed to reach `flags`.
+    """
+    if not condition_property.startswith("$."):
+        return False
+    try:
+        query = jsonpath_rfc9535.compile(condition_property)
+    except jsonpath_rfc9535.JSONPathSyntaxError:
+        return False
+    if not query.segments:
+        return False
+    first_segment = query.segments[0]
+    return not (
+        type(first_segment) is JSONPathChildSegment
+        and all(
+            isinstance(selector, NameSelector) and selector.name != "flags"
+            for selector in first_segment.selectors
+        )
+    )
+
+
+def _rules_read_flags(rules: typing.Iterable[SegmentRule]) -> bool:
+    return any(
+        any(
+            _property_may_read_flags(condition.get("property") or "")
+            for condition in rule.get("conditions") or ()
+        )
+        or _rules_read_flags(rule.get("rules") or ())
+        for rule in rules
+    )
+
+
+def build_flag_dependent_feature_names(
+    context: SDKEvaluationContext,
+) -> typing.FrozenSet[str]:
+    """Names of features overridden by a segment with a `$.flags` condition.
+
+    Such a feature depends on other flags, which the engine resolves
+    from the context's features and segments. The trimmed contexts used
+    by `Flags._resolve_flag` leave those out, so these features are
+    resolved against the full context instead.
+    """
+    return frozenset(
+        override["name"]
+        for segment_context in (context.get("segments") or {}).values()
+        if _rules_read_flags(segment_context["rules"])
+        for override in segment_context.get("overrides") or ()
+    )
 
 
 @dataclass(frozen=True)
@@ -127,6 +194,7 @@ class Flags:
     # paths (`from_evaluation_result` / `from_api_flags`).
     _context: typing.Optional[SDKEvaluationContext] = None
     _overrides_index: typing.Optional[SegmentOverridesIndex] = None
+    _flag_dependent_features: typing.FrozenSet[str] = frozenset()
     _fully_materialised: bool = False
 
     @classmethod
@@ -153,20 +221,26 @@ class Flags:
         overrides_index: SegmentOverridesIndex,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
+        flag_dependent_features: typing.Optional[typing.FrozenSet[str]] = None,
     ) -> Flags:
         """Build a lazy `Flags` backed by an evaluation context.
 
         No engine work is done here — flags are resolved on first access
         via :meth:`_resolve_flag`. Reusing the same `overrides_index`
-        across calls amortises its construction cost (it's rebuilt only
-        when the environment doc refreshes, not per identity).
+        and `flag_dependent_features` across calls amortises their
+        construction cost (they're rebuilt only when the environment doc
+        refreshes, not per identity). When `flag_dependent_features` is
+        omitted, it is derived from `context`.
         """
+        if flag_dependent_features is None:
+            flag_dependent_features = build_flag_dependent_feature_names(context)
         return cls(
             flags={},
             default_flag_handler=default_flag_handler,
             _analytics_processor=analytics_processor,
             _context=context,
             _overrides_index=overrides_index,
+            _flag_dependent_features=flag_dependent_features,
         )
 
     @classmethod
@@ -199,14 +273,18 @@ class Flags:
         :return: list of Flag objects.
         """
         if self._context is not None and not self._fully_materialised:
-            result = engine.get_evaluation_result(self._context)
-            for feature_name, flag_result in result["flags"].items():
-                if feature_name not in self.flags:
-                    self.flags[feature_name] = Flag.from_evaluation_result(
-                        flag_result,
-                    )
-            self._fully_materialised = True
+            self._materialise_all()
         return list(self.flags.values())
+
+    def _materialise_all(self) -> None:
+        assert self._context is not None
+        result = engine.get_evaluation_result(self._context)
+        for feature_name, flag_result in result["flags"].items():
+            if feature_name not in self.flags:
+                self.flags[feature_name] = Flag.from_evaluation_result(
+                    flag_result,
+                )
+        self._fully_materialised = True
 
     def is_feature_enabled(self, feature_name: str) -> bool:
         """
@@ -273,12 +351,21 @@ class Flags:
         that could override it, looked up in O(1) via the precomputed
         reverse index — so the engine's full pipeline runs against an
         input small enough to evaluate in ~1 µs.
+
+        Features overridden by a segment with a `$.flags` condition
+        depend on other flags, which a trimmed context would leave out,
+        so they are resolved with the full context instead. Every flag
+        that evaluation yields is memoised.
         """
         context = self._context
         overrides_index = self._overrides_index
         # `get_flag` / `all_flags` gate this call behind the same
         # non-None checks; assert here so type checkers can narrow.
         assert context is not None and overrides_index is not None
+
+        if feature_name in self._flag_dependent_features:
+            self._materialise_all()
+            return self.flags[feature_name]
 
         trimmed: SDKEvaluationContext = {
             **context,
