@@ -19,6 +19,9 @@ from flagsmith.types import (
 SegmentOverridesIndex = typing.Dict[
     str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
 ]
+SegmentOverridesMapping = typing.Mapping[
+    str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
+]
 
 
 def build_segment_overrides_index(
@@ -126,7 +129,7 @@ class Flags:
     # cached back into `flags`. Left as `None` by the eager code
     # paths (`from_evaluation_result` / `from_api_flags`).
     _context: typing.Optional[SDKEvaluationContext] = None
-    _overrides_index: typing.Optional[SegmentOverridesIndex] = None
+    _overrides_index: typing.Optional[SegmentOverridesMapping] = None
     _fully_materialised: bool = False
 
     @classmethod
@@ -150,7 +153,7 @@ class Flags:
     def from_evaluation_context(
         cls,
         context: SDKEvaluationContext,
-        overrides_index: SegmentOverridesIndex,
+        overrides_index: SegmentOverridesMapping,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:

@@ -134,6 +134,33 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
     mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
 
 
+def test_get_environment_flags__local_evaluation__evaluates_once_per_environment(
+    mocker: MockerFixture,
+    local_eval_flagsmith: Flagsmith,
+    evaluation_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When
+    first = local_eval_flagsmith.get_environment_flags()
+    second = local_eval_flagsmith.get_environment_flags()
+
+    # Then
+    # the environment is evaluated once, each call getting its own mapping
+    assert spy.call_count == 1
+    assert first.flags == second.flags
+    assert first.flags is not second.flags
+
+    # When
+    # the environment is refreshed
+    local_eval_flagsmith._evaluation_context = evaluation_context
+    local_eval_flagsmith.get_environment_flags()
+
+    # Then
+    assert spy.call_count == 2
+
+
 @responses.activate()
 def test_get_identity_flags_calls_api_when_no_local_environment_no_traits(
     flagsmith: Flagsmith, identities_json: str
