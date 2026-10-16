@@ -41,9 +41,9 @@ class LocalEvaluation:
     def __init__(self, context: SDKEvaluationContext) -> None:
         self.context = context
 
-        segments: typing.Dict[
-            str, SegmentContext[SegmentMetadata, FeatureMetadata]
-        ] = {}
+        segments: typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]] = (
+            {}
+        )
         self._identity_overrides_segment_keys: typing.Dict[str, typing.List[str]] = {}
         for segment_key, segment_context in (context.get("segments") or {}).items():
             identifiers = get_identity_overrides_identifiers(segment_context)
@@ -51,9 +51,9 @@ class LocalEvaluation:
                 segments[segment_key] = segment_context
                 continue
             for identifier in identifiers:
-                self._identity_overrides_segment_keys.setdefault(
-                    identifier, []
-                ).append(segment_key)
+                self._identity_overrides_segment_keys.setdefault(identifier, []).append(
+                    segment_key
+                )
 
         #: The context without identity overrides segments.
         self.base_context: SDKEvaluationContext = {**context, "segments": segments}
