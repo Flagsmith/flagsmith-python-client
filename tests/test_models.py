@@ -1,12 +1,15 @@
 import typing
 
 import pytest
+from flag_engine import engine
+from pytest_mock import MockerFixture
 
 from flagsmith.models import (
     DefaultFlag,
     ExperimentMetadata,
     Flag,
     Flags,
+    build_flag_dependent_feature_names,
     build_segment_overrides_index,
 )
 from flagsmith.types import (
@@ -561,3 +564,87 @@ def test_build_segment_overrides_index__duplicate_segment_key_fields__keeps_both
     # Then
     # both segments are indexed, neither collapses into the other
     assert set(index["target"]) == {"premium_segment", "enterprise_segment"}
+
+
+@pytest.mark.parametrize(
+    "condition_property, nested, expected",
+    [
+        ("$.flags.noise_0.enabled", False, {"target"}),
+        ("$.flags.noise_0.enabled", True, {"target"}),
+        ("$['flags']['noise 0'].value", False, {"target"}),
+        ('$["flags"].noise_0.variant', False, {"target"}),
+        ("$..enabled", False, {"target"}),
+        ("$.environment.name", False, set()),
+        ("$.identity.traits.flags", False, set()),
+        ("$.flagship", False, set()),
+        ("tier", False, set()),
+    ],
+)
+def test_build_flag_dependent_feature_names__returns_features_overridden_by_flags_segments(
+    lazy_context: SDKEvaluationContext,
+    condition_property: str,
+    nested: bool,
+    expected: typing.Set[str],
+) -> None:
+    # Given
+    assert lazy_context["segments"] is not None
+    condition: typing.Any = {
+        "property": condition_property,
+        "operator": "EQUAL",
+        "value": "true",
+    }
+    rule: typing.Any = {"type": "ALL", "conditions": [condition]}
+    if nested:
+        rule = {"type": "ALL", "rules": [rule]}
+    lazy_context["segments"]["premium_segment"]["rules"] = [rule]
+
+    # When
+    names = build_flag_dependent_feature_names(lazy_context)
+
+    # Then
+    assert names == expected
+
+
+def test_lazy_flags__get_flag__flag_dependent_feature__resolves_with_full_context(
+    lazy_context: SDKEvaluationContext,
+    mocker: MockerFixture,
+) -> None:
+    # Given
+    # the target is overridden when `noise_0` is enabled, which it is
+    assert lazy_context["segments"] is not None
+    lazy_context["segments"]["premium_segment"]["rules"] = [
+        {
+            "type": "ALL",
+            "conditions": [
+                {
+                    "property": "$.flags.noise_0.enabled",
+                    "operator": "EQUAL",
+                    "value": "true",
+                },
+            ],
+        }
+    ]
+    flags = Flags.from_evaluation_context(
+        context=lazy_context,
+        overrides_index=build_segment_overrides_index(lazy_context),
+        analytics_processor=None,
+        default_flag_handler=None,
+    )
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When
+    target = flags.get_flag("target")
+
+    # Then
+    # the dependency is resolved, so the override applies
+    assert isinstance(target, Flag)
+    assert target.value == "premium-value"
+    assert target.reason == "TARGETING_MATCH; segment=premium_segment"
+
+    # And
+    # the full context is evaluated once, memoising every flag
+    spy.assert_called_once_with(lazy_context)
+    assert set(flags.flags) == {"target", "noise_0", "noise_1"}
+    flags.get_flag("noise_1")
+    flags.all_flags()
+    spy.assert_called_once()

@@ -28,6 +28,7 @@ from flagsmith.models import (
     Flags,
     Segment,
     SegmentOverridesIndex,
+    build_flag_dependent_feature_names,
     build_segment_overrides_index,
 )
 from flagsmith.offline_handlers import OfflineHandler
@@ -137,6 +138,7 @@ class Flagsmith:
         self._event_processor: typing.Optional[EventProcessor] = None
         self.__evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._segment_overrides_index: SegmentOverridesIndex = {}
+        self._flag_dependent_features: typing.FrozenSet[str] = frozenset()
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation
@@ -491,14 +493,20 @@ class Flagsmith:
     ) -> None:
         """Swap in a new evaluation context and rebuild the overrides index.
 
-        The index maps feature_name -> segments that override it. Built once
-        per refresh and reused across every subsequent per-identity lazy
-        resolution; rebuilding here keeps it in sync with the current doc
-        without any hot-path cost.
+        The index maps feature_name -> segments that override it, and the
+        flag-dependent set names features whose overriding segments read
+        `$.flags`. Both are built once per refresh and reused across every
+        subsequent per-identity lazy resolution; rebuilding here keeps them
+        in sync with the current doc without any hot-path cost.
         """
         self.__evaluation_context = context
         self._segment_overrides_index = (
             build_segment_overrides_index(context) if context is not None else {}
+        )
+        self._flag_dependent_features = (
+            build_flag_dependent_feature_names(context)
+            if context is not None
+            else frozenset()
         )
 
     def _get_headers(
@@ -523,13 +531,10 @@ class Flagsmith:
         if self._evaluation_context is None:
             raise TypeError("No environment present")
 
-        # Omit segments from evaluation context for environment flags
-        # as they are only relevant for identity-specific evaluations
-        context_without_segments = self._evaluation_context.copy()
-        context_without_segments.pop("segments", None)
-
+        # Segments are included so that identity-less conditions, e.g. on
+        # `$.environment` or `$.flags`, apply to environment flags too.
         evaluation_result = engine.get_evaluation_result(
-            context=context_without_segments,
+            context=self._evaluation_context,
         )
 
         return Flags.from_evaluation_result(
@@ -557,6 +562,7 @@ class Flagsmith:
         return Flags.from_evaluation_context(
             context=context,
             overrides_index=self._segment_overrides_index,
+            flag_dependent_features=self._flag_dependent_features,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
         )

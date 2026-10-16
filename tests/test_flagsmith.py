@@ -98,7 +98,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert all_flags[0].value == "some-value"
 
 
-def test_get_environment_flags_omits_segments_from_evaluation_context(
+def test_get_environment_flags_includes_segments_in_evaluation_context(
     mocker: MockerFixture,
     local_eval_flagsmith: Flagsmith,
     evaluation_context: SDKEvaluationContext,
@@ -128,10 +128,137 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
     local_eval_flagsmith.get_environment_flags()
 
     # Then
-    # Verify segments are not present in the context passed to the engine
-    context_without_segments = evaluation_context.copy()
-    context_without_segments.pop("segments", None)
-    mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
+    # The full context, segments included, is passed to the engine
+    assert evaluation_context["segments"]
+    mock_get_evaluation_result.assert_called_once_with(context=evaluation_context)
+
+
+def _feature(name: str, feature_id: int, enabled: bool, value: str) -> typing.Any:
+    return {
+        "key": str(feature_id),
+        "name": name,
+        "enabled": enabled,
+        "value": value,
+        "metadata": {"id": feature_id},
+    }
+
+
+def _segment(key: str, prop: str, value: str, override: typing.Any) -> typing.Any:
+    return {
+        "key": key,
+        "name": key,
+        "rules": [
+            {
+                "type": "ALL",
+                "conditions": [{"property": prop, "operator": "EQUAL", "value": value}],
+            }
+        ],
+        "overrides": [{**override, "priority": 0}],
+    }
+
+
+@pytest.fixture()
+def context_values_flagsmith(flagsmith: Flagsmith) -> Flagsmith:
+    """Local-eval client whose segments use `$.flags` and `$.environment`.
+
+    - `dependent` is overridden when `$.flags.dependency.enabled` is true.
+    - `env_targeted` is overridden when `$.environment.name` matches.
+    - `dependency` is disabled for identities with the `premium` tier.
+    """
+    flagsmith._evaluation_context = {
+        "environment": {"key": "env-key", "name": "Test Environment"},
+        "features": {
+            "dependency": _feature("dependency", 1, True, "dependency"),
+            "dependent": _feature("dependent", 2, False, "base"),
+            "env_targeted": _feature("env_targeted", 3, False, "base"),
+        },
+        "segments": {
+            "flags_segment": _segment(
+                "flags_segment",
+                "$.flags.dependency.enabled",
+                "true",
+                _feature("dependent", 2, True, "overridden"),
+            ),
+            "environment_segment": _segment(
+                "environment_segment",
+                "$.environment.name",
+                "Test Environment",
+                _feature("env_targeted", 3, True, "overridden"),
+            ),
+            "premium_segment": _segment(
+                "premium_segment",
+                "tier",
+                "premium",
+                _feature("dependency", 1, False, "dependency"),
+            ),
+        },
+    }
+    flagsmith.enable_local_evaluation = True
+    return flagsmith
+
+
+@pytest.mark.parametrize("feature_name", ["dependent", "env_targeted"])
+def test_get_environment_flags__identityless_context_value_segment__applies_override(
+    context_values_flagsmith: Flagsmith,
+    feature_name: str,
+) -> None:
+    # When
+    flag = context_values_flagsmith.get_environment_flags().get_flag(feature_name)
+
+    # Then
+    assert isinstance(flag, Flag)
+    assert flag.enabled is True
+    assert flag.value == "overridden"
+    assert flag.reason is not None
+    assert flag.reason.startswith("TARGETING_MATCH")
+
+
+def test_get_environment_flags__trait_segment__does_not_apply_override(
+    context_values_flagsmith: Flagsmith,
+) -> None:
+    # When
+    flag = context_values_flagsmith.get_environment_flags().get_flag("dependency")
+
+    # Then
+    assert isinstance(flag, Flag)
+    assert flag.enabled is True
+    assert flag.reason == "DEFAULT"
+
+
+@pytest.mark.parametrize(
+    "traits, expected_enabled, expected_value",
+    [
+        ({}, True, "overridden"),
+        ({"tier": "premium"}, False, "base"),
+    ],
+)
+def test_get_identity_flags__flags_segment__resolves_dependency(
+    context_values_flagsmith: Flagsmith,
+    traits: typing.Dict[str, typing.Any],
+    expected_enabled: bool,
+    expected_value: str,
+) -> None:
+    # When
+    # the dependent flag is read on its own, through the lazy path
+    flag = context_values_flagsmith.get_identity_flags("user", traits).get_flag(
+        "dependent"
+    )
+
+    # Then
+    # the dependency is resolved for the identity, its overrides included
+    assert flag.enabled is expected_enabled
+    assert flag.value == expected_value
+
+
+def test_get_identity_flags__environment_segment__applies_override(
+    context_values_flagsmith: Flagsmith,
+) -> None:
+    # When
+    flag = context_values_flagsmith.get_identity_flags("user").get_flag("env_targeted")
+
+    # Then
+    assert flag.enabled is True
+    assert flag.value == "overridden"
 
 
 @responses.activate()
