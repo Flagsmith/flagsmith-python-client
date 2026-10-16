@@ -571,13 +571,22 @@ def test_build_segment_overrides_index__duplicate_segment_key_fields__keeps_both
     [
         ("$.flags.noise_0.enabled", False, {"target"}),
         ("$.flags.noise_0.enabled", True, {"target"}),
-        ("$['flags']['noise 0'].value", False, {"target"}),
-        ('$["flags"].noise_0.variant', False, {"target"}),
+        ("$.flags['noise 0'].value", False, {"target"}),
+        ("$.flags", False, {"target"}),
+        # Selectors that may reach `$.flags` are assumed to
         ("$..enabled", False, {"target"}),
+        ("$.*.noise_0.enabled", False, {"target"}),
+        # Properties reading elsewhere
         ("$.environment.name", False, set()),
+        ("$.environment['name']", False, set()),
         ("$.identity.traits.flags", False, set()),
         ("$.flagship", False, set()),
+        # Trait keys, as the engine only queries properties starting
+        # with `$.` that compile as JSONPath
         ("tier", False, set()),
+        ("flags", False, set()),
+        ("$['flags'].noise_0.enabled", False, set()),
+        ("$.flags.", False, set()),
     ],
 )
 def test_build_flag_dependent_feature_names__returns_features_overridden_by_flags_segments(

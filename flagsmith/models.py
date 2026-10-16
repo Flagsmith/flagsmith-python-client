@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import re
 import typing
 from dataclasses import dataclass, field
+from functools import lru_cache
 
+import jsonpath_rfc9535
 from flag_engine import engine
 from flag_engine.context.types import SegmentContext, SegmentRule
+from jsonpath_rfc9535.segments import JSONPathChildSegment
+from jsonpath_rfc9535.selectors import NameSelector
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
@@ -42,18 +45,44 @@ def build_segment_overrides_index(
     return index
 
 
-# Matches JSONPath condition properties that can read `$.flags`: the
-# dot (`$.flags`) and bracket (`$['flags']`) forms, plus descendant
-# segments (`$..`), which can reach it too.
-_FLAGS_PROPERTY_RE = re.compile(
-    r"^\$\s*(?:\.\.|\.\s*flags\b|\[\s*['\"]flags['\"]\s*\])"
-)
+@lru_cache(maxsize=1024)
+def _property_may_read_flags(condition_property: str) -> bool:
+    """Whether a condition property may read the engine's `$.flags`.
+
+    Mirrors how the engine reads properties: only those starting with
+    `$.` that compile as JSONPath are queried against the context;
+    anything else is a trait key. The compiled query is then checked
+    the way the engine would run it, rather than by pattern matching.
+
+    Errs on the side of `True`: a false positive only costs a
+    full-context evaluation, whereas a false negative would evaluate a
+    flag without its dependencies. So the property is ruled out only
+    when its first segment selects top-level keys by name, none of them
+    `flags`. Wildcards, filters, indices and descendant segments
+    (`$..`) are all assumed to reach `flags`.
+    """
+    if not condition_property.startswith("$."):
+        return False
+    try:
+        query = jsonpath_rfc9535.compile(condition_property)
+    except jsonpath_rfc9535.JSONPathSyntaxError:
+        return False
+    if not query.segments:
+        return False
+    first_segment = query.segments[0]
+    return not (
+        type(first_segment) is JSONPathChildSegment
+        and all(
+            isinstance(selector, NameSelector) and selector.name != "flags"
+            for selector in first_segment.selectors
+        )
+    )
 
 
 def _rules_read_flags(rules: typing.Iterable[SegmentRule]) -> bool:
     return any(
         any(
-            _FLAGS_PROPERTY_RE.match(condition.get("property") or "")
+            _property_may_read_flags(condition.get("property") or "")
             for condition in rule.get("conditions") or ()
         )
         or _rules_read_flags(rule.get("rules") or ())
