@@ -55,8 +55,8 @@ class LocalEvaluation:
 
         #: The context without identity overrides segments.
         self.base_context: SDKEvaluationContext = {**context, "segments": segments}
-        self.overrides_index: typing.Dict[str, SegmentContexts] = (
-            build_segment_overrides_index(self.base_context)
+        self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
+            self.base_context
         )
 
     @cached_property
@@ -94,7 +94,7 @@ class LocalEvaluation:
             return context, self.overrides_index
 
         identity_segments: SegmentContexts = {}
-        identity_overrides_index: typing.Dict[str, SegmentContexts] = {}
+        identity_overrides_index: SegmentOverridesIndex = {}
         segment_contexts = self.context.get("segments") or {}
         for segment_key in segment_keys:
             segment_context: SegmentContext[SegmentMetadata, FeatureMetadata] = {

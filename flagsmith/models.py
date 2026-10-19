@@ -19,12 +19,12 @@ from flagsmith.types import (
 #: Segment contexts by their key in the evaluation context.
 SegmentContexts = typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
 #: Feature name -> segment contexts overriding that feature.
-SegmentOverridesIndex = typing.Mapping[str, SegmentContexts]
+SegmentOverridesIndex = typing.MutableMapping[str, SegmentContexts]
 
 
 def build_segment_overrides_index(
     context: SDKEvaluationContext,
-) -> typing.Dict[str, SegmentContexts]:
+) -> SegmentOverridesIndex:
     """Map feature_name -> segments that carry an override for that feature.
 
     Computed once per environment-document refresh so the lazy eval path
@@ -35,7 +35,7 @@ def build_segment_overrides_index(
     the environment. Re-keying them by anything else risks collisions
     silently dropping segments.
     """
-    index: typing.Dict[str, SegmentContexts] = {}
+    index: SegmentOverridesIndex = {}
     for segment_key, segment_context in (context.get("segments") or {}).items():
         for override in segment_context.get("overrides") or ():
             index.setdefault(override["name"], {})[segment_key] = segment_context
