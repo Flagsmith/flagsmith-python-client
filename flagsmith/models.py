@@ -16,17 +16,15 @@ from flagsmith.types import (
     SegmentMetadata,
 )
 
-SegmentOverridesIndex = typing.Dict[
-    str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
-]
-SegmentOverridesMapping = typing.Mapping[
-    str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
-]
+#: Segment contexts by their key in the evaluation context.
+SegmentContexts = typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
+#: Feature name -> segment contexts overriding that feature.
+SegmentOverridesIndex = typing.Mapping[str, SegmentContexts]
 
 
 def build_segment_overrides_index(
     context: SDKEvaluationContext,
-) -> SegmentOverridesIndex:
+) -> typing.Dict[str, SegmentContexts]:
     """Map feature_name -> segments that carry an override for that feature.
 
     Computed once per environment-document refresh so the lazy eval path
@@ -37,7 +35,7 @@ def build_segment_overrides_index(
     the environment. Re-keying them by anything else risks collisions
     silently dropping segments.
     """
-    index: SegmentOverridesIndex = {}
+    index: typing.Dict[str, SegmentContexts] = {}
     for segment_key, segment_context in (context.get("segments") or {}).items():
         for override in segment_context.get("overrides") or ():
             index.setdefault(override["name"], {})[segment_key] = segment_context
@@ -129,7 +127,7 @@ class Flags:
     # cached back into `flags`. Left as `None` by the eager code
     # paths (`from_evaluation_result` / `from_api_flags`).
     _context: typing.Optional[SDKEvaluationContext] = None
-    _overrides_index: typing.Optional[SegmentOverridesMapping] = None
+    _overrides_index: typing.Optional[SegmentOverridesIndex] = None
     _fully_materialised: bool = False
 
     @classmethod
@@ -153,7 +151,7 @@ class Flags:
     def from_evaluation_context(
         cls,
         context: SDKEvaluationContext,
-        overrides_index: SegmentOverridesMapping,
+        overrides_index: SegmentOverridesIndex,
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:

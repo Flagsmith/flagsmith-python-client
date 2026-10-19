@@ -14,8 +14,8 @@ from flagsmith.mappers import (
 )
 from flagsmith.models import (
     Flag,
+    SegmentContexts,
     SegmentOverridesIndex,
-    SegmentOverridesMapping,
     build_segment_overrides_index,
 )
 from flagsmith.types import (
@@ -41,9 +41,7 @@ class LocalEvaluation:
     def __init__(self, context: SDKEvaluationContext) -> None:
         self.context = context
 
-        segments: typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]] = (
-            {}
-        )
+        segments: SegmentContexts = {}
         self._identity_overrides_segment_keys: typing.Dict[str, typing.List[str]] = {}
         for segment_key, segment_context in (context.get("segments") or {}).items():
             identifiers = get_identity_overrides_identifiers(segment_context)
@@ -57,8 +55,8 @@ class LocalEvaluation:
 
         #: The context without identity overrides segments.
         self.base_context: SDKEvaluationContext = {**context, "segments": segments}
-        self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
-            self.base_context
+        self.overrides_index: typing.Dict[str, SegmentContexts] = (
+            build_segment_overrides_index(self.base_context)
         )
 
     @cached_property
@@ -80,7 +78,7 @@ class LocalEvaluation:
         self,
         identifier: str,
         traits: typing.Optional[TraitMapping] = None,
-    ) -> typing.Tuple[SDKEvaluationContext, SegmentOverridesMapping]:
+    ) -> typing.Tuple[SDKEvaluationContext, SegmentOverridesIndex]:
         """Evaluation context and overrides index for an identity.
 
         The context carries the identity's own identity overrides segments,
@@ -95,10 +93,8 @@ class LocalEvaluation:
         if not (segment_keys := self._identity_overrides_segment_keys.get(identifier)):
             return context, self.overrides_index
 
-        identity_segments: typing.Dict[
-            str, SegmentContext[SegmentMetadata, FeatureMetadata]
-        ] = {}
-        identity_overrides_index: SegmentOverridesIndex = {}
+        identity_segments: SegmentContexts = {}
+        identity_overrides_index: typing.Dict[str, SegmentContexts] = {}
         segment_contexts = self.context.get("segments") or {}
         for segment_key in segment_keys:
             segment_context: SegmentContext[SegmentMetadata, FeatureMetadata] = {
