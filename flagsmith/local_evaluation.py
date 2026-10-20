@@ -37,23 +37,29 @@ _IDENTITY_FREE_PROPERTY_PREFIXES = (
 class _ContextReads(typing.NamedTuple):
     """The context values segment rules read."""
 
-    flags: bool
-    identity: bool
+    flags: bool = False
+    identity: bool = False
+
+    def __or__(self, other: _ContextReads) -> _ContextReads:
+        return _ContextReads(
+            flags=self.flags or other.flags,
+            identity=self.identity or other.identity,
+        )
 
 
 def _get_context_reads(rules: typing.Iterable[SegmentRule]) -> _ContextReads:
-    reads_flags = reads_identity = False
+    reads = _ContextReads()
     for rule in rules:
         for condition in rule.get("conditions") or ():
             condition_property = condition.get("property") or ""
-            reads_flags |= condition_property.startswith(_FLAGS_PROPERTY_PREFIXES)
-            reads_identity |= not condition_property.startswith(
-                _IDENTITY_FREE_PROPERTY_PREFIXES
+            reads |= _ContextReads(
+                flags=condition_property.startswith(_FLAGS_PROPERTY_PREFIXES),
+                identity=not condition_property.startswith(
+                    _IDENTITY_FREE_PROPERTY_PREFIXES
+                ),
             )
-        nested_reads = _get_context_reads(rule.get("rules") or ())
-        reads_flags |= nested_reads.flags
-        reads_identity |= nested_reads.identity
-    return _ContextReads(flags=reads_flags, identity=reads_identity)
+        reads |= _get_context_reads(rule.get("rules") or ())
+    return reads
 
 
 class LocalEvaluation:
@@ -68,14 +74,12 @@ class LocalEvaluation:
     ) -> None:
         self.context = context
         self._identity_free_segments: SegmentContexts = {}
-        reads_flags = reads_identity = False
+        self.reads = _ContextReads()
         for segment_key, segment_context in (context.get("segments") or {}).items():
-            reads = _get_context_reads(segment_context["rules"])
-            reads_flags |= reads.flags
-            reads_identity |= reads.identity
-            if not reads.identity:
+            segment_reads = _get_context_reads(segment_context["rules"])
+            self.reads |= segment_reads
+            if not segment_reads.identity:
                 self._identity_free_segments[segment_key] = segment_context
-        self.reads = _ContextReads(flags=reads_flags, identity=reads_identity)
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             context
         )
