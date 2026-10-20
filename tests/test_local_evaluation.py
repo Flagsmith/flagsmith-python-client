@@ -20,19 +20,19 @@ def local_evaluation(environment: EnvironmentModel) -> LocalEvaluation:
     return LocalEvaluation(map_environment_document_to_context(environment))
 
 
-def test_local_evaluation__base_context__excludes_identity_overrides_segments(
+def test_local_evaluation__context__excludes_identity_overrides_segments(
     local_evaluation: LocalEvaluation,
 ) -> None:
     # When
-    base_segments = local_evaluation.context["segments"]
+    segments = local_evaluation.context["segments"]
 
     # Then
-    assert base_segments is not None
-    assert [segment["name"] for segment in base_segments.values()] == ["Test segment"]
+    assert segments is not None
+    assert [segment["name"] for segment in segments.values()] == ["Test segment"]
     assert local_evaluation.overrides_index == {}
 
 
-def test_local_evaluation__get_identity_context__no_identity_overrides__returns_base(
+def test_local_evaluation__get_identity_context_no_identity_overrides__returns_context(
     local_evaluation: LocalEvaluation,
 ) -> None:
     # When
@@ -52,7 +52,7 @@ def test_local_evaluation__get_identity_context__no_identity_overrides__returns_
 @pytest.mark.parametrize(
     "identifier", ["overridden-id", "sharing-overridden-id", "another-overridden-id"]
 )
-def test_local_evaluation__get_identity_context__identity_overrides__returns_own_narrowed(
+def test_local_evaluation__get_identity_context_identity_overrides__returns_own_narrowed(
     local_evaluation: LocalEvaluation,
     identifier: str,
 ) -> None:
