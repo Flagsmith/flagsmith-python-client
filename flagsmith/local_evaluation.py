@@ -5,7 +5,7 @@ from collections import ChainMap
 from functools import cached_property
 
 from flag_engine import engine
-from flag_engine.context.types import SegmentContext
+from flag_engine.context.types import SegmentContext, SegmentRule
 
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import (
@@ -15,6 +15,7 @@ from flagsmith.mappers import (
 )
 from flagsmith.models import (
     Flag,
+    SegmentContexts,
     SegmentOverridesIndex,
     build_segment_overrides_index,
 )
@@ -24,6 +25,35 @@ from flagsmith.types import (
     SegmentMetadata,
     TraitMapping,
 )
+
+_FLAGS_PROPERTY_PREFIXES = ("$.flags.", "$.flags[")
+_IDENTITY_FREE_PROPERTY_PREFIXES = (
+    "$.environment.",
+    "$.environment[",
+    *_FLAGS_PROPERTY_PREFIXES,
+)
+
+
+class _ContextReads(typing.NamedTuple):
+    """The context values segment rules read."""
+
+    flags: bool
+    identity: bool
+
+
+def _get_context_reads(rules: typing.Iterable[SegmentRule]) -> _ContextReads:
+    reads_flags = reads_identity = False
+    for rule in rules:
+        for condition in rule.get("conditions") or ():
+            condition_property = condition.get("property") or ""
+            reads_flags |= condition_property.startswith(_FLAGS_PROPERTY_PREFIXES)
+            reads_identity |= not condition_property.startswith(
+                _IDENTITY_FREE_PROPERTY_PREFIXES
+            )
+        nested_reads = _get_context_reads(rule.get("rules") or ())
+        reads_flags |= nested_reads.flags
+        reads_identity |= nested_reads.identity
+    return _ContextReads(flags=reads_flags, identity=reads_identity)
 
 
 class LocalEvaluation:
@@ -37,6 +67,15 @@ class LocalEvaluation:
         ] = None,
     ) -> None:
         self.context = context
+        self._identity_free_segments: SegmentContexts = {}
+        reads_flags = reads_identity = False
+        for segment_key, segment_context in (context.get("segments") or {}).items():
+            reads = _get_context_reads(segment_context["rules"])
+            reads_flags |= reads.flags
+            reads_identity |= reads.identity
+            if not reads.identity:
+                self._identity_free_segments[segment_key] = segment_context
+        self.reads = _ContextReads(flags=reads_flags, identity=reads_identity)
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             context
         )
@@ -64,10 +103,8 @@ class LocalEvaluation:
     @cached_property
     def environment_flags(self) -> typing.Dict[str, Flag]:
         """Environment flags, which depend on the environment document only."""
-        context_without_segments = self.context.copy()
-        context_without_segments.pop("segments", None)
         evaluation_result = engine.get_evaluation_result(
-            context=context_without_segments,
+            context={**self.context, "segments": self._identity_free_segments},
         )
         return {
             feature_name: Flag.from_evaluation_result(flag_result)

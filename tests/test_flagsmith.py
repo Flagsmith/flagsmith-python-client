@@ -18,6 +18,7 @@ from flagsmith.exceptions import (
     FlagsmithFeatureDoesNotExistError,
 )
 from flagsmith.local_evaluation import LocalEvaluation
+from flagsmith.mappers import map_environment_document_to_context
 from flagsmith.models import DefaultFlag, ExperimentMetadata, Flag, Flags
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
@@ -101,40 +102,72 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert all_flags[0].value == "some-value"
 
 
-def test_get_environment_flags_omits_segments_from_evaluation_context(
+def _condition(property_: str) -> typing.Any:
+    return {"operator": "EQUAL", "property_": property_, "value": "value"}
+
+
+@pytest.mark.parametrize(
+    "rules, expected_segment_names",
+    [
+        (
+            [{"type": "ALL", "conditions": [_condition("$.environment.name")]}],
+            ["Test segment"],
+        ),
+        (
+            [
+                {
+                    "type": "ALL",
+                    "rules": [
+                        {
+                            "type": "ANY",
+                            "conditions": [
+                                _condition("$.environment['name']"),
+                                _condition("$.flags.some_feature.enabled"),
+                            ],
+                        }
+                    ],
+                }
+            ],
+            ["Test segment"],
+        ),
+        ([{"type": "ALL", "conditions": [_condition("trait")]}], []),
+        (
+            [
+                {
+                    "type": "ALL",
+                    "conditions": [_condition("$.environment.name")],
+                    "rules": [{"type": "ALL", "conditions": [_condition("trait")]}],
+                }
+            ],
+            [],
+        ),
+    ],
+)
+def test_get_environment_flags__local_evaluation__includes_identity_free_segments_only(
     mocker: MockerFixture,
-    local_eval_flagsmith: Flagsmith,
-    evaluation_context: SDKEvaluationContext,
+    flagsmith: Flagsmith,
+    environment: EnvironmentModel,
+    rules: typing.Any,
+    expected_segment_names: typing.List[str],
 ) -> None:
     # Given
-    mock_get_evaluation_result = mocker.patch(
-        "flagsmith.flagsmith.engine.get_evaluation_result",
-        autospec=True,
+    # the only segment has the given rules, plus identity overrides
+    environment["project"]["segments"][0]["rules"] = rules
+    flagsmith._local_evaluation = LocalEvaluation(
+        map_environment_document_to_context(environment)
     )
-
-    expected_evaluation_result = {
-        "flags": {
-            "some_feature": {
-                "name": "some_feature",
-                "enabled": True,
-                "value": "some-feature-state-value",
-                "reason": "DEFAULT",
-                "metadata": {"id": 1},
-            }
-        },
-        "segments": [],
-    }
-
-    mock_get_evaluation_result.return_value = expected_evaluation_result
+    flagsmith.enable_local_evaluation = True
+    spy = mocker.spy(engine, "get_evaluation_result")
 
     # When
-    local_eval_flagsmith.get_environment_flags()
+    flagsmith.get_environment_flags()
 
     # Then
-    # Verify segments are not present in the context passed to the engine
-    context_without_segments = evaluation_context.copy()
-    context_without_segments.pop("segments", None)
-    mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
+    # only segments reading `$.environment` or `$.flags` alone are evaluated,
+    # as `GET /api/v1/flags/` does
+    context = spy.call_args.kwargs["context"]
+    segments = (context.get("segments") or {}).values()
+    assert [segment["name"] for segment in segments] == expected_segment_names
 
 
 def test_get_environment_flags__local_evaluation__evaluates_once_per_environment(
@@ -314,6 +347,40 @@ def test_get_identity_flags_includes_segments_in_evaluation_context(
     call_args = mock_get_evaluation_result.call_args
     context = call_args[0][0] if call_args.args else call_args[1]["context"]
     assert "segments" in context
+
+
+def test_get_identity_flags__flags_condition__evaluates_full_context(
+    mocker: MockerFixture,
+    flagsmith: Flagsmith,
+    environment: EnvironmentModel,
+) -> None:
+    # Given
+    # a segment condition reading another flag
+    environment["project"]["segments"][0]["rules"] = [
+        {
+            "type": "ALL",
+            "rules": [],
+            "conditions": [_condition("$.flags.some_feature.enabled")],
+        }
+    ]
+    flagsmith._local_evaluation = LocalEvaluation(
+        map_environment_document_to_context(environment)
+    )
+    flagsmith.enable_local_evaluation = True
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When
+    flagsmith.get_identity_flags("identifier").get_flag("some_feature")
+
+    # Then
+    # flags are evaluated at once against the full context, segments included,
+    # rather than per flag against a trimmed one
+    spy.assert_called_once()
+    context = spy.call_args.kwargs["context"]
+    assert set(context["features"]) == {"some_feature"}
+    assert [segment["name"] for segment in (context["segments"] or {}).values()] == [
+        "Test segment"
+    ]
 
 
 def test_get_identity_flags__resolves_one_flag_at_a_time(
