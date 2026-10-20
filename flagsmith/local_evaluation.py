@@ -7,14 +7,14 @@ from functools import cached_property
 from flag_engine import engine
 from flag_engine.context.types import SegmentContext
 
+from flagsmith.api.types import EnvironmentModel
 from flagsmith.mappers import (
-    get_identity_overrides_identifiers,
     map_context_and_identity_data_to_context,
-    map_identifiers_to_identity_overrides_rule,
+    map_environment_document_to_context,
+    map_environment_document_to_identity_overrides_segments,
 )
 from flagsmith.models import (
     Flag,
-    SegmentContexts,
     SegmentOverridesIndex,
     build_segment_overrides_index,
 )
@@ -32,31 +32,40 @@ class LocalEvaluation:
     Built once each time the environment document is refreshed, so the
     work here is amortised across every evaluation until the next refresh.
 
-    Identity overrides are mapped to segments matching the identifiers
-    they apply to. Left in the context, every one of them would be
-    matched on every identity evaluation. Instead, they're indexed by
-    identifier, and each identity is evaluated with only its own.
+    Identity overrides are kept out of the context, by identifier. Each
+    identity is evaluated with its own identity overrides segment only.
     """
 
-    def __init__(self, context: SDKEvaluationContext) -> None:
-        segments: SegmentContexts = {}
-        self._identity_overrides_segments: SegmentContexts = {}
-        self._identity_overrides_segment_keys: typing.Dict[str, typing.List[str]] = {}
-        for segment_key, segment_context in (context.get("segments") or {}).items():
-            identifiers = get_identity_overrides_identifiers(segment_context)
-            if identifiers is None:
-                segments[segment_key] = segment_context
-                continue
-            self._identity_overrides_segments[segment_key] = segment_context
-            for identifier in identifiers:
-                self._identity_overrides_segment_keys.setdefault(identifier, []).append(
-                    segment_key
-                )
-
-        # The context without identity overrides segments.
-        self.context: SDKEvaluationContext = {**context, "segments": segments}
+    def __init__(
+        self,
+        context: SDKEvaluationContext,
+        identity_overrides_segments: typing.Optional[
+            typing.Mapping[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
+        ] = None,
+    ) -> None:
+        self.context = context
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
-            self.context
+            context
+        )
+        self._identity_overrides = {
+            identifier: (segment_context, self._index_overrides(segment_context))
+            for identifier, segment_context in (
+                identity_overrides_segments or {}
+            ).items()
+        }
+
+    @classmethod
+    def from_environment_document(
+        cls,
+        environment_document: EnvironmentModel,
+    ) -> LocalEvaluation:
+        return cls(
+            context=map_environment_document_to_context(environment_document),
+            identity_overrides_segments=(
+                map_environment_document_to_identity_overrides_segments(
+                    environment_document
+                )
+            ),
         )
 
     @cached_property
@@ -79,35 +88,33 @@ class LocalEvaluation:
         identifier: str,
         traits: typing.Optional[TraitMapping] = None,
     ) -> typing.Tuple[SDKEvaluationContext, SegmentOverridesIndex]:
-        """Evaluation context and overrides index for an identity.
-
-        The context carries the identity's own identity overrides segments,
-        narrowed to its identifier, so that their size doesn't depend on how
-        many identities share the same overrides.
-        """
+        """Evaluation context and overrides index for an identity, including
+        its own identity overrides segment, if any."""
         context = map_context_and_identity_data_to_context(
             context=self.context,
             identifier=identifier,
             traits=traits,
         )
-        if not (segment_keys := self._identity_overrides_segment_keys.get(identifier)):
+        if (identity_overrides := self._identity_overrides.get(identifier)) is None:
             return context, self.overrides_index
 
-        identity_segments: SegmentContexts = {}
-        identity_overrides_index: SegmentOverridesIndex = {}
-        for segment_key in segment_keys:
-            segment_context: SegmentContext[SegmentMetadata, FeatureMetadata] = {
-                **self._identity_overrides_segments[segment_key],
-                "rules": [map_identifiers_to_identity_overrides_rule([identifier])],
-            }
-            identity_segments[segment_key] = segment_context
-            for override in segment_context.get("overrides") or ():
-                feature_name = override["name"]
-                if feature_name not in identity_overrides_index:
-                    identity_overrides_index[feature_name] = dict(
-                        self.overrides_index.get(feature_name) or {}
-                    )
-                identity_overrides_index[feature_name][segment_key] = segment_context
-
-        context["segments"] = {**(context.get("segments") or {}), **identity_segments}
+        segment_context, identity_overrides_index = identity_overrides
+        context["segments"] = {
+            **(context.get("segments") or {}),
+            segment_context["key"]: segment_context,
+        }
         return context, ChainMap(identity_overrides_index, self.overrides_index)
+
+    def _index_overrides(
+        self,
+        segment_context: SegmentContext[SegmentMetadata, FeatureMetadata],
+    ) -> SegmentOverridesIndex:
+        """The overrides index, for the features `segment_context` overrides."""
+        return {
+            feature_name: {
+                **(self.overrides_index.get(feature_name) or {}),
+                segment_context["key"]: segment_context,
+            }
+            for override in segment_context.get("overrides") or ()
+            if (feature_name := override["name"])
+        }

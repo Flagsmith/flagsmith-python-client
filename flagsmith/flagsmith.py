@@ -18,7 +18,6 @@ from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
 from flagsmith.local_evaluation import LocalEvaluation
 from flagsmith.mappers import (
     map_context_and_identity_data_to_context,
-    map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
     map_segment_results_to_identity_segments,
     resolve_trait_values,
@@ -150,10 +149,8 @@ class Flagsmith:
             )
 
         if self.offline_handler:
-            self._local_evaluation = LocalEvaluation(
-                map_environment_document_to_context(
-                    self.offline_handler.get_environment()
-                )
+            self._local_evaluation = LocalEvaluation.from_environment_document(
+                self.offline_handler.get_environment()
             )
 
         if not self.offline_mode:
@@ -467,8 +464,8 @@ class Flagsmith:
             logger.exception("Error retrieving environment document from API")
         else:
             try:
-                self._local_evaluation = LocalEvaluation(
-                    map_environment_document_to_context(environment_data)
+                self._local_evaluation = LocalEvaluation.from_environment_document(
+                    environment_data
                 )
                 self._environment_updated_at = (
                     map_environment_document_to_environment_updated_at(

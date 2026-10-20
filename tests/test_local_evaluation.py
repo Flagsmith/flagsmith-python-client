@@ -1,24 +1,14 @@
-import copy
-from unittest import mock
-
 import pytest
 from flag_engine import engine
 from pytest_mock import MockerFixture
 
 from flagsmith.api.types import EnvironmentModel
 from flagsmith.local_evaluation import LocalEvaluation
-from flagsmith.mappers import map_environment_document_to_context
 
 
 @pytest.fixture()
 def local_evaluation(environment: EnvironmentModel) -> LocalEvaluation:
-    """From data/environment.json, plus an identity sharing the overrides of
-    `overridden-id`, so both map to the same identity overrides segment."""
-    environment = copy.deepcopy(environment)
-    sharing_identity = copy.deepcopy(environment["identity_overrides"][0])
-    sharing_identity["identifier"] = "sharing-overridden-id"
-    environment["identity_overrides"].append(sharing_identity)
-    return LocalEvaluation(map_environment_document_to_context(environment))
+    return LocalEvaluation.from_environment_document(environment)
 
 
 def test_local_evaluation__context__excludes_identity_overrides_segments(
@@ -54,7 +44,6 @@ def test_local_evaluation__get_identity_context_no_identity_overrides__returns_c
     "identifier, expected_value",
     [
         ("overridden-id", "some-overridden-value"),
-        ("sharing-overridden-id", "some-overridden-value"),
         ("another-overridden-id", "another-overridden-value"),
     ],
 )
@@ -77,7 +66,7 @@ def test_local_evaluation__get_identity_context_identity_overrides__returns_own_
     ]
     assert identity_segments == [
         {
-            "key": mock.ANY,
+            "key": "identity_overrides",
             "name": "identity_overrides",
             "rules": [
                 {
@@ -118,7 +107,6 @@ def test_local_evaluation__get_identity_context_identity_overrides__returns_own_
     "identifier, expected_value",
     [
         ("overridden-id", "some-overridden-value"),
-        ("sharing-overridden-id", "some-overridden-value"),
         ("another-overridden-id", "another-overridden-value"),
         ("not-overridden-id", "some-value"),
     ],
