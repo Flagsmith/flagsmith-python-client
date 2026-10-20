@@ -1,4 +1,5 @@
 import copy
+from unittest import mock
 
 import pytest
 from flag_engine import engine
@@ -50,11 +51,17 @@ def test_local_evaluation__get_identity_context_no_identity_overrides__returns_c
 
 
 @pytest.mark.parametrize(
-    "identifier", ["overridden-id", "sharing-overridden-id", "another-overridden-id"]
+    "identifier, expected_value",
+    [
+        ("overridden-id", "some-overridden-value"),
+        ("sharing-overridden-id", "some-overridden-value"),
+        ("another-overridden-id", "another-overridden-value"),
+    ],
 )
 def test_local_evaluation__get_identity_context_identity_overrides__returns_own_narrowed(
     local_evaluation: LocalEvaluation,
     identifier: str,
+    expected_value: str,
 ) -> None:
     # When
     context, overrides_index = local_evaluation.get_identity_context(identifier)
@@ -68,15 +75,36 @@ def test_local_evaluation__get_identity_context_identity_overrides__returns_own_
         for segment in context["segments"].values()
         if segment["name"] == "identity_overrides"
     ]
-    assert len(identity_segments) == 1
-    [segment] = identity_segments
-    assert segment["rules"][0]["conditions"] == [
+    assert identity_segments == [
         {
-            "property": "$.identity.identifier",
-            "operator": "IN",
-            "value": [identifier],
+            "key": mock.ANY,
+            "name": "identity_overrides",
+            "rules": [
+                {
+                    "type": "ALL",
+                    "conditions": [
+                        {
+                            "property": "$.identity.identifier",
+                            "operator": "IN",
+                            "value": [identifier],
+                        }
+                    ],
+                }
+            ],
+            "overrides": [
+                {
+                    "key": "",
+                    "name": "some_feature",
+                    "enabled": False,
+                    "value": expected_value,
+                    "priority": float("-inf"),
+                    "metadata": {"id": 1},
+                }
+            ],
+            "metadata": {"source": "identity_overrides"},
         }
     ]
+    [segment] = identity_segments
     assert list(overrides_index) == ["some_feature"]
     assert list(overrides_index["some_feature"].values()) == [segment]
 
