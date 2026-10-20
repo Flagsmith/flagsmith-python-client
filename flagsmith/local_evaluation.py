@@ -47,7 +47,9 @@ class _ContextReads(typing.NamedTuple):
         )
 
 
-def _get_context_reads(rules: typing.Iterable[SegmentRule]) -> _ContextReads:
+def _get_context_reads_from_rules(
+    rules: typing.Iterable[SegmentRule],
+) -> _ContextReads:
     reads = _ContextReads()
     for rule in rules:
         for condition in rule.get("conditions") or ():
@@ -58,7 +60,16 @@ def _get_context_reads(rules: typing.Iterable[SegmentRule]) -> _ContextReads:
                     _IDENTITY_FREE_PROPERTY_PREFIXES
                 ),
             )
-        reads |= _get_context_reads(rule.get("rules") or ())
+        reads |= _get_context_reads_from_rules(rule.get("rules") or ())
+    return reads
+
+
+def _get_context_reads_from_segments(
+    segments: typing.Optional[SegmentContexts],
+) -> _ContextReads:
+    reads = _ContextReads()
+    for segment_context in (segments or {}).values():
+        reads |= _get_context_reads_from_rules(segment_context["rules"])
     return reads
 
 
@@ -73,13 +84,12 @@ class LocalEvaluation:
         ] = None,
     ) -> None:
         self.context = context
-        self._identity_free_segments: SegmentContexts = {}
-        self.reads = _ContextReads()
-        for segment_key, segment_context in (context.get("segments") or {}).items():
-            segment_reads = _get_context_reads(segment_context["rules"])
-            self.reads |= segment_reads
-            if not segment_reads.identity:
-                self._identity_free_segments[segment_key] = segment_context
+        self.reads = _get_context_reads_from_segments(context.get("segments"))
+        self._identity_free_segments: SegmentContexts = {
+            segment_key: segment_context
+            for segment_key, segment_context in (context.get("segments") or {}).items()
+            if not _get_context_reads_from_rules(segment_context["rules"]).identity
+        }
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             context
         )
