@@ -140,7 +140,6 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
 def test_get_environment_flags__local_evaluation__evaluates_once_per_environment(
     mocker: MockerFixture,
     local_eval_flagsmith: Flagsmith,
-    evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
     spy = mocker.spy(engine, "get_evaluation_result")
@@ -155,13 +154,22 @@ def test_get_environment_flags__local_evaluation__evaluates_once_per_environment
     assert first.flags == second.flags
     assert first.flags is not second.flags
 
+
+def test_get_environment_flags__environment_refreshed__evaluates_again(
+    mocker: MockerFixture,
+    local_eval_flagsmith: Flagsmith,
+    evaluation_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    local_eval_flagsmith.get_environment_flags()
+    spy = mocker.spy(engine, "get_evaluation_result")
+
     # When
-    # the environment is refreshed
     local_eval_flagsmith._local_evaluation = LocalEvaluation(evaluation_context)
     local_eval_flagsmith.get_environment_flags()
 
     # Then
-    assert spy.call_count == 2
+    spy.assert_called_once()
 
 
 @responses.activate()
