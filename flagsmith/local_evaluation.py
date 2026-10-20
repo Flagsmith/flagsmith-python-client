@@ -27,14 +27,7 @@ from flagsmith.types import (
 
 
 class LocalEvaluation:
-    """Per-environment-document state for local evaluation.
-
-    Built once each time the environment document is refreshed, so the
-    work here is amortised across every evaluation until the next refresh.
-
-    Identity overrides are kept out of the context, by identifier. Each
-    identity is evaluated with its own identity overrides segment only.
-    """
+    """Per-environment-document state for local evaluation."""
 
     def __init__(
         self,
@@ -71,8 +64,6 @@ class LocalEvaluation:
     @cached_property
     def environment_flags(self) -> typing.Dict[str, Flag]:
         """Environment flags, which depend on the environment document only."""
-        # Omit segments from evaluation context for environment flags
-        # as they are only relevant for identity-specific evaluations
         context_without_segments = self.context.copy()
         context_without_segments.pop("segments", None)
         evaluation_result = engine.get_evaluation_result(

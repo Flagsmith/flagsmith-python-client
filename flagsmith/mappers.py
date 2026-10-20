@@ -29,7 +29,6 @@ from flagsmith.types import (
 )
 from flagsmith.utils.datetime import fromisoformat
 
-# Each identity is evaluated with its own identity overrides segment only.
 IDENTITY_OVERRIDES_SEGMENT_KEY = "identity_overrides"
 
 

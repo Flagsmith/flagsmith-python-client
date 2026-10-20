@@ -338,8 +338,6 @@ class Flagsmith:
                 "Local evaluation required to obtain identity segments."
             )
 
-        # Identity overrides segments are left out: they aren't segments
-        # in Flagsmith, so they're never returned.
         context = map_context_and_identity_data_to_context(
             context=local_evaluation.context,
             identifier=identifier,
@@ -497,8 +495,6 @@ class Flagsmith:
         if (local_evaluation := self._local_evaluation) is None:
             raise TypeError("No environment present")
 
-        # Evaluated once per environment document. `Flag` instances are
-        # shared across calls; the mapping holding them is not.
         return Flags(
             flags=dict(local_evaluation.environment_flags),
             default_flag_handler=self.default_flag_handler,
