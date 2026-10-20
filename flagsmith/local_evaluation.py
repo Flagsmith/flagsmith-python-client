@@ -85,11 +85,6 @@ class LocalEvaluation:
     ) -> None:
         self.context = context
         self.reads = _get_context_reads_from_segments(context.get("segments"))
-        self._identity_free_segments: SegmentContexts = {
-            segment_key: segment_context
-            for segment_key, segment_context in (context.get("segments") or {}).items()
-            if not _get_context_reads_from_rules(segment_context["rules"]).identity
-        }
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             context
         )
@@ -118,7 +113,18 @@ class LocalEvaluation:
     def environment_flags(self) -> typing.Dict[str, Flag]:
         """Environment flags, which depend on the environment document only."""
         evaluation_result = engine.get_evaluation_result(
-            context={**self.context, "segments": self._identity_free_segments},
+            context={
+                **self.context,
+                "segments": {
+                    segment_key: segment_context
+                    for segment_key, segment_context in (
+                        self.context.get("segments") or {}
+                    ).items()
+                    if not _get_context_reads_from_rules(
+                        segment_context["rules"]
+                    ).identity
+                },
+            },
         )
         return {
             feature_name: Flag.from_evaluation_result(flag_result)
