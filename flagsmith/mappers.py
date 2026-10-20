@@ -8,6 +8,7 @@ import sseclient
 from flag_engine.context.types import (
     FeatureContext,
     FeatureValue,
+    InOperatorSegmentCondition,
     SegmentContext,
     SegmentRule,
     StrValueSegmentCondition,
@@ -199,16 +200,12 @@ def _map_identity_overrides_to_segments(
 def map_identifiers_to_identity_overrides_rule(
     identifiers: typing.List[str],
 ) -> SegmentRule:
-    return {
-        "type": "ALL",
-        "conditions": [
-            {
-                "property": "$.identity.identifier",
-                "operator": "IN",
-                "value": identifiers,
-            }
-        ],
+    condition: InOperatorSegmentCondition = {
+        "property": "$.identity.identifier",
+        "operator": "IN",
+        "value": identifiers,
     }
+    return {"type": "ALL", "conditions": [condition]}
 
 
 def get_identity_overrides_identifiers(
@@ -218,10 +215,9 @@ def get_identity_overrides_identifiers(
     any other segment."""
     if (segment_context.get("metadata") or {}).get("source") != "identity_overrides":
         return None
-    # As built by `map_identifiers_to_identity_overrides_rule`.
     [rule] = segment_context["rules"]
     [condition] = rule["conditions"]
-    return typing.cast(typing.List[str], condition["value"])
+    return typing.cast(InOperatorSegmentCondition, condition)["value"]
 
 
 def _map_environment_document_rules_to_context_rules(
