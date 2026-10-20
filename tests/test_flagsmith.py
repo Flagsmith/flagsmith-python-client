@@ -17,6 +17,7 @@ from flagsmith.exceptions import (
     FlagsmithAPIError,
     FlagsmithFeatureDoesNotExistError,
 )
+from flagsmith.local_evaluation import LocalEvaluation
 from flagsmith.models import DefaultFlag, ExperimentMetadata, Flag, Flags
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
@@ -47,14 +48,16 @@ def test_update_environment_sets_environment(
 ) -> None:
     # Given
     responses.add(method="GET", url=flagsmith.environment_url, body=environment_json)
-    assert flagsmith._evaluation_context is None
+    assert flagsmith._local_evaluation is None
 
     # When
     flagsmith.update_environment()
 
     # Then
-    assert flagsmith._evaluation_context is not None
-    assert flagsmith._evaluation_context == evaluation_context
+    assert flagsmith._local_evaluation is not None
+    assert flagsmith._local_evaluation.context == (
+        LocalEvaluation(evaluation_context).context
+    )
 
 
 @responses.activate()
@@ -84,7 +87,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     evaluation_context: SDKEvaluationContext,
 ) -> None:
     # Given
-    flagsmith._evaluation_context = evaluation_context
+    flagsmith._local_evaluation = LocalEvaluation(evaluation_context)
     flagsmith.enable_local_evaluation = True
 
     # When
@@ -154,7 +157,7 @@ def test_get_environment_flags__local_evaluation__evaluates_once_per_environment
 
     # When
     # the environment is refreshed
-    local_eval_flagsmith._evaluation_context = evaluation_context
+    local_eval_flagsmith._local_evaluation = LocalEvaluation(evaluation_context)
     local_eval_flagsmith.get_environment_flags()
 
     # Then
@@ -223,7 +226,7 @@ def test_get_identity_flags_uses_local_environment_when_available(
     mocker: MockerFixture,
 ) -> None:
     # Given
-    flagsmith._evaluation_context = evaluation_context
+    flagsmith._local_evaluation = LocalEvaluation(evaluation_context)
     flagsmith.enable_local_evaluation = True
     # `Flags` materialises identity flags via `engine.get_evaluation_result`
     # imported from `flagsmith.models`, so patch it where it's actually used.

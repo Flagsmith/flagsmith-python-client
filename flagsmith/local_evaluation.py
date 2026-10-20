@@ -39,24 +39,24 @@ class LocalEvaluation:
     """
 
     def __init__(self, context: SDKEvaluationContext) -> None:
-        self.context = context
-
         segments: SegmentContexts = {}
+        self._identity_overrides_segments: SegmentContexts = {}
         self._identity_overrides_segment_keys: typing.Dict[str, typing.List[str]] = {}
         for segment_key, segment_context in (context.get("segments") or {}).items():
             identifiers = get_identity_overrides_identifiers(segment_context)
             if identifiers is None:
                 segments[segment_key] = segment_context
                 continue
+            self._identity_overrides_segments[segment_key] = segment_context
             for identifier in identifiers:
                 self._identity_overrides_segment_keys.setdefault(identifier, []).append(
                     segment_key
                 )
 
         # The context without identity overrides segments.
-        self.base_context: SDKEvaluationContext = {**context, "segments": segments}
+        self.context: SDKEvaluationContext = {**context, "segments": segments}
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
-            self.base_context
+            self.context
         )
 
     @cached_property
@@ -86,7 +86,7 @@ class LocalEvaluation:
         many identities share the same overrides.
         """
         context = map_context_and_identity_data_to_context(
-            context=self.base_context,
+            context=self.context,
             identifier=identifier,
             traits=traits,
         )
@@ -95,10 +95,9 @@ class LocalEvaluation:
 
         identity_segments: SegmentContexts = {}
         identity_overrides_index: SegmentOverridesIndex = {}
-        segment_contexts = self.context.get("segments") or {}
         for segment_key in segment_keys:
             segment_context: SegmentContext[SegmentMetadata, FeatureMetadata] = {
-                **segment_contexts[segment_key],
+                **self._identity_overrides_segments[segment_key],
                 "rules": map_identifiers_to_identity_overrides_rules([identifier]),
             }
             identity_segments[segment_key] = segment_context

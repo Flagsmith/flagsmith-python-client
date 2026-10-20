@@ -30,7 +30,6 @@ from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.types import (
     ApplicationMetadata,
     JsonType,
-    SDKEvaluationContext,
     StreamEvent,
     TraitMapping,
 )
@@ -129,7 +128,6 @@ class Flagsmith:
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
         self._event_processor: typing.Optional[EventProcessor] = None
-        self.__evaluation_context: typing.Optional[SDKEvaluationContext] = None
         self._local_evaluation: typing.Optional[LocalEvaluation] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
@@ -152,8 +150,10 @@ class Flagsmith:
             )
 
         if self.offline_handler:
-            self._evaluation_context = map_environment_document_to_context(
-                self.offline_handler.get_environment()
+            self._local_evaluation = LocalEvaluation(
+                map_environment_document_to_context(
+                    self.offline_handler.get_environment()
+                )
             )
 
         if not self.offline_mode:
@@ -242,12 +242,13 @@ class Flagsmith:
         # method calls, update the environment manually.
         self.update_environment()
         if self.enable_realtime_updates:
-            if not self._evaluation_context:
+            if not self._local_evaluation:
                 raise ValueError("Unable to get environment from API key")
 
+            environment_key = self._local_evaluation.context["environment"]["key"]
             stream_url = urljoin(
                 self.realtime_api_url,
-                f"sse/environments/{self._evaluation_context['environment']['key']}/stream",
+                f"sse/environments/{environment_key}/stream",
             )
 
             self.event_stream_thread = EventStreamManager(
@@ -285,7 +286,7 @@ class Flagsmith:
         """
         if (
             self.offline_mode or self.enable_local_evaluation
-        ) and self._evaluation_context:
+        ) and self._local_evaluation:
             return self._get_environment_flags_from_document()
         return self._get_environment_flags_from_api()
 
@@ -313,7 +314,7 @@ class Flagsmith:
         traits = traits or {}
         if (
             self.offline_mode or self.enable_local_evaluation
-        ) and self._evaluation_context:
+        ) and self._local_evaluation:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(
             identifier,
@@ -343,7 +344,7 @@ class Flagsmith:
         # Identity overrides segments are left out: they aren't segments
         # in Flagsmith, so they're never returned.
         context = map_context_and_identity_data_to_context(
-            context=local_evaluation.base_context,
+            context=local_evaluation.context,
             identifier=identifier,
             traits=traits,
         )
@@ -466,8 +467,8 @@ class Flagsmith:
             logger.exception("Error retrieving environment document from API")
         else:
             try:
-                self._evaluation_context = map_environment_document_to_context(
-                    environment_data,
+                self._local_evaluation = LocalEvaluation(
+                    map_environment_document_to_context(environment_data)
                 )
                 self._environment_updated_at = (
                     map_environment_document_to_environment_updated_at(
@@ -476,25 +477,6 @@ class Flagsmith:
                 )
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
-
-    @property
-    def _evaluation_context(self) -> typing.Optional[SDKEvaluationContext]:
-        return self.__evaluation_context
-
-    @_evaluation_context.setter
-    def _evaluation_context(
-        self, context: typing.Optional[SDKEvaluationContext]
-    ) -> None:
-        """Swap in a new evaluation context and rebuild local evaluation state.
-
-        `LocalEvaluation` holds everything derived from the environment
-        document, e.g. the segment overrides index. Rebuilt once per refresh
-        and reused across every evaluation, without any hot-path cost.
-        """
-        self._local_evaluation = (
-            LocalEvaluation(context) if context is not None else None
-        )
-        self.__evaluation_context = context
 
     def _get_headers(
         self,

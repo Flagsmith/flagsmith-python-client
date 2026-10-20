@@ -24,7 +24,7 @@ def test_local_evaluation__base_context__excludes_identity_overrides_segments(
     local_evaluation: LocalEvaluation,
 ) -> None:
     # When
-    base_segments = local_evaluation.base_context["segments"]
+    base_segments = local_evaluation.context["segments"]
 
     # Then
     assert base_segments is not None
@@ -41,7 +41,7 @@ def test_local_evaluation__get_identity_context__no_identity_overrides__returns_
     )
 
     # Then
-    assert context["segments"] is local_evaluation.base_context["segments"]
+    assert context["segments"] is local_evaluation.context["segments"]
     assert overrides_index is local_evaluation.overrides_index
     assert context["identity"] == {
         "identifier": "not-overridden-id",
@@ -82,8 +82,8 @@ def test_local_evaluation__get_identity_context__identity_overrides__returns_own
 
     # And the shared state is left untouched
     assert local_evaluation.overrides_index == {}
-    assert local_evaluation.base_context["segments"] is not None
-    assert len(local_evaluation.base_context["segments"]) == 1
+    assert local_evaluation.context["segments"] is not None
+    assert len(local_evaluation.context["segments"]) == 1
 
 
 @pytest.mark.parametrize(
