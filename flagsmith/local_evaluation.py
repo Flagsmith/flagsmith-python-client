@@ -10,7 +10,7 @@ from flag_engine.context.types import SegmentContext
 from flagsmith.mappers import (
     get_identity_overrides_identifiers,
     map_context_and_identity_data_to_context,
-    map_identifiers_to_identity_overrides_rules,
+    map_identifiers_to_identity_overrides_rule,
 )
 from flagsmith.models import (
     Flag,
@@ -98,7 +98,7 @@ class LocalEvaluation:
         for segment_key in segment_keys:
             segment_context: SegmentContext[SegmentMetadata, FeatureMetadata] = {
                 **self._identity_overrides_segments[segment_key],
-                "rules": map_identifiers_to_identity_overrides_rules([identifier]),
+                "rules": [map_identifiers_to_identity_overrides_rule([identifier])],
             }
             identity_segments[segment_key] = segment_context
             for override in segment_context.get("overrides") or ():

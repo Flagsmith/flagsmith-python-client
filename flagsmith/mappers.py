@@ -179,7 +179,7 @@ def _map_identity_overrides_to_segments(
         segment_contexts[segment_key] = SegmentContext(
             key=segment_key,
             name="identity_overrides",
-            rules=map_identifiers_to_identity_overrides_rules(identifiers),
+            rules=[map_identifiers_to_identity_overrides_rule(identifiers)],
             overrides=[
                 {
                     "key": "",  # Identity overrides never carry multivariate options
@@ -196,21 +196,19 @@ def _map_identity_overrides_to_segments(
     return segment_contexts
 
 
-def map_identifiers_to_identity_overrides_rules(
+def map_identifiers_to_identity_overrides_rule(
     identifiers: typing.List[str],
-) -> typing.List[SegmentRule]:
-    return [
-        {
-            "type": "ALL",
-            "conditions": [
-                {
-                    "property": "$.identity.identifier",
-                    "operator": "IN",
-                    "value": identifiers,
-                }
-            ],
-        }
-    ]
+) -> SegmentRule:
+    return {
+        "type": "ALL",
+        "conditions": [
+            {
+                "property": "$.identity.identifier",
+                "operator": "IN",
+                "value": identifiers,
+            }
+        ],
+    }
 
 
 def get_identity_overrides_identifiers(
@@ -220,7 +218,7 @@ def get_identity_overrides_identifiers(
     any other segment."""
     if (segment_context.get("metadata") or {}).get("source") != "identity_overrides":
         return None
-    # As built by `map_identifiers_to_identity_overrides_rules`.
+    # As built by `map_identifiers_to_identity_overrides_rule`.
     [rule] = segment_context["rules"]
     [condition] = rule["conditions"]
     return typing.cast(typing.List[str], condition["value"])
