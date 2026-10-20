@@ -53,7 +53,7 @@ class LocalEvaluation:
                     segment_key
                 )
 
-        #: The context without identity overrides segments.
+        # The context without identity overrides segments.
         self.base_context: SDKEvaluationContext = {**context, "segments": segments}
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             self.base_context

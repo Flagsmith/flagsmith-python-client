@@ -16,9 +16,9 @@ from flagsmith.types import (
     SegmentMetadata,
 )
 
-#: Segment contexts by their key in the evaluation context.
+# Segment contexts by their key in the evaluation context.
 SegmentContexts = typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
-#: Feature name -> segment contexts overriding that feature.
+# Feature name -> segment contexts overriding that feature.
 SegmentOverridesIndex = typing.MutableMapping[str, SegmentContexts]
 
 
