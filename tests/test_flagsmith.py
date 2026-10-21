@@ -341,6 +341,23 @@ def test_get_identity_flags__resolves_one_flag_at_a_time(
     assert set(trimmed_context["features"]) == {"some_feature"}
 
 
+def test_get_identity_flags__local_evaluation__dependent_flag_follows_prerequisite(
+    flagsmith: Flagsmith,
+    flag_dependency_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    flagsmith._local_evaluation = LocalEvaluation(flag_dependency_context)
+    flagsmith.enable_local_evaluation = True
+
+    # When
+    identity_flags = flagsmith.get_identity_flags("user-1")
+
+    # Then
+    assert identity_flags.is_feature_enabled("dependent") is True
+    assert identity_flags.get_feature_value("dependent") == "dependent-on"
+    assert identity_flags.is_feature_enabled("transitive") is True
+
+
 @responses.activate()
 def test_get_identity_flags__transient_identity__calls_expected(
     flagsmith: Flagsmith,

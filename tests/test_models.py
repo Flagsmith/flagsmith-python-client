@@ -8,6 +8,7 @@ from flagsmith.models import (
     Flag,
     Flags,
     build_segment_overrides_index,
+    find_flag_dependent_features,
 )
 from flagsmith.types import (
     SDKEvaluationContext,
@@ -405,6 +406,7 @@ def lazy_flags(lazy_context: SDKEvaluationContext) -> Flags:
     return Flags.from_evaluation_context(
         context=lazy_context,
         overrides_index=build_segment_overrides_index(lazy_context),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -431,6 +433,7 @@ def test_lazy_flags__get_flag__skips_non_matching_segment_override(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -453,6 +456,7 @@ def test_lazy_flags__get_flag__caches_per_feature(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -477,6 +481,7 @@ def test_lazy_flags__all_flags__materialises_every_feature(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -502,6 +507,7 @@ def test_lazy_flags__missing_feature__falls_through_to_default_handler(
     flags = Flags.from_evaluation_context(
         context=lazy_context,
         overrides_index=build_segment_overrides_index(lazy_context),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=default,
     )
@@ -561,3 +567,138 @@ def test_build_segment_overrides_index__duplicate_segment_key_fields__keeps_both
     # Then
     # both segments are indexed, neither collapses into the other
     assert set(index["target"]) == {"premium_segment", "enterprise_segment"}
+
+
+@pytest.fixture
+def flag_dependency_flags(flag_dependency_context: SDKEvaluationContext) -> Flags:
+    overrides_index = build_segment_overrides_index(flag_dependency_context)
+    return Flags.from_evaluation_context(
+        context=flag_dependency_context,
+        overrides_index=overrides_index,
+        flag_dependent_features=find_flag_dependent_features(overrides_index),
+        analytics_processor=None,
+        default_flag_handler=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "prerequisite_enabled, expected_enabled, expected_value, expected_reason",
+    [
+        (True, True, "dependent-on", "TARGETING_MATCH; segment=prerequisite_enabled"),
+        (False, False, "dependent-off", "DEFAULT"),
+    ],
+)
+def test_lazy_flags__get_flag__follows_prerequisite_flag(
+    flag_dependency_context: SDKEvaluationContext,
+    flag_dependency_flags: Flags,
+    prerequisite_enabled: bool,
+    expected_enabled: bool,
+    expected_value: str,
+    expected_reason: str,
+) -> None:
+    # Given
+    assert flag_dependency_context["features"] is not None
+    flag_dependency_context["features"]["prerequisite"][
+        "enabled"
+    ] = prerequisite_enabled
+
+    # When
+    dependent = flag_dependency_flags.get_flag("dependent")
+
+    # Then
+    assert isinstance(dependent, Flag)
+    assert dependent.enabled is expected_enabled
+    assert dependent.value == expected_value
+    assert dependent.reason == expected_reason
+
+
+def test_lazy_flags__get_flag__cascades_through_transitive_dependencies(
+    flag_dependency_flags: Flags,
+) -> None:
+    # When
+    transitive = flag_dependency_flags.get_flag("transitive")
+
+    # Then
+    assert isinstance(transitive, Flag)
+    assert transitive.enabled is True
+    assert transitive.value == "transitive-on"
+    assert transitive.reason == "TARGETING_MATCH; segment=dependent_enabled"
+
+
+def test_lazy_flags__get_flag__circular_dependency__reports_error_reason(
+    flag_dependency_flags: Flags,
+) -> None:
+    # When
+    cyclic_a = flag_dependency_flags.get_flag("cyclic_a")
+    cyclic_b = flag_dependency_flags.get_flag("cyclic_b")
+
+    # Then
+    assert cyclic_a.enabled is False
+    assert cyclic_b.enabled is False
+    assert isinstance(cyclic_a, Flag) and isinstance(cyclic_b, Flag)
+    assert cyclic_a.reason == "ERROR; code=CIRCULAR_DEPENDENCY"
+    assert cyclic_b.reason == "ERROR; code=CIRCULAR_DEPENDENCY"
+
+
+def test_lazy_flags__all_flags__resolves_flag_dependencies(
+    flag_dependency_flags: Flags,
+) -> None:
+    # When
+    all_flags = flag_dependency_flags.all_flags()
+
+    # Then
+    assert {flag.feature_name: flag.enabled for flag in all_flags} == {
+        "transitive": True,
+        "dependent": True,
+        "prerequisite": True,
+        "cyclic_a": False,
+        "cyclic_b": False,
+    }
+
+
+def test_find_flag_dependent_features__returns_features_overridden_on_other_flags(
+    flag_dependency_context: SDKEvaluationContext,
+    lazy_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    assert flag_dependency_context["segments"] is not None
+    assert lazy_context["segments"] is not None
+    lazy_context["segments"]["identity_segment"] = {
+        "key": "identity_segment",
+        "name": "identity_segment",
+        "rules": [
+            {
+                "type": "ALL",
+                "conditions": [
+                    {
+                        "property": "$.identity.identifier",
+                        "operator": "EQUAL",
+                        "value": "user-1",
+                    },
+                ],
+            }
+        ],
+        "overrides": [
+            {"key": "noise_0", "name": "noise_0", "enabled": False, "value": None},
+        ],
+    }
+    overrides_index = build_segment_overrides_index(
+        {
+            **lazy_context,
+            "segments": {
+                **lazy_context["segments"],
+                **flag_dependency_context["segments"],
+            },
+        }
+    )
+
+    # When
+    flag_dependent_features = find_flag_dependent_features(overrides_index)
+
+    # Then
+    assert flag_dependent_features == {
+        "transitive",
+        "dependent",
+        "cyclic_a",
+        "cyclic_b",
+    }

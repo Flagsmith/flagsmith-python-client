@@ -17,6 +17,7 @@ from flagsmith.models import (
     Flag,
     SegmentOverridesIndex,
     build_segment_overrides_index,
+    find_flag_dependent_features,
 )
 from flagsmith.types import (
     FeatureMetadata,
@@ -39,6 +40,9 @@ class LocalEvaluation:
         self.context = context
         self.overrides_index: SegmentOverridesIndex = build_segment_overrides_index(
             context
+        )
+        self.flag_dependent_features = find_flag_dependent_features(
+            self.overrides_index
         )
         self._identity_overrides = {
             identifier: (segment_context, self._index_overrides(segment_context))

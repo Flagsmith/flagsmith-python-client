@@ -150,3 +150,161 @@ def identities_json() -> typing.Generator[str, None, None]:
 def mocked_responses() -> Generator["responses.RequestsMock", None, None]:
     with responses.RequestsMock() as rsps:
         yield rsps
+
+
+@pytest.fixture
+def flag_dependency_context() -> SDKEvaluationContext:
+    """Features whose segment overrides depend on other flags.
+
+    `dependent` is overridden when `prerequisite` is enabled, `transitive`
+    when `dependent` is enabled, and `cyclic_a` and `cyclic_b` each when
+    the other is enabled. Features are declared in reverse dependency order.
+    """
+    return {
+        "environment": {"key": "env-key", "name": "env"},
+        "identity": {"identifier": "user-1", "key": "env-key_user-1"},
+        "features": {
+            "transitive": {
+                "key": "4",
+                "name": "transitive",
+                "enabled": False,
+                "value": "transitive-off",
+                "metadata": {"id": 4},
+            },
+            "dependent": {
+                "key": "3",
+                "name": "dependent",
+                "enabled": False,
+                "value": "dependent-off",
+                "metadata": {"id": 3},
+            },
+            "prerequisite": {
+                "key": "2",
+                "name": "prerequisite",
+                "enabled": True,
+                "value": None,
+                "metadata": {"id": 2},
+            },
+            "cyclic_a": {
+                "key": "5",
+                "name": "cyclic_a",
+                "enabled": False,
+                "value": None,
+                "metadata": {"id": 5},
+            },
+            "cyclic_b": {
+                "key": "6",
+                "name": "cyclic_b",
+                "enabled": False,
+                "value": None,
+                "metadata": {"id": 6},
+            },
+        },
+        "segments": {
+            "dependent_enabled": {
+                "key": "dependent_enabled",
+                "name": "dependent_enabled",
+                "rules": [
+                    {
+                        "type": "ALL",
+                        "conditions": [
+                            {
+                                "property": "$.flags.dependent.enabled",
+                                "operator": "EQUAL",
+                                "value": "true",
+                            },
+                        ],
+                    }
+                ],
+                "overrides": [
+                    {
+                        "key": "4",
+                        "name": "transitive",
+                        "enabled": True,
+                        "value": "transitive-on",
+                        "metadata": {"id": 4},
+                    },
+                ],
+            },
+            "prerequisite_enabled": {
+                "key": "prerequisite_enabled",
+                "name": "prerequisite_enabled",
+                "rules": [
+                    {
+                        "type": "ALL",
+                        "rules": [
+                            {
+                                "type": "ANY",
+                                "conditions": [
+                                    {
+                                        "property": "$.flags.prerequisite.enabled",
+                                        "operator": "EQUAL",
+                                        "value": "true",
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ],
+                "overrides": [
+                    {
+                        "key": "3",
+                        "name": "dependent",
+                        "enabled": True,
+                        "value": "dependent-on",
+                        "metadata": {"id": 3},
+                    },
+                ],
+            },
+            "cyclic_b_enabled": {
+                "key": "cyclic_b_enabled",
+                "name": "cyclic_b_enabled",
+                "rules": [
+                    {
+                        "type": "ALL",
+                        "conditions": [
+                            {
+                                "property": "$.flags.cyclic_b.enabled",
+                                "operator": "EQUAL",
+                                "value": "true",
+                            },
+                        ],
+                    }
+                ],
+                "overrides": [
+                    {
+                        "key": "5",
+                        "name": "cyclic_a",
+                        "enabled": True,
+                        "value": None,
+                        "metadata": {"id": 5},
+                    },
+                ],
+            },
+            "cyclic_a_enabled": {
+                "key": "cyclic_a_enabled",
+                "name": "cyclic_a_enabled",
+                "rules": [
+                    {
+                        "type": "ALL",
+                        "conditions": [
+                            {
+                                "property": "$.flags.cyclic_a.enabled",
+                                "operator": "EQUAL",
+                                "value": "true",
+                            },
+                        ],
+                    }
+                ],
+                "overrides": [
+                    {
+                        "key": "6",
+                        "name": "cyclic_b",
+                        "enabled": True,
+                        "value": None,
+                        "metadata": {"id": 6},
+                    },
+                ],
+            },
+        },
+    }

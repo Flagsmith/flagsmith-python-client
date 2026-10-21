@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass, field
 
 from flag_engine import engine
-from flag_engine.context.types import SegmentContext
+from flag_engine.context.types import SegmentContext, SegmentRule
 
 from flagsmith.analytics import AnalyticsProcessor
 from flagsmith.exceptions import FlagsmithFeatureDoesNotExistError
@@ -22,6 +22,8 @@ SegmentContexts = typing.Dict[
     SegmentKey, SegmentContext[SegmentMetadata, FeatureMetadata]
 ]
 SegmentOverridesIndex = typing.MutableMapping[FeatureName, SegmentContexts]
+
+FLAGS_JSONPATH_PREFIX = "$.flags"
 
 
 def build_segment_overrides_index(
@@ -42,6 +44,35 @@ def build_segment_overrides_index(
         for override in segment_context.get("overrides") or ():
             index.setdefault(override["name"], {})[segment_key] = segment_context
     return index
+
+
+def find_flag_dependent_features(
+    overrides_index: SegmentOverridesIndex,
+) -> typing.FrozenSet[FeatureName]:
+    """Features overridden by a segment with a condition on another flag.
+
+    Such a condition may read any flag in the environment, transitively,
+    so these features can only be resolved against the full context.
+    """
+    return frozenset(
+        feature_name
+        for feature_name, segment_contexts in overrides_index.items()
+        if any(
+            _rules_read_flags(segment_context["rules"])
+            for segment_context in segment_contexts.values()
+        )
+    )
+
+
+def _rules_read_flags(rules: typing.Iterable[SegmentRule]) -> bool:
+    return any(
+        any(
+            condition["property"].startswith(FLAGS_JSONPATH_PREFIX)
+            for condition in rule.get("conditions") or ()
+        )
+        or _rules_read_flags(rule.get("rules") or ())
+        for rule in rules
+    )
 
 
 @dataclass(frozen=True)
@@ -130,6 +161,7 @@ class Flags:
     # paths (`from_evaluation_result` / `from_api_flags`).
     _context: typing.Optional[SDKEvaluationContext] = None
     _overrides_index: typing.Optional[SegmentOverridesIndex] = None
+    _flag_dependent_features: typing.AbstractSet[FeatureName] = frozenset()
     _fully_materialised: bool = False
 
     @classmethod
@@ -154,6 +186,7 @@ class Flags:
         cls,
         context: SDKEvaluationContext,
         overrides_index: SegmentOverridesIndex,
+        flag_dependent_features: typing.AbstractSet[FeatureName],
         analytics_processor: typing.Optional[AnalyticsProcessor],
         default_flag_handler: typing.Optional[typing.Callable[[str], DefaultFlag]],
     ) -> Flags:
@@ -162,7 +195,9 @@ class Flags:
         No engine work is done here — flags are resolved on first access
         via :meth:`_resolve_flag`. Reusing the same `overrides_index`
         across calls amortises its construction cost (it's rebuilt only
-        when the environment doc refreshes, not per identity).
+        when the environment doc refreshes, not per identity). The same
+        goes for `flag_dependent_features`, see
+        :func:`find_flag_dependent_features`.
         """
         return cls(
             flags={},
@@ -170,6 +205,7 @@ class Flags:
             _analytics_processor=analytics_processor,
             _context=context,
             _overrides_index=overrides_index,
+            _flag_dependent_features=flag_dependent_features,
         )
 
     @classmethod
@@ -201,15 +237,18 @@ class Flags:
 
         :return: list of Flag objects.
         """
-        if self._context is not None and not self._fully_materialised:
-            result = engine.get_evaluation_result(self._context)
-            for feature_name, flag_result in result["flags"].items():
-                if feature_name not in self.flags:
-                    self.flags[feature_name] = Flag.from_evaluation_result(
-                        flag_result,
-                    )
-            self._fully_materialised = True
+        self._materialise()
         return list(self.flags.values())
+
+    def _materialise(self) -> None:
+        """Resolve every feature in the lazy context, once."""
+        if self._context is None or self._fully_materialised:
+            return
+        result = engine.get_evaluation_result(self._context)
+        for feature_name, flag_result in result["flags"].items():
+            if feature_name not in self.flags:
+                self.flags[feature_name] = Flag.from_evaluation_result(flag_result)
+        self._fully_materialised = True
 
     def is_feature_enabled(self, feature_name: str) -> bool:
         """
@@ -276,12 +315,19 @@ class Flags:
         that could override it, looked up in O(1) via the precomputed
         reverse index — so the engine's full pipeline runs against an
         input small enough to evaluate in ~1 µs.
+
+        Features overridden on other flags' values need the full context
+        instead, so they are resolved along with every other feature.
         """
         context = self._context
         overrides_index = self._overrides_index
         # `get_flag` / `all_flags` gate this call behind the same
         # non-None checks; assert here so type checkers can narrow.
         assert context is not None and overrides_index is not None
+
+        if feature_name in self._flag_dependent_features:
+            self._materialise()
+            return self.flags[feature_name]
 
         trimmed: SDKEvaluationContext = {
             **context,
