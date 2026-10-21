@@ -78,6 +78,7 @@ class Flagsmith:
         offline_handler: typing.Optional[OfflineHandler] = None,
         enable_realtime_updates: bool = False,
         application_metadata: typing.Optional[ApplicationMetadata] = None,
+        default_traits: typing.Optional[TraitMapping] = None,
     ):
         """
         :param environment_key: The environment key obtained from Flagsmith interface.
@@ -117,6 +118,12 @@ class Flagsmith:
             default_flag_handler if offline_mode is not set and using remote evaluation.
         :param enable_realtime_updates: Use real-time functionality via SSE as opposed to polling the API
         :param application_metadata: Optional metadata about the client application.
+        :param default_traits: traits that apply to every identity evaluation and
+            event for the lifetime of this client, e.g.
+            `{"app_name": "my-app", "branch": "main"}`. Traits passed to an
+            individual call take precedence over a default trait of the same key.
+            Envelope traits you don't want persisted in a dictionary with
+            `"transient"` and `"value"` keys, as for per-call traits.
         """
 
         self.offline_mode = offline_mode
@@ -125,6 +132,7 @@ class Flagsmith:
         self.offline_handler = offline_handler
         self.default_flag_handler = default_flag_handler
         self.enable_realtime_updates = enable_realtime_updates
+        self.default_traits: TraitMapping = default_traits or {}
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
         self._event_processor: typing.Optional[EventProcessor] = None
         self._local_evaluation: typing.Optional[LocalEvaluation] = None
@@ -206,6 +214,15 @@ class Flagsmith:
     @staticmethod
     def _ensure_trailing_slash(url: str) -> str:
         return url if url.endswith("/") else f"{url}/"
+
+    def _merge_traits(self, traits: typing.Optional[TraitMapping]) -> TraitMapping:
+        """Combine the client's default traits with traits given for a single
+        call. Per-call traits win on key conflicts."""
+        if not self.default_traits:
+            return traits or {}
+        if not traits:
+            return self.default_traits
+        return {**self.default_traits, **traits}
 
     def _initialise_analytics(
         self,
@@ -305,10 +322,11 @@ class Flagsmith:
             Flagsmith, e.g. `{"num_orders": 10}`. Envelope traits you don't want persisted
             in a dictionary with `"transient"` and `"value"` keys, e.g.
             `{"num_orders": 10, "color": {"value": "pink", "transient": True}}`.
+            Merged over the client's `default_traits`, if any.
         :param transient: if `True`, the identity won't get persisted
         :return: Flags object holding all the flags for the given identity.
         """
-        traits = traits or {}
+        traits = self._merge_traits(traits)
         if (
             self.offline_mode or self.enable_local_evaluation
         ) and self._local_evaluation:
@@ -330,7 +348,8 @@ class Flagsmith:
         :param identifier: a unique identifier for the identity in the current
             environment, e.g. email address, username, uuid
         :param traits: a dictionary of traits to add / update on the identity in
-            Flagsmith, e.g. {"num_orders": 10}
+            Flagsmith, e.g. {"num_orders": 10}. Merged over the client's
+            `default_traits`, if any.
         :return: list of Segment objects that the identity is part of.
         """
         if not (local_evaluation := self._local_evaluation):
@@ -341,7 +360,7 @@ class Flagsmith:
         context = map_context_and_identity_data_to_context(
             context=local_evaluation.context,
             identifier=identifier,
-            traits=traits,
+            traits=self._merge_traits(traits),
         )
 
         evaluation_result = engine.get_evaluation_result(
@@ -366,6 +385,8 @@ class Flagsmith:
         other outcome is logged and skipped to keep experimentation data
         clean. A `DefaultFlag` served via the `default_flag_handler` counts
         as the feature not existing.
+
+        `traits` are merged over the client's `default_traits`, if any.
         """
         if not self._event_processor:
             raise ValueError("Events must be enabled to use experiment flags.")
@@ -423,7 +444,7 @@ class Flagsmith:
             event=event,
             identifier=identifier,
             value=value,
-            traits=resolve_trait_values(traits),
+            traits=resolve_trait_values(self._merge_traits(traits)),
             metadata=metadata,
         )
 
@@ -449,7 +470,7 @@ class Flagsmith:
             feature_name=feature_name,
             identifier=identifier,
             value=value,
-            traits=resolve_trait_values(traits),
+            traits=resolve_trait_values(self._merge_traits(traits)),
             metadata=metadata,
         )
 

@@ -1455,3 +1455,245 @@ def test_get_experiment_flag__disabled_feature__skips_exposure(
         "Not sending $flag_exposure for feature checkout_v2: feature is disabled."
         in caplog.messages
     )
+
+
+def test_default_traits__not_set__empty(api_key: str) -> None:
+    # Given / When
+    flagsmith = Flagsmith(environment_key=api_key)
+
+    # Then
+    assert flagsmith.default_traits == {}
+
+
+@responses.activate()
+def test_default_traits__get_identity_flags__sent_to_api(
+    api_key: str, identities_json: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        default_traits={
+            "app_name": "my-app",
+            "branch": {"value": "main", "transient": True},
+        },
+    )
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {
+                    "identifier": "identifier",
+                    "traits": [
+                        {"trait_key": "app_name", "trait_value": "my-app"},
+                        {
+                            "trait_key": "branch",
+                            "trait_value": "main",
+                            "transient": True,
+                        },
+                        {"trait_key": "num_orders", "trait_value": 10},
+                    ],
+                }
+            )
+        ],
+    )
+
+    # When & Then
+    flagsmith.get_identity_flags("identifier", traits={"num_orders": 10})
+
+
+@responses.activate()
+def test_default_traits__get_identity_flags__per_call_traits_take_precedence(
+    api_key: str, identities_json: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        default_traits={"app_name": "my-app"},
+    )
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {
+                    "identifier": "identifier",
+                    "traits": [
+                        {"trait_key": "app_name", "trait_value": "another-app"},
+                    ],
+                }
+            )
+        ],
+    )
+
+    # When & Then
+    flagsmith.get_identity_flags("identifier", traits={"app_name": "another-app"})
+
+
+def test_default_traits__local_evaluation__included_in_context(
+    requests_session_response_ok: None, server_api_key: str, mocker: MockerFixture
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        environment_refresh_interval_seconds=0.1,
+        default_traits={
+            "app_name": "my-app",
+            "branch": {"value": "main", "transient": True},
+        },
+    )
+    spy = mocker.spy(engine, "get_evaluation_result")
+
+    # When
+    flagsmith.get_identity_flags("identifier", traits={"num_orders": 10}).all_flags()
+
+    # Then
+    context = spy.call_args.kwargs.get("context") or spy.call_args.args[0]
+    assert context["identity"]["traits"] == {
+        "app_name": "my-app",
+        "branch": "main",
+        "num_orders": 10,
+    }
+
+
+def test_default_traits__get_identity_segments__matched_without_per_call_traits(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        environment_refresh_interval_seconds=0.1,
+        default_traits={"foo": "bar"},  # obtained from data/environment.json
+    )
+
+    # When
+    segments = flagsmith.get_identity_segments("identifier")
+
+    # Then
+    assert [segment.name for segment in segments] == ["Test segment"]
+
+
+def test_default_traits__get_identity_segments__per_call_traits_take_precedence(
+    requests_session_response_ok: None, server_api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        environment_refresh_interval_seconds=0.1,
+        default_traits={"foo": "not-bar"},
+    )
+
+    # When
+    segments = flagsmith.get_identity_segments("identifier", traits={"foo": "bar"})
+
+    # Then
+    assert [segment.name for segment in segments] == ["Test segment"]
+
+
+def test_default_traits__track_event__merged_with_call_traits(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url="http://test/"),
+        default_traits={
+            "app_name": "my-app",
+            "plan": {"value": "free", "transient": True},
+        },
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_event")
+
+    # When
+    flagsmith.track_event("purchase", identifier="user1", traits={"plan": "premium"})
+
+    # Then
+    mock_track.assert_called_once_with(
+        event="purchase",
+        identifier="user1",
+        value=None,
+        traits={"app_name": "my-app", "plan": "premium"},
+        metadata=None,
+    )
+
+
+def test_default_traits__track_exposure_event__merged_with_call_traits(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url="http://test/"),
+        default_traits={"app_name": "my-app"},
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+
+    # When
+    flagsmith.track_exposure_event(
+        "checkout_v2",
+        identifier="user1",
+        value="variant_b",
+        traits={"plan": "premium"},
+    )
+
+    # Then
+    mock_track.assert_called_once_with(
+        feature_name="checkout_v2",
+        identifier="user1",
+        value="variant_b",
+        traits={"app_name": "my-app", "plan": "premium"},
+        metadata=None,
+    )
+
+
+@responses.activate()
+def test_default_traits__get_experiment_flag__merged_once_per_call(
+    mocker: MockerFixture, api_key: str, identities_json: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url="http://test/"),
+        default_traits={"app_name": "my-app"},
+    )
+    mock_track = mocker.patch.object(flagsmith._event_processor, "track_exposure_event")
+    responses.add(
+        method="POST",
+        url=flagsmith.identities_url,
+        body=identities_json,
+        match=[
+            matchers.json_params_matcher(
+                {
+                    "identifier": "user1",
+                    "traits": [
+                        {"trait_key": "app_name", "trait_value": "my-app"},
+                        {"trait_key": "plan", "trait_value": "premium"},
+                    ],
+                }
+            )
+        ],
+    )
+
+    # When
+    flagsmith.get_experiment_flag(
+        feature_name="some_feature",
+        identifier="user1",
+        traits={"plan": "premium"},
+    )
+
+    # Then
+    mock_track.assert_called_once_with(
+        feature_name="some_feature",
+        identifier="user1",
+        value="treatment",
+        traits={"app_name": "my-app", "plan": "premium"},
+        metadata={"experiment_id": 42},
+    )
