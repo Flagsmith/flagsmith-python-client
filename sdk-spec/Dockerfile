@@ -1,6 +1,6 @@
 # Runs this SDK, built from source, under the Flagsmith SDK behavioural spec.
 # docker build -f sdk-spec/Dockerfile --build-context harness=<sdk-spec>/harness/python .
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /sdk
 COPY pyproject.toml poetry.lock README.md ./
