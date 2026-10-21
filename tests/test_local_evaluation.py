@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from flag_engine import engine
 from pytest_mock import MockerFixture
@@ -141,3 +143,32 @@ def test_local_evaluation__environment_flags__evaluated_once(
     assert first is second
     assert first["some_feature"].value == "some-value"
     spy.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "condition_property, expected_reads_flags",
+    [
+        ("$.flags.some_feature.enabled", True),
+        ("$.flags['some feature'].value", True),
+        ("$.flagship", False),
+        ("flags", False),
+    ],
+)
+def test_local_evaluation__reads__flags__returns_expected(
+    environment: EnvironmentModel,
+    condition_property: str,
+    expected_reads_flags: bool,
+) -> None:
+    # Given
+    # a condition in a nested rule of the only segment
+    environment = copy.deepcopy(environment)
+    condition = environment["project"]["segments"][0]["rules"][0]["rules"][0][
+        "conditions"
+    ][0]
+    condition["property_"] = condition_property
+
+    # When
+    local_evaluation = LocalEvaluation.from_environment_document(environment)
+
+    # Then
+    assert local_evaluation.reads.flags is expected_reads_flags

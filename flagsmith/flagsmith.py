@@ -513,6 +513,12 @@ class Flagsmith:
             identifier=identifier,
             traits=traits,
         )
+        if local_evaluation.reads.flags:
+            return Flags.from_evaluation_result(
+                evaluation_result=engine.get_evaluation_result(context=context),
+                analytics_processor=self._analytics_processor,
+                default_flag_handler=self.default_flag_handler,
+            )
         # Lazy: defer per-feature evaluation until the caller actually reads
         # a flag. Hot for callers that only read one or a few flags out of a
         # large environment.
