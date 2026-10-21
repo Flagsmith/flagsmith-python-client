@@ -25,7 +25,11 @@ CLIENT_ROUTE = re.compile(r"^/clients/(?P<client_id>[^/]+)(?P<action>/[a-z-]+)?$
 def serialise_flags(flags: Flags) -> typing.Dict[str, typing.Any]:
     return {
         "flags": [
-            {"featureName": flag.feature_name, "enabled": flag.enabled, "value": flag.value}
+            {
+                "featureName": flag.feature_name,
+                "enabled": flag.enabled,
+                "value": flag.value,
+            }
             for flag in flags.all_flags()
         ]
     }
@@ -53,7 +57,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _route(self) -> None:
         if self.command == "GET" and self.path == "/health":
-            return self._send(200, {"sdk": "flagsmith-python-client", "version": __version__})
+            return self._send(
+                200, {"sdk": "flagsmith-python-client", "version": __version__}
+            )
 
         if self.command == "POST" and self.path == "/clients":
             body = self._body()
@@ -66,7 +72,9 @@ class Handler(BaseHTTPRequestHandler):
 
         match = CLIENT_ROUTE.match(self.path)
         if not match or match["client_id"] not in clients:
-            return self._send(404, {"error": f"No route for {self.command} {self.path}"})
+            return self._send(
+                404, {"error": f"No route for {self.command} {self.path}"}
+            )
         client_id, action = match["client_id"], match["action"]
 
         if self.command == "DELETE" and action is None:
@@ -74,7 +82,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(204)
 
         if self.command == "POST" and action == "/environment-flags":
-            return self._send(200, serialise_flags(clients[client_id].get_environment_flags()))
+            return self._send(
+                200, serialise_flags(clients[client_id].get_environment_flags())
+            )
 
         if self.command == "POST" and action == "/identity-flags":
             body = self._body()
