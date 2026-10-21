@@ -3,6 +3,15 @@
     "extends": ["config:recommended", ":semanticCommitScopeDisabled"],
     "ignorePresets": [":semanticPrefixFixDepsChoreOthers"],
     "semanticCommitType": "deps",
+    "customManagers": [
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^\\.github/workflows/sdk-spec\\.yml$/"],
+            "matchStrings": ["spec-ref: (?<currentValue>v[\\d.]+)"],
+            "depNameTemplate": "Flagsmith/sdk-spec",
+            "datasourceTemplate": "github-tags"
+        }
+    ],
     "packageRules": [
         {
             "matchManagers": ["pip_requirements", "pip-compile", "pep621", "poetry", "github-actions"],
@@ -21,6 +30,11 @@
         },
         {
             "matchPackageNames": ["flagsmith-flag-engine"],
+            "enabled": true
+        },
+        {
+            "matchPackageNames": ["Flagsmith/sdk-spec"],
+            "groupName": "SDK spec",
             "enabled": true
         }
     ]
