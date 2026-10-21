@@ -1,5 +1,37 @@
 # Changelog
 
+## [6.3.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.3.0...v6.3.1) (2026-10-21)
+
+### CI
+
+- Label Renovate's SDK spec bump PRs ([#265](https://github.com/Flagsmith/flagsmith-python-client/issues/265))
+  ([a7dccd0](https://github.com/Flagsmith/flagsmith-python-client/commit/a7dccd024092925771efba5c0dec2b03592d0a79))
+- pre-commit autoupdate ([#248](https://github.com/Flagsmith/flagsmith-python-client/issues/248))
+  ([cdbc47f](https://github.com/Flagsmith/flagsmith-python-client/commit/cdbc47ffaad41228648a18f31463bbf3c0aefc71))
+- pre-commit autoupdate ([#254](https://github.com/Flagsmith/flagsmith-python-client/issues/254))
+  ([23c881d](https://github.com/Flagsmith/flagsmith-python-client/commit/23c881d806e7c8bc87c0a9240c9378eabce87eeb))
+- Run the Flagsmith SDK behavioural spec ([#263](https://github.com/Flagsmith/flagsmith-python-client/issues/263))
+  ([adddf47](https://github.com/Flagsmith/flagsmith-python-client/commit/adddf470f1280705e6db0471290a024a1937dcb6))
+
+### Dependency Updates
+
+- bump flagsmith-engine to 11.1.1 ([#259](https://github.com/Flagsmith/flagsmith-python-client/issues/259))
+  ([6227271](https://github.com/Flagsmith/flagsmith-python-client/commit/62272713fb70eb378b348b724bae3da4a8ac796b))
+- update dependency flagsmith-flag-engine to v11.1.0
+  ([#252](https://github.com/Flagsmith/flagsmith-python-client/issues/252))
+  ([ed65702](https://github.com/Flagsmith/flagsmith-python-client/commit/ed657025a2f0aed1386e9f51e54e7a32d44541d4))
+
+### Performance Improvements
+
+- Map identity overrides, evaluate environment flags once per document refresh
+  ([#262](https://github.com/Flagsmith/flagsmith-python-client/issues/262))
+  ([4fafcd9](https://github.com/Flagsmith/flagsmith-python-client/commit/4fafcd9c3a95ddd0beea1de63efb2f37e6898909))
+
+### Other
+
+- **deps:** bump urllib3 from 2.7.0 to 2.8.0 ([#255](https://github.com/Flagsmith/flagsmith-python-client/issues/255))
+  ([6e48b82](https://github.com/Flagsmith/flagsmith-python-client/commit/6e48b82c6c0e4f31db01765d770015427d0e4a90))
+
 ## [6.3.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.2.3...v6.3.0) (2026-09-23)
 
 ### Features
