@@ -16,9 +16,12 @@ from flagsmith.types import (
     SegmentMetadata,
 )
 
-SegmentOverridesIndex = typing.Dict[
-    str, typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]
+SegmentKey = str
+FeatureName = str
+SegmentContexts = typing.Dict[
+    SegmentKey, SegmentContext[SegmentMetadata, FeatureMetadata]
 ]
+SegmentOverridesIndex = typing.MutableMapping[FeatureName, SegmentContexts]
 
 
 def build_segment_overrides_index(

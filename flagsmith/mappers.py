@@ -1,13 +1,13 @@
 import json
 import typing
 import uuid
-from collections import defaultdict
 from datetime import datetime, timezone
 
 import sseclient
 from flag_engine.context.types import (
     FeatureContext,
     FeatureValue,
+    InOperatorSegmentCondition,
     SegmentContext,
     SegmentRule,
     StrValueSegmentCondition,
@@ -17,7 +17,6 @@ from flag_engine.result.types import SegmentResult
 from flagsmith.api.types import (
     EnvironmentModel,
     FeatureStateModel,
-    IdentityModel,
     SegmentRuleModel,
 )
 from flagsmith.models import Segment
@@ -30,13 +29,7 @@ from flagsmith.types import (
 )
 from flagsmith.utils.datetime import fromisoformat
 
-OverrideKey = typing.Tuple[
-    int,
-    str,
-    bool,
-    typing.Any,
-]
-OverridesKey = typing.Tuple[OverrideKey, ...]
+IDENTITY_OVERRIDES_SEGMENT_KEY = "identity_overrides"
 
 
 def map_segment_results_to_identity_segments(
@@ -115,96 +108,68 @@ def map_environment_document_to_context(
             )
         },
         "segments": {
-            **{
-                (segment_key := str(segment_id := segment["id"])): {
-                    "key": segment_key,
-                    "name": segment["name"],
-                    "rules": _map_environment_document_rules_to_context_rules(
-                        segment["rules"]
-                    ),
-                    "overrides": list(
-                        _map_environment_document_feature_states_to_feature_contexts(
-                            segment.get("feature_states") or []
-                        )
-                    ),
-                    "metadata": SegmentMetadata(
-                        id=segment_id,
-                        source="api",
-                    ),
-                }
-                for segment in environment_document["project"]["segments"]
-            },
-            **_map_identity_overrides_to_segments(
-                environment_document.get("identity_overrides") or []
-            ),
+            (segment_key := str(segment_id := segment["id"])): {
+                "key": segment_key,
+                "name": segment["name"],
+                "rules": _map_environment_document_rules_to_context_rules(
+                    segment["rules"]
+                ),
+                "overrides": list(
+                    _map_environment_document_feature_states_to_feature_contexts(
+                        segment.get("feature_states") or []
+                    )
+                ),
+                "metadata": SegmentMetadata(
+                    id=segment_id,
+                    source="api",
+                ),
+            }
+            for segment in environment_document["project"]["segments"]
         },
     }
 
 
-def _map_identity_overrides_to_segments(
-    identity_overrides: list[IdentityModel],
-) -> dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]:
-    features_to_identifiers: typing.Dict[
-        OverridesKey,
-        typing.List[str],
-    ] = defaultdict(list)
-    for identity_override in identity_overrides:
-        identity_features = identity_override["identity_features"]
-        if not identity_features:
-            continue
-        overrides_key = tuple(
-            (
-                feature_state["feature"]["id"],
-                feature_state["feature"]["name"],
-                feature_state["enabled"],
-                feature_state["feature_state_value"],
-            )
-            for feature_state in sorted(
-                identity_features,
-                key=lambda feature_state: feature_state["feature"]["name"],
-            )
-        )
-        features_to_identifiers[overrides_key].append(identity_override["identifier"])
-    segment_contexts: typing.Dict[
-        str,
-        SegmentContext[
-            SegmentMetadata,
-            FeatureMetadata,
-        ],
-    ] = {}
-    for overrides_key, identifiers in features_to_identifiers.items():
-        # Create a segment context for each unique set of overrides
-        # Generate a unique key to avoid collisions
-        segment_key = str(hash(overrides_key))
-        segment_contexts[segment_key] = SegmentContext(
-            key=segment_key,
-            name="identity_overrides",
-            rules=[
-                {
-                    "type": "ALL",
-                    "conditions": [
-                        {
-                            "property": "$.identity.identifier",
-                            "operator": "IN",
-                            "value": identifiers,
-                        }
-                    ],
-                }
+def map_environment_document_to_identity_overrides_segments(
+    environment_document: EnvironmentModel,
+) -> typing.Dict[str, SegmentContext[SegmentMetadata, FeatureMetadata]]:
+    """Map identity overrides to segment contexts by identifier, each matching
+    its identity alone and carrying its overrides."""
+    return {
+        identity_override["identifier"]: {
+            "key": IDENTITY_OVERRIDES_SEGMENT_KEY,
+            "name": "identity_overrides",
+            "rules": [
+                map_identifiers_to_identity_overrides_rule(
+                    [identity_override["identifier"]]
+                )
             ],
-            overrides=[
+            "overrides": [
                 {
                     "key": "",  # Identity overrides never carry multivariate options
-                    "name": feature_name,
-                    "enabled": feature_enabled,
-                    "value": feature_value,
+                    "name": feature_state["feature"]["name"],
+                    "enabled": feature_state["enabled"],
+                    "value": feature_state["feature_state_value"],
                     "priority": float("-inf"),  # Highest possible priority
-                    "metadata": {"id": feature_id},
+                    "metadata": {"id": feature_state["feature"]["id"]},
                 }
-                for feature_id, feature_name, feature_enabled, feature_value in overrides_key
+                for feature_state in identity_features
             ],
-            metadata=SegmentMetadata(source="identity_overrides"),
-        )
-    return segment_contexts
+            "metadata": SegmentMetadata(source="identity_overrides"),
+        }
+        for identity_override in environment_document.get("identity_overrides") or []
+        if (identity_features := identity_override["identity_features"])
+    }
+
+
+def map_identifiers_to_identity_overrides_rule(
+    identifiers: typing.List[str],
+) -> SegmentRule:
+    condition: InOperatorSegmentCondition = {
+        "property": "$.identity.identifier",
+        "operator": "IN",
+        "value": identifiers,
+    }
+    return {"type": "ALL", "conditions": [condition]}
 
 
 def _map_environment_document_rules_to_context_rules(

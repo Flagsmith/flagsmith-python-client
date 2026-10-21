@@ -7,6 +7,7 @@ import responses
 from pytest_mock import MockerFixture
 
 from flagsmith import Flagsmith
+from flagsmith.local_evaluation import LocalEvaluation
 from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.types import StreamEvent
 
@@ -44,7 +45,7 @@ def test_environment_updates_on_recent_event(
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._evaluation_context = MagicMock()
+    flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
     assert isinstance(flagsmith.update_environment, Mock)
@@ -60,7 +61,7 @@ def test_environment_does_not_update_on_past_event(
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._evaluation_context = MagicMock()
+    flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
@@ -77,7 +78,7 @@ def test_environment_does_not_update_on_same_event(
     mocker.patch("flagsmith.Flagsmith.update_environment")
 
     flagsmith = Flagsmith(environment_key=server_api_key)
-    flagsmith._evaluation_context = MagicMock()
+    flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))

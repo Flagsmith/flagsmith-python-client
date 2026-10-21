@@ -15,28 +15,20 @@ from flagsmith.analytics import (
     EventProcessorConfig,
 )
 from flagsmith.exceptions import FlagsmithAPIError, FlagsmithClientError
+from flagsmith.local_evaluation import LocalEvaluation
 from flagsmith.mappers import (
     map_context_and_identity_data_to_context,
-    map_environment_document_to_context,
     map_environment_document_to_environment_updated_at,
     map_segment_results_to_identity_segments,
     resolve_trait_values,
 )
-from flagsmith.models import (
-    DefaultFlag,
-    Flag,
-    Flags,
-    Segment,
-    SegmentOverridesIndex,
-    build_segment_overrides_index,
-)
+from flagsmith.models import DefaultFlag, Flag, Flags, Segment
 from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.polling_manager import EnvironmentDataPollingManager
 from flagsmith.streaming_manager import EventStreamManager
 from flagsmith.types import (
     ApplicationMetadata,
     JsonType,
-    SDKEvaluationContext,
     StreamEvent,
     TraitMapping,
 )
@@ -135,8 +127,7 @@ class Flagsmith:
         self.enable_realtime_updates = enable_realtime_updates
         self._analytics_processor: typing.Optional[AnalyticsProcessor] = None
         self._event_processor: typing.Optional[EventProcessor] = None
-        self.__evaluation_context: typing.Optional[SDKEvaluationContext] = None
-        self._segment_overrides_index: SegmentOverridesIndex = {}
+        self._local_evaluation: typing.Optional[LocalEvaluation] = None
         self._environment_updated_at: typing.Optional[datetime] = None
 
         # argument validation
@@ -158,7 +149,7 @@ class Flagsmith:
             )
 
         if self.offline_handler:
-            self._evaluation_context = map_environment_document_to_context(
+            self._local_evaluation = LocalEvaluation.from_environment_document(
                 self.offline_handler.get_environment()
             )
 
@@ -248,12 +239,13 @@ class Flagsmith:
         # method calls, update the environment manually.
         self.update_environment()
         if self.enable_realtime_updates:
-            if not self._evaluation_context:
+            if not self._local_evaluation:
                 raise ValueError("Unable to get environment from API key")
 
+            environment_key = self._local_evaluation.context["environment"]["key"]
             stream_url = urljoin(
                 self.realtime_api_url,
-                f"sse/environments/{self._evaluation_context['environment']['key']}/stream",
+                f"sse/environments/{environment_key}/stream",
             )
 
             self.event_stream_thread = EventStreamManager(
@@ -291,7 +283,7 @@ class Flagsmith:
         """
         if (
             self.offline_mode or self.enable_local_evaluation
-        ) and self._evaluation_context:
+        ) and self._local_evaluation:
             return self._get_environment_flags_from_document()
         return self._get_environment_flags_from_api()
 
@@ -319,7 +311,7 @@ class Flagsmith:
         traits = traits or {}
         if (
             self.offline_mode or self.enable_local_evaluation
-        ) and self._evaluation_context:
+        ) and self._local_evaluation:
             return self._get_identity_flags_from_document(identifier, traits)
         return self._get_identity_flags_from_api(
             identifier,
@@ -341,13 +333,13 @@ class Flagsmith:
             Flagsmith, e.g. {"num_orders": 10}
         :return: list of Segment objects that the identity is part of.
         """
-        if not self._evaluation_context:
+        if not (local_evaluation := self._local_evaluation):
             raise FlagsmithClientError(
                 "Local evaluation required to obtain identity segments."
             )
 
         context = map_context_and_identity_data_to_context(
-            context=self._evaluation_context,
+            context=local_evaluation.context,
             identifier=identifier,
             traits=traits,
         )
@@ -470,8 +462,8 @@ class Flagsmith:
             logger.exception("Error retrieving environment document from API")
         else:
             try:
-                self._evaluation_context = map_environment_document_to_context(
-                    environment_data,
+                self._local_evaluation = LocalEvaluation.from_environment_document(
+                    environment_data
                 )
                 self._environment_updated_at = (
                     map_environment_document_to_environment_updated_at(
@@ -480,26 +472,6 @@ class Flagsmith:
                 )
             except (KeyError, TypeError, ValueError):
                 logger.exception("Error parsing environment document")
-
-    @property
-    def _evaluation_context(self) -> typing.Optional[SDKEvaluationContext]:
-        return self.__evaluation_context
-
-    @_evaluation_context.setter
-    def _evaluation_context(
-        self, context: typing.Optional[SDKEvaluationContext]
-    ) -> None:
-        """Swap in a new evaluation context and rebuild the overrides index.
-
-        The index maps feature_name -> segments that override it. Built once
-        per refresh and reused across every subsequent per-identity lazy
-        resolution; rebuilding here keeps it in sync with the current doc
-        without any hot-path cost.
-        """
-        self.__evaluation_context = context
-        self._segment_overrides_index = (
-            build_segment_overrides_index(context) if context is not None else {}
-        )
 
     def _get_headers(
         self,
@@ -520,22 +492,13 @@ class Flagsmith:
         return headers
 
     def _get_environment_flags_from_document(self) -> Flags:
-        if self._evaluation_context is None:
+        if (local_evaluation := self._local_evaluation) is None:
             raise TypeError("No environment present")
 
-        # Omit segments from evaluation context for environment flags
-        # as they are only relevant for identity-specific evaluations
-        context_without_segments = self._evaluation_context.copy()
-        context_without_segments.pop("segments", None)
-
-        evaluation_result = engine.get_evaluation_result(
-            context=context_without_segments,
-        )
-
-        return Flags.from_evaluation_result(
-            evaluation_result=evaluation_result,
-            analytics_processor=self._analytics_processor,
+        return Flags(
+            flags=dict(local_evaluation.environment_flags),
             default_flag_handler=self.default_flag_handler,
+            _analytics_processor=self._analytics_processor,
         )
 
     def _get_identity_flags_from_document(
@@ -543,11 +506,10 @@ class Flagsmith:
         identifier: str,
         traits: TraitMapping,
     ) -> Flags:
-        if self._evaluation_context is None:
+        if (local_evaluation := self._local_evaluation) is None:
             raise TypeError("No environment present")
 
-        context = map_context_and_identity_data_to_context(
-            context=self._evaluation_context,
+        context, overrides_index = local_evaluation.get_identity_context(
             identifier=identifier,
             traits=traits,
         )
@@ -556,7 +518,7 @@ class Flagsmith:
         # large environment.
         return Flags.from_evaluation_context(
             context=context,
-            overrides_index=self._segment_overrides_index,
+            overrides_index=overrides_index,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
         )
