@@ -20,7 +20,7 @@ def as_spec_flags(flags: Flags) -> list[SpecFlag]:
     ]
 
 
-# Given an SDK client for the environment
+# Create the SDK client
 def create_client(environment_key: str, api_url: str) -> Flagsmith:
     return Flagsmith(environment_key=environment_key, api_url=api_url)
 
