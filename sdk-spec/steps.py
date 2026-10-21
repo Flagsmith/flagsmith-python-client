@@ -35,3 +35,9 @@ def get_identity_flags(
     flagsmith: Flagsmith, identifier: str, traits: TraitMapping
 ) -> list[SpecFlag]:
     return as_spec_flags(flagsmith.get_identity_flags(identifier, traits=traits))
+
+
+# When the application calls testChange
+def call_test_change(flagsmith: Flagsmith) -> str:
+    """The spec's minimal step, which checks that this SDK picks up newly added steps."""
+    return "testChange"
