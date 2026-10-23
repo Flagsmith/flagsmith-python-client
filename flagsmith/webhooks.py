@@ -37,5 +37,8 @@ def verify_signature(
     :param shared_secret: The shared secret configured for this specific webhook.
     :return: True if the signature is valid, False otherwise.
     """
+    if not received_signature.isascii():
+        return False
+
     expected_signature = generate_signature(request_body, shared_secret)
     return hmac.compare_digest(expected_signature, received_signature)
