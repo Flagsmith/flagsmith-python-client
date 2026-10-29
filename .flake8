@@ -2,3 +2,6 @@
 max-line-length = 120
 max-complexity = 10
 exclude = .git,__pycache__,.venv
+per-file-ignores =
+    # Step markers must match the spec step text on a single line.
+    sdk-spec/steps.py: E501
