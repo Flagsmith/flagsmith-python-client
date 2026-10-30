@@ -519,6 +519,7 @@ class Flagsmith:
         return Flags.from_evaluation_context(
             context=context,
             overrides_index=overrides_index,
+            flag_dependent_features=local_evaluation.flag_dependent_features,
             analytics_processor=self._analytics_processor,
             default_flag_handler=self.default_flag_handler,
         )

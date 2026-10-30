@@ -39,6 +39,17 @@ def create_client_with_events(
     )
 
 
+# Create the SDK client with local evaluation
+def create_client_with_local_evaluation(
+    environment_key: str, api_url: str
+) -> Flagsmith:
+    return Flagsmith(
+        environment_key=environment_key,
+        api_url=api_url,
+        enable_local_evaluation=True,
+    )
+
+
 # When the application gets the environment flags
 def get_environment_flags(flagsmith: Flagsmith) -> list[SpecFlag]:
     return as_spec_flags(flagsmith.get_environment_flags())

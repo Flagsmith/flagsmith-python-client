@@ -101,7 +101,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert all_flags[0].value == "some-value"
 
 
-def test_get_environment_flags_omits_segments_from_evaluation_context(
+def test_get_environment_flags__local_evaluation__omits_segments_needing_an_identity(
     mocker: MockerFixture,
     local_eval_flagsmith: Flagsmith,
     evaluation_context: SDKEvaluationContext,
@@ -131,10 +131,9 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
     local_eval_flagsmith.get_environment_flags()
 
     # Then
-    # Verify segments are not present in the context passed to the engine
-    context_without_segments = evaluation_context.copy()
-    context_without_segments.pop("segments", None)
-    mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
+    mock_get_evaluation_result.assert_called_once_with(
+        context={**evaluation_context, "segments": {}},
+    )
 
 
 def test_get_environment_flags__local_evaluation__evaluates_once_per_environment(
@@ -339,6 +338,23 @@ def test_get_identity_flags__resolves_one_flag_at_a_time(
     assert spy.call_count == 1
     trimmed_context = spy.call_args.kwargs.get("context") or spy.call_args.args[0]
     assert set(trimmed_context["features"]) == {"some_feature"}
+
+
+def test_get_identity_flags__local_evaluation__dependent_flag_follows_prerequisite(
+    flagsmith: Flagsmith,
+    flag_dependency_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    flagsmith._local_evaluation = LocalEvaluation(flag_dependency_context)
+    flagsmith.enable_local_evaluation = True
+
+    # When
+    identity_flags = flagsmith.get_identity_flags("user-1")
+
+    # Then
+    assert identity_flags.is_feature_enabled("dependent") is True
+    assert identity_flags.get_feature_value("dependent") == "dependent-on"
+    assert identity_flags.is_feature_enabled("transitive") is True
 
 
 @responses.activate()

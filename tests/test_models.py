@@ -8,6 +8,7 @@ from flagsmith.models import (
     Flag,
     Flags,
     build_segment_overrides_index,
+    find_flag_dependent_features,
 )
 from flagsmith.types import (
     SDKEvaluationContext,
@@ -405,6 +406,7 @@ def lazy_flags(lazy_context: SDKEvaluationContext) -> Flags:
     return Flags.from_evaluation_context(
         context=lazy_context,
         overrides_index=build_segment_overrides_index(lazy_context),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -431,6 +433,7 @@ def test_lazy_flags__get_flag__skips_non_matching_segment_override(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -453,6 +456,7 @@ def test_lazy_flags__get_flag__caches_per_feature(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -477,6 +481,7 @@ def test_lazy_flags__all_flags__materialises_every_feature(
     flags = Flags.from_evaluation_context(
         context=ctx,
         overrides_index=build_segment_overrides_index(ctx),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=None,
     )
@@ -502,6 +507,7 @@ def test_lazy_flags__missing_feature__falls_through_to_default_handler(
     flags = Flags.from_evaluation_context(
         context=lazy_context,
         overrides_index=build_segment_overrides_index(lazy_context),
+        flag_dependent_features=frozenset(),
         analytics_processor=None,
         default_flag_handler=default,
     )
@@ -561,3 +567,51 @@ def test_build_segment_overrides_index__duplicate_segment_key_fields__keeps_both
     # Then
     # both segments are indexed, neither collapses into the other
     assert set(index["target"]) == {"premium_segment", "enterprise_segment"}
+
+
+def test_find_flag_dependent_features__returns_features_overridden_on_other_flags(
+    flag_dependency_context: SDKEvaluationContext,
+    lazy_context: SDKEvaluationContext,
+) -> None:
+    # Given
+    assert flag_dependency_context["segments"] is not None
+    assert lazy_context["segments"] is not None
+    lazy_context["segments"]["identity_segment"] = {
+        "key": "identity_segment",
+        "name": "identity_segment",
+        "rules": [
+            {
+                "type": "ALL",
+                "conditions": [
+                    {
+                        "property": "$.identity.identifier",
+                        "operator": "EQUAL",
+                        "value": "user-1",
+                    },
+                ],
+            }
+        ],
+        "overrides": [
+            {"key": "noise_0", "name": "noise_0", "enabled": False, "value": None},
+        ],
+    }
+    overrides_index = build_segment_overrides_index(
+        {
+            **lazy_context,
+            "segments": {
+                **lazy_context["segments"],
+                **flag_dependency_context["segments"],
+            },
+        }
+    )
+
+    # When
+    flag_dependent_features = find_flag_dependent_features(overrides_index)
+
+    # Then
+    assert flag_dependent_features == {
+        "transitive",
+        "dependent",
+        "cyclic_a",
+        "cyclic_b",
+    }
