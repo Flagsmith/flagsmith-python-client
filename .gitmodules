@@ -1,0 +1,4 @@
+[submodule "tests/data/sdk-benchmarks"]
+	path = tests/data/sdk-benchmarks
+	url = https://github.com/Flagsmith/sdk-benchmarks.git
+	branch = 0.0.2
