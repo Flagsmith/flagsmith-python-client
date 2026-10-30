@@ -101,7 +101,7 @@ def test_get_environment_flags_uses_local_environment_when_available(
     assert all_flags[0].value == "some-value"
 
 
-def test_get_environment_flags_omits_segments_from_evaluation_context(
+def test_get_environment_flags__local_evaluation__omits_segments_needing_an_identity(
     mocker: MockerFixture,
     local_eval_flagsmith: Flagsmith,
     evaluation_context: SDKEvaluationContext,
@@ -131,10 +131,9 @@ def test_get_environment_flags_omits_segments_from_evaluation_context(
     local_eval_flagsmith.get_environment_flags()
 
     # Then
-    # Verify segments are not present in the context passed to the engine
-    context_without_segments = evaluation_context.copy()
-    context_without_segments.pop("segments", None)
-    mock_get_evaluation_result.assert_called_once_with(context=context_without_segments)
+    mock_get_evaluation_result.assert_called_once_with(
+        context={**evaluation_context, "segments": {}},
+    )
 
 
 def test_get_environment_flags__local_evaluation__evaluates_once_per_environment(

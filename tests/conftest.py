@@ -162,7 +162,6 @@ def flag_dependency_context() -> SDKEvaluationContext:
     """
     return {
         "environment": {"key": "env-key", "name": "env"},
-        "identity": {"identifier": "user-1", "key": "env-key_user-1"},
         "features": {
             "transitive": {
                 "key": "4",
