@@ -14,7 +14,7 @@ permissions:
 jobs:
   benchmarks:
     name: Run benchmarks
-    runs-on: codspeed-macro
+    runs-on: depot-ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -34,5 +34,5 @@ jobs:
       - name: Run benchmarks
         uses: CodSpeedHQ/action@78102a468f96d8e0ccb92d0ec49425753fc42062 # v5.6.0
         with:
-          mode: walltime
+          mode: simulation
           run: make benchmark
