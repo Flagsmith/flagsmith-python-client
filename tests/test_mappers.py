@@ -67,8 +67,8 @@ def test_map_environment_document_to_context__experiment__carried_in_metadata(
     context = map_environment_document_to_context(experiment_environment)
 
     # Then
-    experiment = {"id": 42, "name": "Banner experiment"}
-    assert context["features"]["banner"]["metadata"] == {
+    experiment = {"id": 42, "name": "Checkout experiment"}
+    assert context["features"]["checkout"]["metadata"] == {
         "id": 1,
         "experiment": {**experiment, "in_experiment": False},
     }

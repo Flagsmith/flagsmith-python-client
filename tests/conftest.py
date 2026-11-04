@@ -314,9 +314,9 @@ def flag_dependency_context() -> SDKEvaluationContext:
 def experiment_environment() -> EnvironmentModel:
     """An environment document with a running experiment.
 
-    `banner` runs experiment 42, whose rollout segment is identities on the
+    `checkout` runs experiment 42, whose rollout segment is identities on the
     premium plan, serving them the `treatment` variant. `user_overridden` has
-    an identity override for `banner`, and `plain` runs no experiment.
+    an identity override for `checkout`, and `plain` runs no experiment.
     """
     return {
         "api_key": "test-key",
@@ -325,7 +325,7 @@ def experiment_environment() -> EnvironmentModel:
             "segments": [
                 {
                     "id": 7,
-                    "name": "Banner experiment rollout",
+                    "name": "Checkout experiment rollout",
                     "rules": [
                         {
                             "type": "ALL",
@@ -342,7 +342,7 @@ def experiment_environment() -> EnvironmentModel:
                     "feature_states": [
                         {
                             "enabled": True,
-                            "feature": {"id": 1, "name": "banner"},
+                            "feature": {"id": 1, "name": "checkout"},
                             "feature_state_value": "control",
                             "featurestate_uuid": "00000000-0000-0000-0000-000000000003",
                             "feature_segment": {"priority": 0},
@@ -360,7 +360,7 @@ def experiment_environment() -> EnvironmentModel:
                             "metadata": {
                                 "experiment": {
                                     "id": 42,
-                                    "name": "Banner experiment",
+                                    "name": "Checkout experiment",
                                     "in_experiment": True,
                                 }
                             },
@@ -375,7 +375,7 @@ def experiment_environment() -> EnvironmentModel:
                 "identity_features": [
                     {
                         "enabled": True,
-                        "feature": {"id": 1, "name": "banner"},
+                        "feature": {"id": 1, "name": "checkout"},
                         "feature_state_value": "hello override",
                         "featurestate_uuid": "00000000-0000-0000-0000-000000000004",
                         "multivariate_feature_state_values": [],
@@ -386,14 +386,14 @@ def experiment_environment() -> EnvironmentModel:
         "feature_states": [
             {
                 "enabled": True,
-                "feature": {"id": 1, "name": "banner"},
+                "feature": {"id": 1, "name": "checkout"},
                 "feature_state_value": "control",
                 "featurestate_uuid": "00000000-0000-0000-0000-000000000001",
                 "multivariate_feature_state_values": [],
                 "metadata": {
                     "experiment": {
                         "id": 42,
-                        "name": "Banner experiment",
+                        "name": "Checkout experiment",
                         "in_experiment": False,
                     }
                 },

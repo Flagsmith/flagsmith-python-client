@@ -1484,7 +1484,7 @@ def test_get_experiment_flag__local_evaluation__enrolled__tracks_exposure(
 
     # When
     flag = local_experiment_flagsmith.get_experiment_flag(
-        feature_name="banner", identifier="user_123", traits={"plan": "premium"}
+        feature_name="checkout", identifier="user_123", traits={"plan": "premium"}
     )
 
     # Then
@@ -1492,10 +1492,10 @@ def test_get_experiment_flag__local_evaluation__enrolled__tracks_exposure(
     assert flag.value == "hello treatment"
     assert flag.variant == "treatment"
     assert flag.experiment == ExperimentMetadata(
-        id=42, name="Banner experiment", in_experiment=True
+        id=42, name="Checkout experiment", in_experiment=True
     )
     mock_track.assert_called_once_with(
-        feature_name="banner",
+        feature_name="checkout",
         identifier="user_123",
         value="treatment",
         traits={"plan": "premium"},
@@ -1507,15 +1507,15 @@ def test_get_experiment_flag__local_evaluation__enrolled__tracks_exposure(
     "feature_name, identifier, traits, expected_value, expected_experiment",
     [
         pytest.param(
-            "banner",
+            "checkout",
             "user_123",
             {"plan": "free"},
             "control",
-            ExperimentMetadata(id=42, name="Banner experiment", in_experiment=False),
+            ExperimentMetadata(id=42, name="Checkout experiment", in_experiment=False),
             id="not-enrolled",
         ),
         pytest.param(
-            "banner",
+            "checkout",
             "user_overridden",
             {"plan": "premium"},
             "hello override",
@@ -1563,7 +1563,7 @@ def test_get_environment_flags__local_evaluation__running_experiment__no_experim
     local_experiment_flagsmith: Flagsmith,
 ) -> None:
     # When
-    flag = local_experiment_flagsmith.get_environment_flags().get_flag("banner")
+    flag = local_experiment_flagsmith.get_environment_flags().get_flag("checkout")
 
     # Then - as with remote evaluation, only an identity is enrolled in one
     assert isinstance(flag, Flag)
