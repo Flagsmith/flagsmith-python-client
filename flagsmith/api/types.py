@@ -49,6 +49,16 @@ class MultivariateFeatureStateValueModel(typing.TypedDict):
     percentage_allocation: float
 
 
+class ExperimentModel(typing.TypedDict):
+    id: int
+    name: str
+    in_experiment: bool
+
+
+class FeatureStateMetadataModel(typing.TypedDict):
+    experiment: NotRequired[ExperimentModel]
+
+
 class FeatureStateModel(typing.TypedDict):
     enabled: bool
     feature_segment: NotRequired[typing.Optional[FeatureSegmentModel]]
@@ -56,6 +66,7 @@ class FeatureStateModel(typing.TypedDict):
     feature: FeatureModel
     featurestate_uuid: str
     multivariate_feature_state_values: list[MultivariateFeatureStateValueModel]
+    metadata: NotRequired[typing.Optional[FeatureStateMetadataModel]]
 
 
 class IdentityModel(typing.TypedDict):

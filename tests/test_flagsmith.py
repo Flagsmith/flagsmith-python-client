@@ -1471,3 +1471,197 @@ def test_get_experiment_flag__disabled_feature__skips_exposure(
         "Not sending $flag_exposure for feature checkout_v2: feature is disabled."
         in caplog.messages
     )
+
+
+def _environment_with_running_experiment() -> EnvironmentModel:
+    """`banner` runs an experiment whose rollout segment is identities on the
+    premium plan, serving them the `treatment` variant. `user_overridden` has
+    an identity override for it, and `plain` runs no experiment."""
+    experiment = {"id": 42, "name": "Banner experiment", "in_experiment": False}
+
+    def feature_state(
+        feature_name: str,
+        value: str,
+        metadata: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        **extra: typing.Any,
+    ) -> typing.Dict[str, typing.Any]:
+        return {
+            "enabled": True,
+            "feature": {
+                "id": 1 if feature_name == "banner" else 2,
+                "name": feature_name,
+            },
+            "feature_state_value": value,
+            "featurestate_uuid": f"00000000-0000-0000-0000-00000000000{len(value)}",
+            "multivariate_feature_state_values": [],
+            **({"metadata": metadata} if metadata is not None else {}),
+            **extra,
+        }
+
+    environment = {
+        "api_key": "test-key",
+        "name": "Test",
+        "project": {
+            "segments": [
+                {
+                    "id": 7,
+                    "name": "Banner experiment rollout",
+                    "rules": [
+                        {
+                            "type": "ALL",
+                            "rules": [],
+                            "conditions": [
+                                {
+                                    "operator": "EQUAL",
+                                    "property_": "plan",
+                                    "value": "premium",
+                                }
+                            ],
+                        }
+                    ],
+                    "feature_states": [
+                        feature_state(
+                            "banner",
+                            "control",
+                            {"experiment": {**experiment, "in_experiment": True}},
+                            feature_segment={"priority": 0},
+                            multivariate_feature_state_values=[
+                                {
+                                    "id": 10,
+                                    "mv_fs_value_uuid": "00000000-0000-0000-0000-000000000010",
+                                    "percentage_allocation": 100,
+                                    "multivariate_feature_option": {
+                                        "value": "hello treatment",
+                                        "key": "treatment",
+                                    },
+                                }
+                            ],
+                        )
+                    ],
+                }
+            ]
+        },
+        "identity_overrides": [
+            {
+                "identifier": "user_overridden",
+                "identity_features": [feature_state("banner", "hello override")],
+            }
+        ],
+        "feature_states": [
+            feature_state("banner", "control", {"experiment": experiment}),
+            feature_state("plain", "hello"),
+        ],
+    }
+    return typing.cast(EnvironmentModel, environment)
+
+
+@pytest.fixture()
+def local_experiment_flagsmith(api_key: str) -> Flagsmith:
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url="http://test/"),
+    )
+    flagsmith._local_evaluation = LocalEvaluation.from_environment_document(
+        _environment_with_running_experiment()
+    )
+    flagsmith.enable_local_evaluation = True
+    return flagsmith
+
+
+def test_get_experiment_flag__local_evaluation__enrolled__tracks_exposure(
+    mocker: MockerFixture, local_experiment_flagsmith: Flagsmith
+) -> None:
+    # Given
+    assert local_experiment_flagsmith._event_processor
+    mock_track = mocker.patch.object(
+        local_experiment_flagsmith._event_processor, "track_exposure_event"
+    )
+
+    # When
+    flag = local_experiment_flagsmith.get_experiment_flag(
+        feature_name="banner", identifier="user_123", traits={"plan": "premium"}
+    )
+
+    # Then
+    assert isinstance(flag, Flag)
+    assert flag.value == "hello treatment"
+    assert flag.variant == "treatment"
+    assert flag.experiment == ExperimentMetadata(
+        id=42, name="Banner experiment", in_experiment=True
+    )
+    mock_track.assert_called_once_with(
+        feature_name="banner",
+        identifier="user_123",
+        value="treatment",
+        traits={"plan": "premium"},
+        metadata={"experiment_id": 42},
+    )
+
+
+@pytest.mark.parametrize(
+    "feature_name, identifier, traits, expected_value, expected_experiment",
+    [
+        pytest.param(
+            "banner",
+            "user_123",
+            {"plan": "free"},
+            "control",
+            ExperimentMetadata(id=42, name="Banner experiment", in_experiment=False),
+            id="not-enrolled",
+        ),
+        pytest.param(
+            "banner",
+            "user_overridden",
+            {"plan": "premium"},
+            "hello override",
+            None,
+            id="identity-override",
+        ),
+        pytest.param(
+            "plain",
+            "user_123",
+            {"plan": "premium"},
+            "hello",
+            None,
+            id="no-experiment",
+        ),
+    ],
+)
+def test_get_experiment_flag__local_evaluation__not_enrolled__skips_exposure(
+    mocker: MockerFixture,
+    local_experiment_flagsmith: Flagsmith,
+    feature_name: str,
+    identifier: str,
+    traits: typing.Dict[str, typing.Any],
+    expected_value: str,
+    expected_experiment: typing.Optional[ExperimentMetadata],
+) -> None:
+    # Given
+    assert local_experiment_flagsmith._event_processor
+    mock_track = mocker.patch.object(
+        local_experiment_flagsmith._event_processor, "track_exposure_event"
+    )
+
+    # When
+    flag = local_experiment_flagsmith.get_experiment_flag(
+        feature_name=feature_name, identifier=identifier, traits=traits
+    )
+
+    # Then
+    assert isinstance(flag, Flag)
+    assert flag.value == expected_value
+    assert flag.experiment == expected_experiment
+    mock_track.assert_not_called()
+
+
+def test_get_environment_flags__local_evaluation__running_experiment__no_experiment(
+    local_experiment_flagsmith: Flagsmith,
+) -> None:
+    # When
+    flag = local_experiment_flagsmith.get_environment_flags().get_flag("banner")
+
+    # Then - as with remote evaluation, only an identity is enrolled in one
+    assert isinstance(flag, Flag)
+    assert flag.value == "control"
+    assert flag.experiment is None

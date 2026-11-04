@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import typing
 from collections import ChainMap
 from functools import cached_property
@@ -77,7 +78,8 @@ class LocalEvaluation:
         """Environment flags, which depend on the environment document only.
 
         Evaluated without an identity, so segments reading traits or identity
-        context are left out.
+        context are left out, and flags carry no experiment: only an identity
+        is enrolled in one, as with remote evaluation.
         """
         environment_context = self.context.copy()
         if segments := environment_context.get("segments"):
@@ -90,7 +92,9 @@ class LocalEvaluation:
             context=environment_context,
         )
         return {
-            feature_name: Flag.from_evaluation_result(flag_result)
+            feature_name: dataclasses.replace(
+                Flag.from_evaluation_result(flag_result), experiment=None
+            )
             for feature_name, flag_result in evaluation_result["flags"].items()
         }
 

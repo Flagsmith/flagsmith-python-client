@@ -130,6 +130,7 @@ class Flag(BaseFlag):
                 feature_id=metadata["id"],
                 variant=flag_result.get("variant"),
                 reason=flag_result["reason"],
+                experiment=ExperimentMetadata.from_api_metadata(metadata),
             )
         raise ValueError(
             "FlagResult metadata is missing. Cannot create Flag instance. "

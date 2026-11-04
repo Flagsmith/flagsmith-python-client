@@ -199,6 +199,8 @@ def _map_environment_document_feature_states_to_feature_contexts(
 ) -> typing.Iterable[FeatureContext[FeatureMetadata]]:
     for feature_state in feature_states:
         metadata: FeatureMetadata = {"id": feature_state["feature"]["id"]}
+        if experiment := (feature_state.get("metadata") or {}).get("experiment"):
+            metadata["experiment"] = experiment
         feature_context = FeatureContext[FeatureMetadata](
             key=str(
                 feature_state.get("django_id") or feature_state["featurestate_uuid"]
