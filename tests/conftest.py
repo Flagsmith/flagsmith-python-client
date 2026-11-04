@@ -314,9 +314,10 @@ def flag_dependency_context() -> SDKEvaluationContext:
 def experiment_environment() -> EnvironmentModel:
     """An environment document with a running experiment.
 
-    `checkout` runs experiment 42, whose rollout segment is identities on the
-    premium plan, serving them the `treatment` variant. `user_overridden` has
-    an identity override for `checkout`, and `plain` runs no experiment.
+    `checkout` has a running experiment (id 42). Its rollout segment is
+    identities on the premium plan, who are served the `treatment` variant.
+    `user_overridden` has an identity override for `checkout`, and `plain` has
+    no experiment.
     """
     return {
         "api_key": "test-key",
