@@ -17,6 +17,7 @@ from flagsmith.analytics import (
     EventProcessorConfig,
 )
 from flagsmith.api.types import EnvironmentModel
+from flagsmith.local_evaluation import LocalEvaluation
 from flagsmith.mappers import map_environment_document_to_context
 from flagsmith.types import SDKEvaluationContext
 
@@ -307,3 +308,121 @@ def flag_dependency_context() -> SDKEvaluationContext:
             },
         },
     }
+
+
+@pytest.fixture
+def experiment_environment() -> EnvironmentModel:
+    """An environment document with a running experiment.
+
+    `checkout` has a running experiment (id 42). Its rollout segment is
+    identities on the premium plan, who are served the `treatment` variant.
+    `user_overridden` has an identity override for `checkout`, and `plain` has
+    no experiment.
+    """
+    return {
+        "api_key": "test-key",
+        "name": "Test",
+        "project": {
+            "segments": [
+                {
+                    "id": 7,
+                    "name": "Checkout experiment rollout",
+                    "rules": [
+                        {
+                            "type": "ALL",
+                            "rules": [],
+                            "conditions": [
+                                {
+                                    "operator": "EQUAL",
+                                    "property_": "plan",
+                                    "value": "premium",
+                                }
+                            ],
+                        }
+                    ],
+                    "feature_states": [
+                        {
+                            "enabled": True,
+                            "feature": {"id": 1, "name": "checkout"},
+                            "feature_state_value": "control",
+                            "featurestate_uuid": "00000000-0000-0000-0000-000000000003",
+                            "feature_segment": {"priority": 0},
+                            "multivariate_feature_state_values": [
+                                {
+                                    "id": 10,
+                                    "mv_fs_value_uuid": "00000000-0000-0000-0000-000000000010",
+                                    "percentage_allocation": 100,
+                                    "multivariate_feature_option": {
+                                        "value": "hello treatment",
+                                        "key": "treatment",
+                                    },
+                                }
+                            ],
+                            "metadata": {
+                                "experiment": {
+                                    "id": 42,
+                                    "name": "Checkout experiment",
+                                    "in_experiment": True,
+                                }
+                            },
+                        }
+                    ],
+                }
+            ]
+        },
+        "identity_overrides": [
+            {
+                "identifier": "user_overridden",
+                "identity_features": [
+                    {
+                        "enabled": True,
+                        "feature": {"id": 1, "name": "checkout"},
+                        "feature_state_value": "hello override",
+                        "featurestate_uuid": "00000000-0000-0000-0000-000000000004",
+                        "multivariate_feature_state_values": [],
+                    }
+                ],
+            }
+        ],
+        "feature_states": [
+            {
+                "enabled": True,
+                "feature": {"id": 1, "name": "checkout"},
+                "feature_state_value": "control",
+                "featurestate_uuid": "00000000-0000-0000-0000-000000000001",
+                "multivariate_feature_state_values": [],
+                "metadata": {
+                    "experiment": {
+                        "id": 42,
+                        "name": "Checkout experiment",
+                        "in_experiment": False,
+                    }
+                },
+            },
+            {
+                "enabled": True,
+                "feature": {"id": 2, "name": "plain"},
+                "feature_state_value": "hello",
+                "featurestate_uuid": "00000000-0000-0000-0000-000000000002",
+                "multivariate_feature_state_values": [],
+            },
+        ],
+    }
+
+
+@pytest.fixture
+def local_experiment_flagsmith(
+    api_key: str,
+    event_processor_config: EventProcessorConfig,
+    experiment_environment: EnvironmentModel,
+) -> Flagsmith:
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=event_processor_config,
+    )
+    flagsmith._local_evaluation = LocalEvaluation.from_environment_document(
+        experiment_environment
+    )
+    flagsmith.enable_local_evaluation = True
+    return flagsmith

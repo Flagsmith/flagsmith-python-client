@@ -41,6 +41,59 @@ def test_flag_from_evaluation_result() -> None:
     assert flag.reason == "DEFAULT"
 
 
+@pytest.mark.parametrize(
+    "in_experiment",
+    [pytest.param(True, id="enrolled"), pytest.param(False, id="not-enrolled")],
+)
+def test_flag_from_evaluation_result__experiment_metadata__sets_experiment(
+    in_experiment: bool,
+) -> None:
+    # Given
+    flag_result: SDKFlagResult = {
+        "enabled": True,
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
+        "variant": None,
+        "metadata": {
+            "id": 123,
+            "experiment": {
+                "id": 42,
+                "name": "New checkout CTA",
+                "in_experiment": in_experiment,
+            },
+        },
+    }
+
+    # When
+    flag = Flag.from_evaluation_result(flag_result)
+
+    # Then
+    assert flag.experiment == ExperimentMetadata(
+        id=42, name="New checkout CTA", in_experiment=in_experiment
+    )
+
+
+def test_flag_from_evaluation_result__no_experiment_metadata__experiment_is_none() -> (
+    None
+):
+    # Given
+    flag_result: SDKFlagResult = {
+        "enabled": True,
+        "name": "test_feature",
+        "reason": "DEFAULT",
+        "value": "test-value",
+        "variant": None,
+        "metadata": {"id": 123},
+    }
+
+    # When
+    flag = Flag.from_evaluation_result(flag_result)
+
+    # Then
+    assert flag.experiment is None
+
+
 def test_flag_from_evaluation_result__no_variant__is_none() -> None:
     # Given
     flag_result: SDKFlagResult = {

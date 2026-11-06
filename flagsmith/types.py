@@ -6,6 +6,8 @@ from flag_engine.engine import ContextValue
 from flag_engine.result.types import EvaluationResult, FlagResult
 from typing_extensions import NotRequired, TypeAlias
 
+from flagsmith.api.types import ExperimentModel
+
 _JsonScalarType: TypeAlias = typing.Union[
     int,
     str,
@@ -47,6 +49,8 @@ class SegmentMetadata(typing.TypedDict):
 class FeatureMetadata(typing.TypedDict):
     id: int
     """The ID of the feature used in Flagsmith API."""
+    experiment: NotRequired[ExperimentModel]
+    """The running experiment the feature state belongs to, if any."""
 
 
 SDKEvaluationContext = EvaluationContext[SegmentMetadata, FeatureMetadata]

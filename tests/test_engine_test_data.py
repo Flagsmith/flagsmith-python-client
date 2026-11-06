@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from flagsmith.models import (
+    ExperimentMetadata,
     Flag,
     Flags,
     build_segment_overrides_index,
@@ -65,12 +66,24 @@ def test_engine_test_data__lazy_flags__match_expected_result(
     # Then
     assert all(isinstance(flag, Flag) for flag in actual_flags.values())
     actual = {
-        feature_name: (flag.enabled, flag.value, flag.reason)
+        feature_name: (
+            flag.enabled,
+            flag.value,
+            flag.reason,
+            flag.variant,
+            flag.experiment,
+        )
         for feature_name, flag in actual_flags.items()
         if isinstance(flag, Flag)
     }
     assert actual == {
-        feature_name: (expected["enabled"], expected["value"], expected["reason"])
+        feature_name: (
+            expected["enabled"],
+            expected["value"],
+            expected["reason"],
+            expected["variant"],
+            ExperimentMetadata.from_api_metadata(expected.get("metadata")),
+        )
         for feature_name, expected in test_case["result"]["flags"].items()
     }
 
