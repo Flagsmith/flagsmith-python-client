@@ -1,5 +1,22 @@
 # Changelog
 
+## [6.5.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.4.0...v6.5.0) (2026-11-06)
+
+
+### Features
+
+* Record exposures under local evaluation ([#276](https://github.com/Flagsmith/flagsmith-python-client/issues/276)) ([4a25d50](https://github.com/Flagsmith/flagsmith-python-client/commit/4a25d5071114c6e5e50b7e848f615bf7d8f730f5))
+
+
+### Dependency Updates
+
+* update dependency flagsmith-flag-engine to v11.1.2 ([#277](https://github.com/Flagsmith/flagsmith-python-client/issues/277)) ([dbf4554](https://github.com/Flagsmith/flagsmith-python-client/commit/dbf45544492c514f46f9eb7720017de088f3455d))
+
+
+### Other
+
+* Let Renovate keep updating spec bumps the webhook handler commits to ([#279](https://github.com/Flagsmith/flagsmith-python-client/issues/279)) ([f47856d](https://github.com/Flagsmith/flagsmith-python-client/commit/f47856d498cc712b9756a410a516a23af8014ad8))
+
 ## [6.4.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.3.0...v6.4.0) (2026-10-30)
 
 ### Features
