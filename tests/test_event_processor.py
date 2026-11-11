@@ -389,6 +389,28 @@ def test_flush__environment_key_refused__stops_event_tracking(
     ]
 
 
+def test_stop__timer_flush_in_progress__no_further_timer_flushes(
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/", flush_interval_seconds=100
+        ),
+        environment_key="test_key",
+    )
+    processor.start()
+    timer = processor._timer
+    processor.stop()
+
+    # When
+    processor._timer_flush()
+
+    # Then
+    assert processor._timer is timer
+    assert len(mocked_responses.calls) == 0
+
+
 def test_start__flushes_on_timer(
     mocked_responses: responses.RequestsMock,
 ) -> None:
@@ -433,7 +455,7 @@ def test_stop__sends_buffered_events(
 
     # Then
     assert processor._timer is not None
-    assert not processor._timer.is_alive()
+    assert processor._timer.finished.is_set()
     assert len(mocked_responses.calls) == 1
     assert processor._buffer == []
 

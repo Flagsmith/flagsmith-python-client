@@ -149,6 +149,7 @@ class EventProcessor:
         self._attempted_count = 0
         self._full_buffer_flush_pending = False
         self._refused = False
+        self._stopped = threading.Event()
         self._closed = threading.Event()
         self._timer: typing.Optional[threading.Timer] = None
 
@@ -371,6 +372,7 @@ class EventProcessor:
         at most `timeout_seconds`. Events not sent by then are not retried.
         """
         atexit.unregister(self.stop)
+        self._stopped.set()
         if self._timer is not None:
             self._timer.cancel()
         final_flush = threading.Thread(target=self._send, daemon=True)
@@ -384,6 +386,8 @@ class EventProcessor:
             )
 
     def _schedule_flush(self) -> None:
+        if self._stopped.is_set():
+            return
         self._timer = threading.Timer(self._flush_interval_seconds, self._timer_flush)
         self._timer.daemon = True
         self._timer.start()
