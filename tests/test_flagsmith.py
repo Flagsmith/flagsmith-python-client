@@ -1090,6 +1090,69 @@ def test_track_event_delegates_to_event_processor(
     )
 
 
+def test_flush_events__events_tracked__sent_to_events_api(
+    api_key: str, mocked_responses: responses.RequestsMock
+) -> None:
+    # Given
+    flagsmith = Flagsmith(
+        environment_key=api_key,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url="http://test/"),
+    )
+    mocked_responses.post("http://test/v1/events", status=202)
+    flagsmith.track_event("purchase", identifier="user1")
+
+    # When
+    flagsmith.flush_events()
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    body = json.loads(request_body)
+    assert [e["event"] for e in body["events"]] == ["purchase"]
+
+
+def test_flush_events__events_disabled__raises(api_key: str) -> None:
+    # Given
+    flagsmith = Flagsmith(environment_key=api_key)
+
+    # When / Then
+    with pytest.raises(ValueError, match="Events must be enabled to flush events."):
+        flagsmith.flush_events()
+
+
+def test_close__events_tracked__sent_within_timeout(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    assert flagsmith._event_processor
+    mock_stop = mocker.patch.object(flagsmith._event_processor, "stop")
+
+    # When
+    flagsmith.close(timeout_seconds=2)
+
+    # Then
+    mock_stop.assert_called_once_with(2)
+
+
+def test_close__local_evaluation__stops_polling(
+    mocker: MockerFixture,
+    local_eval_flagsmith: Flagsmith,
+) -> None:
+    # Given
+    mock_stop = mocker.patch.object(
+        local_eval_flagsmith.environment_data_polling_manager_thread, "stop"
+    )
+
+    # When
+    local_eval_flagsmith.close()
+
+    # Then
+    mock_stop.assert_called_once_with()
+
+
 def test_track_exposure_event_raises_without_config(api_key: str) -> None:
     flagsmith = Flagsmith(environment_key=api_key)
     with pytest.raises(ValueError, match="Events must be enabled"):

@@ -1,11 +1,14 @@
 import atexit
+import enum
 import json
 import logging
+import random
 import threading
 import typing
 from dataclasses import dataclass
 from datetime import datetime
 
+import requests
 from requests_futures.sessions import FuturesSession  # type: ignore
 
 from flagsmith.version import DEFAULT_USER_AGENT, __version__
@@ -20,6 +23,12 @@ ANALYTICS_TIMER: typing.Final[int] = 10
 FLAG_EXPOSURE_EVENT: typing.Final[str] = "$flag_exposure"
 
 DEFAULT_EVENT_API_URL: typing.Final[str] = "https://events.api.flagsmith.com/"
+
+EVENTS_REQUEST_TIMEOUT_SECONDS: typing.Final[float] = 3
+EVENTS_MAX_ATTEMPTS: typing.Final[int] = 3
+EVENTS_RETRY_BASE_SECONDS: typing.Final[float] = 1
+DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS: typing.Final[float] = 5
+RETRIED_STATUS_CODES: typing.Final[typing.FrozenSet[int]] = frozenset({408, 429})
 
 session = FuturesSession(max_workers=4)
 
@@ -96,11 +105,25 @@ class EventProcessorConfig:
     flush_interval_seconds: float = 10.0
 
 
+class _DeliveryOutcome(enum.Enum):
+    DELIVERED = "delivered"
+    DROPPED = "dropped"
+    KEPT = "kept"
+    REFUSED = "refused"
+
+
 class EventProcessor:
     """
     Buffered event processor that batches custom events and POSTs them to the
     Flagsmith event endpoint. Flushes on a background timer or when the buffer
     fills.
+
+    A batch is sent up to ``EVENTS_MAX_ATTEMPTS`` times, backing off with full
+    jitter between attempts, one batch at a time. A batch whose last attempt
+    fails transiently is kept for the next flush, unless that attempt got a
+    500. A batch the events API rejects is dropped, and an events API refusing
+    the environment key stops event tracking. When the buffer is full, the
+    oldest event is dropped.
     """
 
     def __init__(
@@ -116,9 +139,17 @@ class EventProcessor:
         self._max_buffer = config.max_buffer_items
         self._flush_interval_seconds = config.flush_interval_seconds
 
+        self._session = requests.Session()
         self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
         self._lock = threading.Lock()
+        # Held while a batch is in flight, so that one batch is sent at a time.
+        self._send_lock = threading.Lock()
+        self._tracked_count = 0
+        self._attempted_count = 0
+        self._full_buffer_flush_pending = False
+        self._refused = False
+        self._closed = threading.Event()
         self._timer: typing.Optional[threading.Timer] = None
 
     def track_event(
@@ -164,8 +195,14 @@ class EventProcessor:
         traits: typing.Optional[typing.Dict[str, typing.Any]],
         metadata: typing.Optional[typing.Dict[str, typing.Any]],
     ) -> None:
-        should_flush = False
         with self._lock:
+            if self._refused:
+                logger.debug(
+                    "Not tracking %s event: the events API refused the"
+                    " environment key.",
+                    event,
+                )
+                return
             if event == FLAG_EXPOSURE_EVENT:
                 # An exposure is defined by who saw which variant of which
                 # feature; equal exposures within one flush interval add no
@@ -184,6 +221,12 @@ class EventProcessor:
                     )
                     return
                 self._buffered_exposure_keys.add(exposure_key)
+            if len(self._buffer) >= self._max_buffer:
+                dropped = self._buffer.pop(0)
+                logger.warning(
+                    "Event buffer is full, dropping the oldest %s event",
+                    dropped["event"],
+                )
             self._buffer.append(
                 {
                     "event": event,
@@ -195,62 +238,150 @@ class EventProcessor:
                     "timestamp": int(datetime.now().timestamp() * 1000),
                 }
             )
-            if len(self._buffer) >= self._max_buffer:
-                should_flush = True
+            self._tracked_count += 1
+            if len(self._buffer) < self._max_buffer or (
+                self._full_buffer_flush_pending
+            ):
+                return
+            self._full_buffer_flush_pending = True
+            tracked_count = self._tracked_count
 
-        if should_flush:
-            self.flush()
+        threading.Thread(
+            target=self._flush_full_buffer, args=(tracked_count,), daemon=True
+        ).start()
 
     def flush(self) -> None:
+        """
+        Sends the events tracked so far, and returns once each of them has
+        been delivered, dropped, or kept for the next flush. Events already
+        sent while this was waiting for another batch in flight are not sent
+        again.
+        """
         with self._lock:
-            if not self._buffer:
-                return
-            events = self._buffer
-            self._buffer = []
-            self._buffered_exposure_keys.clear()
+            tracked_count = self._tracked_count
+        self._send(tracked_count)
 
-        payload = json.dumps({"events": events})
-        try:
-            future = session.post(
-                self._batch_endpoint,
-                data=payload,
-                timeout=3,
-                headers={
-                    "Content-Type": "application/json; charset=utf-8",
-                    "X-Environment-Key": self._environment_key,
-                    "Flagsmith-SDK-User-Agent": DEFAULT_USER_AGENT,
-                },
-            )
-        except RuntimeError:
-            logger.debug("Skipping flush: thread pool already shut down")
-            return
-        future.add_done_callback(lambda f: self._handle_flush_result(f, events))
+    def _flush_full_buffer(self, tracked_count: int) -> None:
+        with self._lock:
+            self._full_buffer_flush_pending = False
+        self._send(tracked_count)
 
-    def _handle_flush_result(
-        self,
-        future: typing.Any,
-        events: typing.List[typing.Dict[str, typing.Any]],
-    ) -> None:
-        try:
-            response = future.result()
-            response.raise_for_status()
-        except Exception:
-            logger.warning(
-                "Failed to flush pipeline analytics, re-queuing events", exc_info=True
-            )
+    def _send(self, tracked_count: typing.Optional[int] = None) -> None:
+        """
+        Sends the buffered events as one batch. Given `tracked_count`, does
+        nothing if every event tracked up to it has been sent already.
+        """
+        with self._send_lock:
             with self._lock:
-                self._buffer = events + self._buffer
-                self._buffer = self._buffer[: self._max_buffer]
+                if not self._buffer or (
+                    tracked_count is not None and self._attempted_count >= tracked_count
+                ):
+                    return
+                events = self._buffer
+                self._buffer = []
+                self._buffered_exposure_keys.clear()
+                attempted_count = self._tracked_count
+
+            outcome = self._deliver(events)
+
+            with self._lock:
+                self._attempted_count = attempted_count
+                if outcome is _DeliveryOutcome.KEPT:
+                    max_buffer = self._max_buffer
+                    self._buffer = (events + self._buffer)[-max_buffer:]
+                elif outcome is _DeliveryOutcome.REFUSED:
+                    self._refused = True
+                    self._buffer = []
+                    self._buffered_exposure_keys.clear()
+
+    def _deliver(
+        self, events: typing.List[typing.Dict[str, typing.Any]]
+    ) -> _DeliveryOutcome:
+        payload = json.dumps({"events": events})
+        for attempt in range(1, EVENTS_MAX_ATTEMPTS + 1):
+            if attempt > 1:
+                backoff = EVENTS_RETRY_BASE_SECONDS * 2 ** (attempt - 2)
+                if self._closed.wait(random.uniform(0, backoff)):
+                    logger.warning(
+                        "Not retrying %d events: the client is closed", len(events)
+                    )
+                    return _DeliveryOutcome.KEPT
+            try:
+                response = self._session.post(
+                    self._batch_endpoint,
+                    data=payload,
+                    timeout=EVENTS_REQUEST_TIMEOUT_SECONDS,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8",
+                        "X-Environment-Key": self._environment_key,
+                        "Flagsmith-SDK-User-Agent": DEFAULT_USER_AGENT,
+                    },
+                )
+            except requests.RequestException as e:
+                logger.warning(
+                    "Failed to send %d events, attempt %d of %d: %s",
+                    len(events),
+                    attempt,
+                    EVENTS_MAX_ATTEMPTS,
+                    e,
+                )
+                status = None
+            else:
+                status = response.status_code
+                if response.ok:
+                    return _DeliveryOutcome.DELIVERED
+                if status in (401, 403):
+                    logger.error(
+                        "Events API refused the environment key with %d,"
+                        " stopping event tracking",
+                        status,
+                    )
+                    return _DeliveryOutcome.REFUSED
+                if status not in RETRIED_STATUS_CODES and status < 500:
+                    logger.warning(
+                        "Events API rejected %d events with %d, dropping them",
+                        len(events),
+                        status,
+                    )
+                    return _DeliveryOutcome.DROPPED
+                logger.warning(
+                    "Failed to send %d events, attempt %d of %d: status %d",
+                    len(events),
+                    attempt,
+                    EVENTS_MAX_ATTEMPTS,
+                    status,
+                )
+        if status == 500:
+            logger.warning(
+                "Dropping %d events the events API failed with 500", len(events)
+            )
+            return _DeliveryOutcome.DROPPED
+        logger.warning("Keeping %d events for the next flush", len(events))
+        return _DeliveryOutcome.KEPT
 
     def start(self) -> None:
         self._schedule_flush()
         atexit.register(self.stop)
 
-    def stop(self) -> None:
+    def stop(
+        self, timeout_seconds: float = DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS
+    ) -> None:
+        """
+        Stops flushing on a timer, and sends the buffered events, waiting for
+        at most `timeout_seconds`. Events not sent by then are not retried.
+        """
         atexit.unregister(self.stop)
         if self._timer is not None:
             self._timer.cancel()
-        self.flush()
+        final_flush = threading.Thread(target=self._send, daemon=True)
+        final_flush.start()
+        final_flush.join(timeout_seconds)
+        self._closed.set()
+        if final_flush.is_alive():
+            logger.warning(
+                "Gave up sending events after %s seconds while closing",
+                timeout_seconds,
+            )
 
     def _schedule_flush(self) -> None:
         self._timer = threading.Timer(self._flush_interval_seconds, self._timer_flush)
@@ -258,5 +389,5 @@ class EventProcessor:
         self._timer.start()
 
     def _timer_flush(self) -> None:
-        self.flush()
+        self._send()
         self._schedule_flush()

@@ -50,6 +50,19 @@ def create_client_with_local_evaluation(
     )
 
 
+# Create the SDK client with local evaluation and events enabled
+def create_client_with_local_evaluation_and_events(
+    environment_key: str, api_url: str, events_api_url: str
+) -> Flagsmith:
+    return Flagsmith(
+        environment_key=environment_key,
+        api_url=api_url,
+        enable_local_evaluation=True,
+        enable_events=True,
+        event_processor_config=EventProcessorConfig(events_api_url=events_api_url),
+    )
+
+
 # When the application gets the environment flags
 def get_environment_flags(flagsmith: Flagsmith) -> list[SpecFlag]:
     return as_spec_flags(flagsmith.get_environment_flags())
@@ -92,3 +105,21 @@ def track_exposure_event(
     flagsmith.track_exposure_event(
         feature, identifier=identifier, value=value, metadata=metadata
     )
+
+
+# When the application tracks events "event_{first}" to "event_{last}" for identity "{identifier}"
+def track_numbered_events(
+    flagsmith: Flagsmith, first: int, last: int, identifier: str
+) -> None:
+    for number in range(first, last + 1):
+        flagsmith.track_event(f"event_{number}", identifier=identifier)
+
+
+# When the application flushes events
+def flush_events(flagsmith: Flagsmith) -> None:
+    flagsmith.flush_events()
+
+
+# When the application closes the client with a timeout of {timeout} seconds
+def close_client(flagsmith: Flagsmith, timeout: float) -> None:
+    flagsmith.close(timeout_seconds=timeout)
