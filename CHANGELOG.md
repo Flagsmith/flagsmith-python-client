@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.5.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.5.0...v6.5.1) (2026-11-11)
+
+### CI
+
+- pre-commit autoupdate ([#258](https://github.com/Flagsmith/flagsmith-python-client/issues/258))
+  ([aefd8e2](https://github.com/Flagsmith/flagsmith-python-client/commit/aefd8e2955a89a77207633ab102c7b6c01b48e7e))
+
+### Other
+
+- **deps-dev:** bump virtualenv from 21.5.1 to 21.7.13
+  ([#256](https://github.com/Flagsmith/flagsmith-python-client/issues/256))
+  ([34efdd7](https://github.com/Flagsmith/flagsmith-python-client/commit/34efdd7d6b5e94a1e5737f845295eae36604e5c6))
+- **deps:** bump certifi from 2026.6.17 to 2026.10.18
+  ([#271](https://github.com/Flagsmith/flagsmith-python-client/issues/271))
+  ([37dc185](https://github.com/Flagsmith/flagsmith-python-client/commit/37dc185846d4ebbf7d7ee9a15f10064a6defb101))
+
 ## [6.5.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.4.0...v6.5.0) (2026-11-06)
 
 ### Features
