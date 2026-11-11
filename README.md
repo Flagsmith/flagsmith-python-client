@@ -12,19 +12,16 @@ For full documentation visit
 
 ## Checking client readiness
 
-`flagsmith.ready()` returns whether the client has an environment document
-available for local or offline evaluation. It makes no network requests and
-does not block. Remote-evaluation clients return `True` immediately; readiness
-does not indicate API connectivity or document freshness.
+`flagsmith.ready()` returns whether the client has an environment document available for local or offline evaluation. It
+makes no network requests and does not block. Remote-evaluation clients return `True` immediately; readiness does not
+indicate API connectivity or document freshness.
 
-If the initial local-evaluation fetch fails and no document is available,
-clients with realtime updates disabled are not ready until the background
-poller loads a document. With realtime updates enabled, construction raises
-`ValueError` instead. A later refresh failure keeps the last successful
-document available, so readiness remains `True`.
+If the initial local-evaluation fetch fails and no document is available, clients with realtime updates disabled are not
+ready until the background poller loads a document. With realtime updates enabled, construction raises `ValueError`
+instead. A later refresh failure keeps the last successful document available, so readiness remains `True`.
 
-Check readiness before evaluating flags to avoid the existing remote API
-fallback while the first local document is unavailable:
+Check readiness before evaluating flags to avoid the existing remote API fallback while the first local document is
+unavailable:
 
 ```python
 if flagsmith.ready():
