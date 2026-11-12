@@ -275,6 +275,18 @@ class Flagsmith:
         if event["updated_at"] > environment_updated_at:
             self.update_environment()
 
+    def ready(self) -> bool:
+        """Return whether the client can evaluate in its configured mode.
+
+        Local and offline evaluation require an environment document. Remote
+        evaluation is immediately ready; this does not check API connectivity.
+        This method does not make requests or wait for a document to load.
+        """
+        return (
+            not (self.enable_local_evaluation or self.offline_mode)
+            or self._local_evaluation is not None
+        )
+
     def get_environment_flags(self) -> Flags:
         """
         Get all the default for flags for the current environment.
