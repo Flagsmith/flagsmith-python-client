@@ -51,7 +51,7 @@ def stop_flagsmith_background_threads(
             stream.stop()
             stream.join(timeout=5)
         if flagsmith._event_processor:
-            flagsmith._event_processor.stop()
+            flagsmith._event_processor.close(timeout_seconds=0)
 
 
 @pytest.fixture()
@@ -69,11 +69,13 @@ def event_processor_config() -> EventProcessorConfig:
 @pytest.fixture()
 def event_processor(
     event_processor_config: EventProcessorConfig,
-) -> EventProcessor:
-    return EventProcessor(
+) -> Generator[EventProcessor, None, None]:
+    processor = EventProcessor(
         config=event_processor_config,
         environment_key="test_key",
     )
+    yield processor
+    processor.close(timeout_seconds=0)
 
 
 @pytest.fixture(scope="session")

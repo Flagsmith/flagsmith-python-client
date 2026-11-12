@@ -17,7 +17,15 @@ from flagsmith.analytics import (
 )
 
 
-def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
+def test_flush__tracked_event__sent_to_events_api(
+    mocker: MockerFixture,
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    post = mocker.spy(event_processor._session, "post")
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
+    before = int(datetime.now().timestamp() * 1000)
     event_processor.track_event(
         event="purchase",
         identifier="user1",
@@ -25,10 +33,23 @@ def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
         traits={"plan": "premium"},
         metadata={"sku": "abc"},
     )
-    event_processor.track_event(event="purchase", identifier="user1")
+    after = int(datetime.now().timestamp() * 1000)
 
-    assert len(event_processor._buffer) == 2
-    event = event_processor._buffer[0]
+    # When
+    event_processor.flush()
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    assert post.call_args.kwargs["timeout"] == 3
+    request = mocked_responses.calls[0].request
+    assert request.headers["X-Environment-Key"] == "test_key"
+    assert request.headers["Content-Type"] == "application/json; charset=utf-8"
+    assert "flagsmith-python-sdk/" in request.headers["Flagsmith-SDK-User-Agent"]
+    request_body = request.body
+    assert request_body
+    body = json.loads(request_body)
+    assert "environment_key" not in body
+    [event] = body["events"]
     assert event["event"] == "purchase"
     assert event["feature_name"] is None
     assert event["identifier"] == "user1"
@@ -36,19 +57,29 @@ def test_track_event_buffers_event(event_processor: EventProcessor) -> None:
     assert event["traits"] == {"plan": "premium"}
     assert event["metadata"]["sku"] == "abc"
     assert "sdk_version" in event["metadata"]
-    assert isinstance(event["timestamp"], int)
+    assert before <= event["timestamp"] <= after
 
 
-def test_buffer_stringifies_non_string_values(
+def test_flush__event_values__sent_as_strings(
     event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
 ) -> None:
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     event_processor.track_event(event="purchase", value=99.5)
     event_processor.track_event(event="opt_in", value=True)
     event_processor.track_event(event="count", value=3)
     event_processor.track_event(event="variant", value="control")
     event_processor.track_event(event="empty")
 
-    assert [e["value"] for e in event_processor._buffer] == [
+    # When
+    event_processor.flush()
+
+    # Then
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    body = json.loads(request_body)
+    assert [e["value"] for e in body["events"]] == [
         "99.5",
         "True",
         "3",
@@ -57,19 +88,12 @@ def test_buffer_stringifies_non_string_values(
     ]
 
 
-def test_track_event_defaults_timestamp_to_now(
+def test_flush__exposure_event__sent_as_flag_exposure(
     event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
 ) -> None:
-    before = int(datetime.now().timestamp() * 1000)
-    event_processor.track_event(event="ping")
-    after = int(datetime.now().timestamp() * 1000)
-
-    assert before <= event_processor._buffer[0]["timestamp"] <= after
-
-
-def test_track_exposure_event_buffers_with_flag_exposure_event_name(
-    event_processor: EventProcessor,
-) -> None:
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     event_processor.track_exposure_event(
         feature_name="checkout_v2",
         identifier="user1",
@@ -78,8 +102,13 @@ def test_track_exposure_event_buffers_with_flag_exposure_event_name(
         metadata={"source": "homepage"},
     )
 
-    assert len(event_processor._buffer) == 1
-    event = event_processor._buffer[0]
+    # When
+    event_processor.flush()
+
+    # Then
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    [event] = json.loads(request_body)["events"]
     assert event["event"] == FLAG_EXPOSURE_EVENT == "$flag_exposure"
     assert event["feature_name"] == "checkout_v2"
     assert event["identifier"] == "user1"
@@ -89,25 +118,32 @@ def test_track_exposure_event_buffers_with_flag_exposure_event_name(
     assert "sdk_version" in event["metadata"]
 
 
-def test_track_exposure_event__equal_events_in_flush_interval__deduplicated(
+def test_flush__equal_exposures_in_flush_interval__sent_once(
     event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
 ) -> None:
-    # Given / When
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     for _ in range(3):
         event_processor.track_exposure_event(
-            feature_name="checkout_v2",
-            identifier="user1",
-            value="variant_b",
+            feature_name="checkout_v2", identifier="user1", value="variant_b"
         )
 
+    # When
+    event_processor.flush()
+
     # Then
-    assert len(event_processor._buffer) == 1
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert len(json.loads(request_body)["events"]) == 1
 
 
-def test_track_exposure_event__differing_events__not_deduplicated(
+def test_flush__differing_exposures__each_sent(
     event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
 ) -> None:
-    # Given / When
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     event_processor.track_exposure_event(
         feature_name="checkout_v2", identifier="user1", value="variant_b"
     )
@@ -121,11 +157,16 @@ def test_track_exposure_event__differing_events__not_deduplicated(
         feature_name="banner_test", identifier="user1", value="variant_b"
     )
 
+    # When
+    event_processor.flush()
+
     # Then
-    assert len(event_processor._buffer) == 4
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert len(json.loads(request_body)["events"]) == 4
 
 
-def test_track_exposure_event__equal_event_after_flush__buffered_again(
+def test_flush__equal_exposure_after_flush__sent_again(
     event_processor: EventProcessor,
     mocked_responses: responses.RequestsMock,
 ) -> None:
@@ -135,28 +176,59 @@ def test_track_exposure_event__equal_event_after_flush__buffered_again(
         feature_name="checkout_v2", identifier="user1", value="variant_b"
     )
     event_processor.flush()
-
-    # When
     event_processor.track_exposure_event(
         feature_name="checkout_v2", identifier="user1", value="variant_b"
     )
 
+    # When
+    event_processor.flush()
+
     # Then
-    assert len(event_processor._buffer) == 1
+    assert len(mocked_responses.calls) == 2
 
 
-def test_track_event__equal_events__not_deduplicated(
+def test_flush__equal_custom_events__each_sent(
     event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
 ) -> None:
-    # Given / When
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     event_processor.track_event(event="purchase", identifier="user1", value="99.5")
     event_processor.track_event(event="purchase", identifier="user1", value="99.5")
+
+    # When
+    event_processor.flush()
 
     # Then
-    assert len(event_processor._buffer) == 2
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert len(json.loads(request_body)["events"]) == 2
 
 
-def test_flush__full_buffer__sends_events_once(
+def test_track_event__metadata_not_json_serialisable__event_not_tracked(
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
+
+    # When
+    event_processor.track_event(event="purchase", metadata={"at": datetime.now()})
+    event_processor.track_event(event="checkout")
+    event_processor.flush()
+
+    # Then
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert [e["event"] for e in json.loads(request_body)["events"]] == ["checkout"]
+    assert caplog.messages == [
+        "Not tracking purchase event: not JSON serialisable:"
+        " Object of type datetime is not JSON serializable"
+    ]
+
+
+def test_track_event__full_buffer__sent_without_flush(
     mocked_responses: responses.RequestsMock,
 ) -> None:
     # Given
@@ -167,11 +239,15 @@ def test_flush__full_buffer__sends_events_once(
         environment_key="test_key",
     )
     mocked_responses.post("http://test_analytics/v1/events", status=202)
-    for i in range(5):
-        processor.track_event(event=f"event_{i}")
 
     # When
+    for i in range(5):
+        processor.track_event(event=f"event_{i}")
+    deadline = time.monotonic() + 5
+    while not mocked_responses.calls and time.monotonic() < deadline:
+        time.sleep(0.01)
     processor.flush()
+    processor.close(timeout_seconds=0)
 
     # Then
     assert len(mocked_responses.calls) == 1
@@ -179,7 +255,6 @@ def test_flush__full_buffer__sends_events_once(
     assert request_body
     body = json.loads(request_body)
     assert [e["event"] for e in body["events"]] == [f"event_{i}" for i in range(5)]
-    assert processor._buffer == []
 
 
 def test_flush__full_buffer__drops_oldest_event(
@@ -204,6 +279,7 @@ def test_flush__full_buffer__drops_oldest_event(
     # When
     processor.track_event(event="event_4")
     processor.flush()
+    processor.close(timeout_seconds=0)
 
     # Then
     assert len(mocked_responses.calls) == 4
@@ -211,38 +287,7 @@ def test_flush__full_buffer__drops_oldest_event(
     assert request_body
     body = json.loads(request_body)
     assert [e["event"] for e in body["events"]] == ["event_2", "event_3", "event_4"]
-    assert "Event buffer is full, dropping the oldest event_1 event" in (
-        caplog.messages
-    )
-
-
-def test_flush__sends_events_to_events_api(
-    mocker: MockerFixture,
-    event_processor: EventProcessor,
-    mocked_responses: responses.RequestsMock,
-) -> None:
-    # Given
-    post = mocker.spy(event_processor._session, "post")
-    mocked_responses.post("http://test_analytics/v1/events", status=202)
-    event_processor.track_event(event="purchase", identifier="user1")
-
-    # When
-    event_processor.flush()
-
-    # Then
-    assert len(mocked_responses.calls) == 1
-    request = mocked_responses.calls[0].request
-    assert post.call_args.kwargs["timeout"] == 3
-    assert request.headers["X-Environment-Key"] == "test_key"
-    assert request.headers["Content-Type"] == "application/json; charset=utf-8"
-    assert "flagsmith-python-sdk/" in request.headers["Flagsmith-SDK-User-Agent"]
-    request_body = request.body
-    assert request_body
-    body = json.loads(request_body)
-    assert "environment_key" not in body
-    assert len(body["events"]) == 1
-    assert body["events"][0]["event"] == "purchase"
-    assert event_processor._buffer == []
+    assert "Event buffer is full, dropped the oldest event" in caplog.messages
 
 
 def test_flush__no_events__sends_nothing(
@@ -277,7 +322,6 @@ def test_flush__transient_failures__retried_with_backoff(
     # Then
     assert len(mocked_responses.calls) == 3
     assert uniform.call_args_list == [mocker.call(0, 1), mocker.call(0, 2)]
-    assert event_processor._buffer == []
     assert caplog.messages == [
         "Failed to send 1 events, attempt 1 of 3: status 503",
         "Failed to send 1 events, attempt 2 of 3: reset",
@@ -285,11 +329,15 @@ def test_flush__transient_failures__retried_with_backoff(
 
 
 @pytest.mark.parametrize(
-    "statuses",
+    "failures",
     [
         pytest.param([503, 503, 503], id="unavailable"),
         pytest.param([500, 500, 503], id="unavailable-after-server-errors"),
-        pytest.param([429, 429, 429], id="throttled"),
+        pytest.param([429, 408, 504], id="throttled-and-timed-out"),
+        pytest.param(
+            [502, requests.ConnectionError("reset"), requests.Timeout("timed out")],
+            id="unreachable",
+        ),
     ],
 )
 def test_flush__last_attempt_fails_transiently__kept_ahead_of_newer_events(
@@ -297,12 +345,16 @@ def test_flush__last_attempt_fails_transiently__kept_ahead_of_newer_events(
     event_processor: EventProcessor,
     mocked_responses: responses.RequestsMock,
     caplog: pytest.LogCaptureFixture,
-    statuses: typing.List[int],
+    failures: typing.List[typing.Union[int, Exception]],
 ) -> None:
     # Given
     mocker.patch("flagsmith.analytics.random.uniform", return_value=0)
-    for status in (*statuses, 202):
-        mocked_responses.post("http://test_analytics/v1/events", status=status)
+    for failure in failures:
+        if isinstance(failure, Exception):
+            mocked_responses.post("http://test_analytics/v1/events", body=failure)
+        else:
+            mocked_responses.post("http://test_analytics/v1/events", status=failure)
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
     event_processor.track_event(event="add_to_cart")
     event_processor.flush()
 
@@ -316,7 +368,7 @@ def test_flush__last_attempt_fails_transiently__kept_ahead_of_newer_events(
     assert request_body
     body = json.loads(request_body)
     assert [e["event"] for e in body["events"]] == ["add_to_cart", "checkout"]
-    assert "Keeping 1 events for the next flush" in caplog.messages
+    assert "Keeping 1 events for the next send" in caplog.messages
 
 
 @pytest.mark.parametrize(
@@ -326,6 +378,11 @@ def test_flush__last_attempt_fails_transiently__kept_ahead_of_newer_events(
             [400],
             "Events API rejected 1 events with 400, dropping them",
             id="rejected",
+        ),
+        pytest.param(
+            [501],
+            "Events API rejected 1 events with 501, dropping them",
+            id="not-implemented",
         ),
         pytest.param(
             [503, 503, 500],
@@ -362,6 +419,52 @@ def test_flush__batch_rejected_or_last_failed_with_server_error__dropped(
     assert expected_log in caplog.messages
 
 
+def test_flush__request_cannot_be_made__dropped_without_retrying(
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    mocked_responses.post(
+        "http://test_analytics/v1/events",
+        body=requests.exceptions.InvalidHeader("invalid header"),
+    )
+    event_processor.track_event(event="purchase")
+
+    # When
+    event_processor.flush()
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    assert caplog.messages == ["Dropping 1 events: invalid header"]
+
+
+def test_flush__unexpected_error__returns_and_keeps_tracking(
+    mocker: MockerFixture,
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    mocker.patch.object(
+        event_processor._session,
+        "post",
+        side_effect=[RuntimeError("unexpected"), mocker.DEFAULT],
+        wraps=event_processor._session.post,
+    )
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
+    event_processor.track_event(event="purchase")
+    event_processor.flush()
+
+    # When
+    event_processor.track_event(event="checkout")
+    event_processor.flush()
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    assert caplog.messages == ["Dropping 1 events: failed to send"]
+
+
 @pytest.mark.parametrize("status", [401, 403])
 def test_flush__environment_key_refused__stops_event_tracking(
     event_processor: EventProcessor,
@@ -381,37 +484,14 @@ def test_flush__environment_key_refused__stops_event_tracking(
 
     # Then
     assert len(mocked_responses.calls) == 1
-    assert event_processor._buffer == []
     assert caplog.messages == [
         f"Events API refused the environment key with {status},"
         " stopping event tracking",
-        "Not tracking checkout event: the events API refused the environment key.",
+        "Not tracking checkout event: event tracking has stopped.",
     ]
 
 
-def test_stop__timer_flush_in_progress__no_further_timer_flushes(
-    mocked_responses: responses.RequestsMock,
-) -> None:
-    # Given
-    processor = EventProcessor(
-        config=EventProcessorConfig(
-            events_api_url="http://test_analytics/", flush_interval_seconds=100
-        ),
-        environment_key="test_key",
-    )
-    processor.start()
-    timer = processor._timer
-    processor.stop()
-
-    # When
-    processor._timer_flush()
-
-    # Then
-    assert processor._timer is timer
-    assert len(mocked_responses.calls) == 0
-
-
-def test_start__flushes_on_timer(
+def test_events__flush_interval_elapsed__sent_without_flush(
     mocked_responses: responses.RequestsMock,
 ) -> None:
     # Given
@@ -422,45 +502,46 @@ def test_start__flushes_on_timer(
         environment_key="test_key",
     )
     mocked_responses.post("http://test_analytics/v1/events", status=202)
-    processor.track_event(event="purchase")
 
     # When
-    processor.start()
+    processor.track_event(event="purchase")
     deadline = time.monotonic() + 5
     while not mocked_responses.calls and time.monotonic() < deadline:
         time.sleep(0.01)
-    processor.stop()
+    processor.close(timeout_seconds=0)
 
     # Then
     assert len(mocked_responses.calls) == 1
-    assert processor._buffer == []
 
 
-def test_stop__sends_buffered_events(
+def test_close__sends_buffered_events_and_stops_event_tracking(
+    event_processor: EventProcessor,
     mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Given
-    processor = EventProcessor(
-        config=EventProcessorConfig(
-            events_api_url="http://test_analytics/", flush_interval_seconds=100
-        ),
-        environment_key="test_key",
-    )
-    processor.start()
     mocked_responses.post("http://test_analytics/v1/events", status=202)
-    processor.track_event(event="purchase")
+    event_processor.track_event(event="purchase")
 
     # When
-    processor.stop()
+    event_processor.close()
+    with caplog.at_level(logging.DEBUG, logger="flagsmith.analytics"):
+        event_processor.track_event(event="checkout")
+    event_processor.flush()
+    event_processor.close()
 
     # Then
-    assert processor._timer is not None
-    assert processor._timer.finished.is_set()
     assert len(mocked_responses.calls) == 1
-    assert processor._buffer == []
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert [e["event"] for e in json.loads(request_body)["events"]] == ["purchase"]
+    assert not event_processor._worker.is_alive()
+    assert caplog.messages == [
+        "Not tracking checkout event: event tracking has stopped."
+    ]
 
 
-def test_stop__events_api_not_answering__returns_within_timeout(
+def test_close__events_api_not_answering__returns_within_timeout(
     event_processor: EventProcessor,
     mocked_responses: responses.RequestsMock,
     caplog: pytest.LogCaptureFixture,
@@ -476,11 +557,10 @@ def test_stop__events_api_not_answering__returns_within_timeout(
 
     # When
     started = time.monotonic()
-    event_processor.stop(timeout_seconds=0.1)
+    event_processor.close(timeout_seconds=0.1)
     elapsed = time.monotonic() - started
     answer.set()
-    with event_processor._send_lock:
-        pass
+    event_processor._worker.join(5)
 
     # Then
     assert elapsed < 1
@@ -488,5 +568,31 @@ def test_stop__events_api_not_answering__returns_within_timeout(
     assert caplog.messages == [
         "Gave up sending events after 0.1 seconds while closing",
         "Failed to send 1 events, attempt 1 of 3: status 503",
-        "Not retrying 1 events: the client is closed",
+        "Not sending 1 events: the client is closed",
     ]
+
+
+def test_stop__events_api_not_answering__returns_without_waiting(
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    answer = threading.Event()
+    mocked_responses.add_callback(
+        responses.POST,
+        "http://test_analytics/v1/events",
+        callback=lambda request: (answer.wait(5), (202, {}, ""))[1],
+    )
+    event_processor.track_event(event="purchase")
+
+    # When
+    started = time.monotonic()
+    event_processor.stop()
+    elapsed = time.monotonic() - started
+    answer.set()
+    event_processor._worker.join(5)
+
+    # Then
+    assert elapsed < 1
+    assert len(mocked_responses.calls) == 1
+    assert not event_processor._worker.is_alive()

@@ -1113,13 +1113,17 @@ def test_flush_events__events_tracked__sent_to_events_api(
     assert [e["event"] for e in body["events"]] == ["purchase"]
 
 
-def test_flush_events__events_disabled__raises(api_key: str) -> None:
+def test_flush_events__events_disabled__does_nothing(
+    api_key: str, caplog: pytest.LogCaptureFixture
+) -> None:
     # Given
     flagsmith = Flagsmith(environment_key=api_key)
 
-    # When / Then
-    with pytest.raises(ValueError, match="Events must be enabled to flush events."):
-        flagsmith.flush_events()
+    # When
+    flagsmith.flush_events()
+
+    # Then
+    assert caplog.messages == ["Not flushing events: events are not enabled."]
 
 
 def test_close__events_tracked__sent_within_timeout(
@@ -1128,13 +1132,30 @@ def test_close__events_tracked__sent_within_timeout(
     # Given
     flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
     assert flagsmith._event_processor
-    mock_stop = mocker.patch.object(flagsmith._event_processor, "stop")
+    mock_close = mocker.patch.object(flagsmith._event_processor, "close")
 
     # When
     flagsmith.close(timeout_seconds=2)
 
     # Then
-    mock_stop.assert_called_once_with(2)
+    mock_close.assert_called_once_with(2)
+
+
+def test_del__events_tracked__stops_event_processor_without_waiting(
+    mocker: MockerFixture, api_key: str
+) -> None:
+    # Given
+    flagsmith = Flagsmith(environment_key=api_key, enable_events=True)
+    assert flagsmith._event_processor
+    mock_stop = mocker.patch.object(flagsmith._event_processor, "stop")
+    mock_close = mocker.patch.object(flagsmith._event_processor, "close")
+
+    # When
+    flagsmith.__del__()
+
+    # Then
+    mock_stop.assert_called_once_with()
+    mock_close.assert_not_called()
 
 
 def test_close__local_evaluation__stops_polling(
@@ -1148,6 +1169,28 @@ def test_close__local_evaluation__stops_polling(
 
     # When
     local_eval_flagsmith.close()
+
+    # Then
+    mock_stop.assert_called_once_with()
+
+
+def test_close__realtime_updates__stops_streaming(
+    requests_session_response_ok: None, server_api_key: str, mocker: MockerFixture
+) -> None:
+    # Given
+    mocker.patch(
+        "flagsmith.streaming_manager.requests.get",
+        side_effect=requests.exceptions.ReadTimeout(),
+    )
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        enable_realtime_updates=True,
+    )
+    mock_stop = mocker.patch.object(flagsmith.event_stream_thread, "stop")
+
+    # When
+    flagsmith.close()
 
     # Then
     mock_stop.assert_called_once_with()
