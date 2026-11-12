@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from flagsmith.webhooks import generate_signature, verify_signature
 
 
@@ -48,3 +50,9 @@ def test_verify_signature_invalid() -> None:
         received_signature="bad",
         shared_secret="?",
     )
+
+
+@pytest.mark.parametrize("signature", ["é", "🔒", "a" * 63 + "é", "\ud800"])
+@pytest.mark.parametrize("body", ["{}", b"{}"])
+def test_verify_signature_rejects_non_ascii(signature: str, body: str | bytes) -> None:
+    assert verify_signature(body, signature, "secret") is False
