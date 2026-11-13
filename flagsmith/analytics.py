@@ -2,10 +2,12 @@ import atexit
 import enum
 import json
 import logging
+import os
 import random
 import threading
 import time
 import typing
+import weakref
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -152,11 +154,22 @@ class EventProcessor:
             )
         self._max_buffer = max(config.max_buffer_items, 1)
         self._flush_interval_seconds = config.flush_interval_seconds
+        self._refused = False
+        self._closed = False
+        self._start_worker()
+        _processors.add(self)
+        atexit.register(self.close)
 
+    def _start_worker(self) -> None:
+        """
+        Starts the worker, with empty state. Also runs in a forked child, where
+        the parent's worker doesn't exist and the parent sends its own events.
+        """
         self._session = requests.Session()
         self._condition = threading.Condition()
         self._buffer: typing.Deque[_BufferedEvent] = deque()
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
+        self._dropped_count = 0
         self._tracked_count = 0
         self._sent_count = 0
         # Events tracked up to this count are being sent, if a send is running.
@@ -164,16 +177,12 @@ class EventProcessor:
         self._flush_requested = False
         self._sends_started = 0
         self._sends_completed = 0
-        self._refused = False
-        self._closed = False
         # Set once `close` returns: the worker starts no more requests.
         self._abandoned = threading.Event()
-
         self._worker = threading.Thread(
             target=self._run, name="flagsmith-event-processor", daemon=True
         )
         self._worker.start()
-        atexit.register(self.close)
 
     def track_event(
         self,
@@ -292,31 +301,29 @@ class EventProcessor:
     ) -> None:
         """
         Stops event tracking, and sends the buffered events, waiting for at
-        most `timeout_seconds`. No request starts once this returns. Calling
-        it again does nothing.
+        most `timeout_seconds`, also after `stop`. No request starts once this
+        returns. Calling it again does nothing.
         """
-        if not self.stop():
+        self.stop()
+        if self._abandoned.is_set():
             return
         self._worker.join(timeout_seconds)
         self._abandoned.set()
+        atexit.unregister(self.close)
         if self._worker.is_alive():
             logger.warning(
                 "Gave up sending events after %s seconds while closing",
                 timeout_seconds,
             )
 
-    def stop(self) -> bool:
+    def stop(self) -> None:
         """
         Stops event tracking, and has the worker send the buffered events,
-        without waiting for it. Returns whether this stopped event tracking.
+        without waiting for it. `close` still runs at exit, to wait for it.
         """
         with self._condition:
-            if self._closed:
-                return False
             self._closed = True
             self._condition.notify_all()
-        atexit.unregister(self.close)
-        return True
 
     def _run(self) -> None:
         next_send_at = time.monotonic() + self._flush_interval_seconds
@@ -336,7 +343,13 @@ class EventProcessor:
                 self._flush_requested = False
                 self._sends_started += 1
                 sending_count = self._sending_count = self._tracked_count
+                dropped_count, self._dropped_count = self._dropped_count, 0
             next_send_at = time.monotonic() + self._flush_interval_seconds
+            if dropped_count:
+                logger.warning(
+                    "Event buffer was full: dropped the %d oldest events",
+                    dropped_count,
+                )
 
             try:
                 outcome = (
@@ -378,7 +391,7 @@ class EventProcessor:
         while len(self._buffer) > self._max_buffer:
             dropped = self._buffer.popleft()
             self._buffered_exposure_keys.discard(dropped.exposure_key)
-            logger.warning("Event buffer is full, dropped the oldest event")
+            self._dropped_count += 1
 
     def _deliver(self, events: typing.List[str]) -> _DeliveryOutcome:
         payload = f'{{"events": [{", ".join(events)}]}}'
@@ -452,3 +465,15 @@ class EventProcessor:
             status,
         )
         return _DeliveryOutcome.DROPPED
+
+
+_processors: "weakref.WeakSet[EventProcessor]" = weakref.WeakSet()
+
+
+def _restart_workers_after_fork() -> None:
+    for processor in list(_processors):
+        processor._start_worker()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_restart_workers_after_fork)

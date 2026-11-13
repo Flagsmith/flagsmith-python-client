@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import threading
 import time
 import typing
@@ -350,7 +351,7 @@ def test_flush__full_buffer__drops_oldest_event(
     assert request_body
     body = json.loads(request_body)
     assert [e["event"] for e in body["events"]] == ["event_2", "event_3", "event_4"]
-    assert "Event buffer is full, dropped the oldest event" in caplog.messages
+    assert "Event buffer was full: dropped the 1 oldest events" in caplog.messages
 
 
 def test_flush__no_events__sends_nothing(
@@ -775,3 +776,112 @@ def test_stop__events_api_not_answering__returns_without_waiting(
     assert elapsed < 1
     assert len(mocked_responses.calls) == 1
     assert not event_processor._worker.is_alive()
+
+
+def test_close__after_stop__waits_for_buffered_events(
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    answer = threading.Event()
+    mocked_responses.add_callback(
+        responses.POST,
+        "http://test_analytics/v1/events",
+        callback=lambda request: (answer.wait(5), (202, {}, ""))[1],
+    )
+    event_processor.track_event(event="purchase")
+    event_processor.stop()
+    threading.Timer(0.2, answer.set).start()
+
+    # When
+    event_processor.close(timeout_seconds=5)
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    assert not event_processor._worker.is_alive()
+
+
+def test_track_event__full_buffer_while_sending__drops_logged_once(
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/", max_buffer_items=2
+        ),
+        environment_key="test_key",
+    )
+    requested = threading.Event()
+    answer = threading.Event()
+
+    def answer_when_released(
+        request: requests.PreparedRequest,
+    ) -> typing.Tuple[int, typing.Dict[str, str], str]:
+        requested.set()
+        answer.wait(5)
+        return 202, {}, ""
+
+    mocked_responses.add_callback(
+        responses.POST,
+        "http://test_analytics/v1/events",
+        callback=answer_when_released,
+    )
+    processor.track_event(event="event_1")
+    processor.track_event(event="event_2")
+    requested.wait(5)
+
+    # When
+    for i in range(3, 8):
+        processor.track_event(event=f"event_{i}")
+    answer.set()
+    processor.flush()
+    processor.close(timeout_seconds=0)
+    processor._worker.join(5)
+
+    # Then
+    assert [m for m in caplog.messages if m.startswith("Event buffer")] == [
+        "Event buffer was full: dropped the 3 oldest events"
+    ]
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.filterwarnings(
+    "ignore:This process .* is multi-threaded:DeprecationWarning"
+)
+def test_track_event__forked_child__each_process_sends_its_own_events(
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
+    event_processor.track_event(event="tracked_before_fork")
+
+    # When
+    pid = os.fork()
+    if pid == 0:
+        exit_code = 1
+        try:
+            event_processor.track_event(event="tracked_in_child")
+            event_processor.flush()
+            child_sent_events = []
+            for call in mocked_responses.calls:
+                request_body = call.request.body
+                assert request_body
+                child_sent_events += [
+                    e["event"] for e in json.loads(request_body)["events"]
+                ]
+            exit_code = 0 if child_sent_events == ["tracked_in_child"] else 2
+        finally:
+            os._exit(exit_code)
+    _, wait_status = os.waitpid(pid, 0)
+    event_processor.flush()
+
+    # Then
+    assert os.waitstatus_to_exitcode(wait_status) == 0
+    assert len(mocked_responses.calls) == 1
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert [e["event"] for e in json.loads(request_body)["events"]] == [
+        "tracked_before_fork"
+    ]
