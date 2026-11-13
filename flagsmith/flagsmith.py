@@ -9,6 +9,7 @@ from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
 from flagsmith.analytics import (
+    DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS,
     FLAG_EXPOSURE_EVENT,
     AnalyticsProcessor,
     EventProcessor,
@@ -232,7 +233,6 @@ class Flagsmith:
                 config=event_processor_config or EventProcessorConfig(),
                 environment_key=environment_key,
             )
-            self._event_processor.start()
 
     def _initialise_local_evaluation(self) -> None:
         # To ensure that the environment is set before allowing subsequent
@@ -453,6 +453,38 @@ class Flagsmith:
             metadata=metadata,
         )
 
+    def flush_events(self) -> None:
+        """
+        Send the events tracked so far, and return once each of them has been
+        delivered, dropped, or kept for the next send, retries included. Does
+        nothing when events are not enabled, or once the client is closed.
+        """
+        if not self._event_processor:
+            logger.warning("Not flushing events: events are not enabled.")
+            return
+        self._event_processor.flush()
+
+    def close(
+        self, timeout_seconds: float = DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS
+    ) -> None:
+        """
+        Stop the client's background work, and send the buffered events. Events
+        tracked afterwards are not sent. Calling it again does nothing.
+
+        :param timeout_seconds: how long to wait for the buffered events to be
+            sent. Events not sent by then are lost.
+        """
+        self._stop_background_work()
+        if self._event_processor:
+            self._event_processor.close(timeout_seconds)
+
+    def _stop_background_work(self) -> None:
+        if hasattr(self, "environment_data_polling_manager_thread"):
+            self.environment_data_polling_manager_thread.stop()
+
+        if hasattr(self, "event_stream_thread"):
+            self.event_stream_thread.stop()
+
     def update_environment(self) -> None:
         try:
             environment_data = self._get_json_response(
@@ -592,11 +624,6 @@ class Flagsmith:
             ) from e
 
     def __del__(self) -> None:
-        if hasattr(self, "environment_data_polling_manager_thread"):
-            self.environment_data_polling_manager_thread.stop()
-
-        if hasattr(self, "event_stream_thread"):
-            self.event_stream_thread.stop()
-
+        self._stop_background_work()
         if self._event_processor:
             self._event_processor.stop()

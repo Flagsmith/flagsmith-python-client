@@ -1,11 +1,18 @@
 import atexit
+import enum
 import json
 import logging
+import os
+import random
 import threading
+import time
 import typing
+import weakref
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 
+import requests
 from requests_futures.sessions import FuturesSession  # type: ignore
 
 from flagsmith.version import DEFAULT_USER_AGENT, __version__
@@ -20,6 +27,14 @@ ANALYTICS_TIMER: typing.Final[int] = 10
 FLAG_EXPOSURE_EVENT: typing.Final[str] = "$flag_exposure"
 
 DEFAULT_EVENT_API_URL: typing.Final[str] = "https://events.api.flagsmith.com/"
+
+EVENTS_REQUEST_TIMEOUT_SECONDS: typing.Final[float] = 3
+EVENTS_MAX_ATTEMPTS: typing.Final[int] = 3
+EVENTS_RETRY_BASE_SECONDS: typing.Final[float] = 1
+DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS: typing.Final[float] = 5
+RETRIED_STATUS_CODES: typing.Final[typing.FrozenSet[int]] = frozenset(
+    {408, 429, 500, 502, 503, 504}
+)
 
 session = FuturesSession(max_workers=4)
 
@@ -96,11 +111,30 @@ class EventProcessorConfig:
     flush_interval_seconds: float = 10.0
 
 
+class _BufferedEvent(typing.NamedTuple):
+    payload: str
+    exposure_key: typing.Optional[ExposureKey]
+
+
+class _DeliveryOutcome(enum.Enum):
+    DELIVERED = "delivered"
+    DROPPED = "dropped"
+    KEPT = "kept"
+    REFUSED = "refused"
+
+
 class EventProcessor:
     """
     Buffered event processor that batches custom events and POSTs them to the
-    Flagsmith event endpoint. Flushes on a background timer or when the buffer
-    fills.
+    Flagsmith event endpoint, from one worker thread. The worker sends the
+    buffered events on a timer, when the buffer fills, on `flush`, and once
+    more on `close`.
+
+    A batch is sent up to ``EVENTS_MAX_ATTEMPTS`` times, backing off with full
+    jitter between attempts. A batch whose last attempt fails transiently is
+    kept for the next send, unless that attempt got a 500. A batch the events
+    API rejects is dropped, and an events API refusing the environment key
+    stops event tracking. When the buffer is full, the oldest event is dropped.
     """
 
     def __init__(
@@ -113,13 +147,41 @@ class EventProcessor:
             url = f"{url}/"
         self._batch_endpoint = f"{url}v1/events"
         self._environment_key = environment_key
-        self._max_buffer = config.max_buffer_items
+        if config.max_buffer_items < 1:
+            logger.warning(
+                "max_buffer_items must be at least 1, not %d: using 1",
+                config.max_buffer_items,
+            )
+        self._max_buffer = max(config.max_buffer_items, 1)
         self._flush_interval_seconds = config.flush_interval_seconds
+        self._refused = False
+        self._closed = False
+        self._start_worker()
+        _processors.add(self)
 
-        self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
+    def _start_worker(self) -> None:
+        """
+        Starts the worker, with empty state. Also runs in a forked child, where
+        the parent's worker doesn't exist and the parent sends its own events.
+        """
+        self._session = requests.Session()
+        self._condition = threading.Condition()
+        self._buffer: typing.Deque[_BufferedEvent] = deque()
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
-        self._lock = threading.Lock()
-        self._timer: typing.Optional[threading.Timer] = None
+        self._dropped_count = 0
+        self._tracked_count = 0
+        self._sent_count = 0
+        # Events tracked up to this count are being sent, if a send is running.
+        self._sending_count: typing.Optional[int] = None
+        self._flush_requested = False
+        self._sends_started = 0
+        self._sends_completed = 0
+        # Set once `close` returns: the worker starts no more requests.
+        self._abandoned = threading.Event()
+        self._worker = threading.Thread(
+            target=self._run, name="flagsmith-event-processor", daemon=True
+        )
+        self._worker.start()
 
     def track_event(
         self,
@@ -164,8 +226,28 @@ class EventProcessor:
         traits: typing.Optional[typing.Dict[str, typing.Any]],
         metadata: typing.Optional[typing.Dict[str, typing.Any]],
     ) -> None:
-        should_flush = False
-        with self._lock:
+        try:
+            serialised_event = json.dumps(
+                {
+                    "event": event,
+                    "feature_name": feature_name,
+                    "identifier": identifier,
+                    "value": str(value) if value is not None else None,
+                    "traits": dict(traits) if traits else None,
+                    "metadata": {**(metadata or {}), "sdk_version": __version__},
+                    "timestamp": int(datetime.now().timestamp() * 1000),
+                }
+            )
+        except (TypeError, ValueError) as e:
+            logger.warning("Not tracking %s event: not JSON serialisable: %s", event, e)
+            return
+        with self._condition:
+            if self._closed or self._refused:
+                logger.debug(
+                    "Not tracking %s event: event tracking has stopped.", event
+                )
+                return
+            exposure_key = None
             if event == FLAG_EXPOSURE_EVENT:
                 # An exposure is defined by who saw which variant of which
                 # feature; equal exposures within one flush interval add no
@@ -184,79 +266,223 @@ class EventProcessor:
                     )
                     return
                 self._buffered_exposure_keys.add(exposure_key)
-            self._buffer.append(
-                {
-                    "event": event,
-                    "feature_name": feature_name,
-                    "identifier": identifier,
-                    "value": str(value) if value is not None else None,
-                    "traits": dict(traits) if traits else None,
-                    "metadata": {**(metadata or {}), "sdk_version": __version__},
-                    "timestamp": int(datetime.now().timestamp() * 1000),
-                }
-            )
-            if len(self._buffer) >= self._max_buffer:
-                should_flush = True
-
-        if should_flush:
-            self.flush()
+            self._buffer.append(_BufferedEvent(serialised_event, exposure_key))
+            self._tracked_count += 1
+            self._drop_oldest_events()
+            if self._has_full_buffer_of_new_events():
+                self._condition.notify_all()
 
     def flush(self) -> None:
-        with self._lock:
-            if not self._buffer:
+        """
+        Sends the buffered events, including any kept from a failed send, and
+        returns once each of them has been delivered, dropped, or kept for the
+        next send. If a send already running covers every event tracked so
+        far, waits for it instead. Does nothing once closed.
+        """
+        with self._condition:
+            if self._closed:
                 return
-            events = self._buffer
-            self._buffer = []
-            self._buffered_exposure_keys.clear()
-
-        payload = json.dumps({"events": events})
-        try:
-            future = session.post(
-                self._batch_endpoint,
-                data=payload,
-                timeout=3,
-                headers={
-                    "Content-Type": "application/json; charset=utf-8",
-                    "X-Environment-Key": self._environment_key,
-                    "Flagsmith-SDK-User-Agent": DEFAULT_USER_AGENT,
-                },
+            if (
+                self._sending_count is not None
+                and self._sending_count >= self._tracked_count
+            ):
+                send = self._sends_started
+            else:
+                self._flush_requested = True
+                send = self._sends_started + 1
+                self._condition.notify_all()
+            self._condition.wait_for(
+                lambda: self._sends_completed >= send or not self._worker.is_alive()
             )
-        except RuntimeError:
-            logger.debug("Skipping flush: thread pool already shut down")
-            return
-        future.add_done_callback(lambda f: self._handle_flush_result(f, events))
 
-    def _handle_flush_result(
-        self,
-        future: typing.Any,
-        events: typing.List[typing.Dict[str, typing.Any]],
+    def close(
+        self, timeout_seconds: float = DEFAULT_EVENTS_CLOSE_TIMEOUT_SECONDS
     ) -> None:
-        try:
-            response = future.result()
-            response.raise_for_status()
-        except Exception:
+        """
+        Stops event tracking, and sends the buffered events, waiting for at
+        most `timeout_seconds`, also after `stop`. No request starts once this
+        returns. Calling it again does nothing.
+        """
+        self.stop()
+        if self._abandoned.is_set():
+            return
+        self._worker.join(timeout_seconds)
+        self._abandoned.set()
+        if self._worker.is_alive():
             logger.warning(
-                "Failed to flush pipeline analytics, re-queuing events", exc_info=True
+                "Gave up sending events after %s seconds while closing",
+                timeout_seconds,
             )
-            with self._lock:
-                self._buffer = events + self._buffer
-                self._buffer = self._buffer[: self._max_buffer]
-
-    def start(self) -> None:
-        self._schedule_flush()
-        atexit.register(self.stop)
 
     def stop(self) -> None:
-        atexit.unregister(self.stop)
-        if self._timer is not None:
-            self._timer.cancel()
-        self.flush()
+        """
+        Stops event tracking, and has the worker send the buffered events,
+        without waiting for it. `close` still runs at exit, to wait for it, as
+        long as the worker is sending.
+        """
+        with self._condition:
+            self._closed = True
+            self._condition.notify_all()
 
-    def _schedule_flush(self) -> None:
-        self._timer = threading.Timer(self._flush_interval_seconds, self._timer_flush)
-        self._timer.daemon = True
-        self._timer.start()
+    def _run(self) -> None:
+        next_send_at = time.monotonic() + self._flush_interval_seconds
+        while True:
+            with self._condition:
+                while not (
+                    self._closed
+                    or self._flush_requested
+                    or self._has_full_buffer_of_new_events()
+                    or time.monotonic() >= next_send_at
+                ):
+                    self._condition.wait(next_send_at - time.monotonic())
+                closing = self._closed
+                events = list(self._buffer)
+                self._buffer.clear()
+                self._buffered_exposure_keys.clear()
+                self._flush_requested = False
+                self._sends_started += 1
+                sending_count = self._sending_count = self._tracked_count
+                dropped_count, self._dropped_count = self._dropped_count, 0
+            next_send_at = time.monotonic() + self._flush_interval_seconds
+            if dropped_count:
+                logger.warning(
+                    "Event buffer was full: dropped the %d oldest events",
+                    dropped_count,
+                )
 
-    def _timer_flush(self) -> None:
-        self.flush()
-        self._schedule_flush()
+            try:
+                outcome = (
+                    self._deliver([event.payload for event in events])
+                    if events
+                    else _DeliveryOutcome.DELIVERED
+                )
+            except Exception:
+                logger.exception("Dropping %d events: failed to send", len(events))
+                outcome = _DeliveryOutcome.DROPPED
+
+            with self._condition:
+                self._sent_count = sending_count
+                self._sending_count = None
+                self._sends_completed += 1
+                if outcome is _DeliveryOutcome.KEPT:
+                    self._buffer.extendleft(reversed(events))
+                    self._buffered_exposure_keys.update(
+                        event.exposure_key for event in events if event.exposure_key
+                    )
+                    self._drop_oldest_events()
+                elif outcome is _DeliveryOutcome.REFUSED:
+                    self._refused = True
+                    self._buffer.clear()
+                    self._buffered_exposure_keys.clear()
+                self._condition.notify_all()
+            if closing:
+                self._session.close()
+                return
+
+    def _has_full_buffer_of_new_events(self) -> bool:
+        """
+        Whether a buffer's worth of events was tracked since the last send. A
+        buffer full of events kept from failed sends waits for the timer.
+        """
+        return self._tracked_count - self._sent_count >= self._max_buffer
+
+    def _drop_oldest_events(self) -> None:
+        while len(self._buffer) > self._max_buffer:
+            dropped = self._buffer.popleft()
+            self._buffered_exposure_keys.discard(dropped.exposure_key)
+            self._dropped_count += 1
+
+    def _deliver(self, events: typing.List[str]) -> _DeliveryOutcome:
+        payload = f'{{"events": [{", ".join(events)}]}}'
+        status: typing.Optional[int] = None
+        for attempt in range(1, EVENTS_MAX_ATTEMPTS + 1):
+            if attempt > 1:
+                backoff = EVENTS_RETRY_BASE_SECONDS * 2 ** (attempt - 2)
+                self._abandoned.wait(random.uniform(0, backoff))
+            if self._abandoned.is_set():
+                logger.warning(
+                    "Not sending %d events: the client is closed", len(events)
+                )
+                return _DeliveryOutcome.DROPPED
+            try:
+                response = self._post(payload)
+            except (requests.ConnectionError, requests.Timeout) as e:
+                status = None
+                failure = str(e)
+            except requests.RequestException as e:
+                logger.error("Dropping %d events: %s", len(events), e)
+                return _DeliveryOutcome.DROPPED
+            else:
+                status = response.status_code
+                if outcome := self._outcome_of(status, len(events)):
+                    return outcome
+                failure = f"status {status}"
+            logger.warning(
+                "Failed to send %d events, attempt %d of %d: %s",
+                len(events),
+                attempt,
+                EVENTS_MAX_ATTEMPTS,
+                failure,
+            )
+        if status == 500:
+            logger.warning(
+                "Dropping %d events the events API failed with 500", len(events)
+            )
+            return _DeliveryOutcome.DROPPED
+        logger.warning("Keeping %d events for the next send", len(events))
+        return _DeliveryOutcome.KEPT
+
+    def _post(self, payload: str) -> requests.Response:
+        return self._session.post(
+            self._batch_endpoint,
+            data=payload,
+            timeout=EVENTS_REQUEST_TIMEOUT_SECONDS,
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "X-Environment-Key": self._environment_key,
+                "Flagsmith-SDK-User-Agent": DEFAULT_USER_AGENT,
+            },
+        )
+
+    @staticmethod
+    def _outcome_of(status: int, event_count: int) -> typing.Optional[_DeliveryOutcome]:
+        """The outcome of a request answered with `status`, or None to retry it."""
+        if status < 400:
+            return _DeliveryOutcome.DELIVERED
+        if status in (401, 403):
+            logger.error(
+                "Events API refused the environment key with %d,"
+                " stopping event tracking",
+                status,
+            )
+            return _DeliveryOutcome.REFUSED
+        if status in RETRIED_STATUS_CODES:
+            return None
+        logger.warning(
+            "Events API rejected %d events with %d, dropping them",
+            event_count,
+            status,
+        )
+        return _DeliveryOutcome.DROPPED
+
+
+_processors: "weakref.WeakSet[EventProcessor]" = weakref.WeakSet()
+
+
+def _restart_workers_after_fork() -> None:
+    for processor in list(_processors):
+        processor._start_worker()
+
+
+def _close_processors_at_exit() -> None:
+    # One hook for every processor: a hook per processor would keep each one
+    # alive until exit. The worker keeps its processor alive while it runs, so
+    # a stopped processor is still closed here if its events are being sent.
+    for processor in list(_processors):
+        processor.close()
+
+
+atexit.register(_close_processors_at_exit)
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_restart_workers_after_fork)
