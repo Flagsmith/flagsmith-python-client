@@ -158,7 +158,6 @@ class EventProcessor:
         self._closed = False
         self._start_worker()
         _processors.add(self)
-        atexit.register(self.close)
 
     def _start_worker(self) -> None:
         """
@@ -309,7 +308,6 @@ class EventProcessor:
             return
         self._worker.join(timeout_seconds)
         self._abandoned.set()
-        atexit.unregister(self.close)
         if self._worker.is_alive():
             logger.warning(
                 "Gave up sending events after %s seconds while closing",
@@ -319,7 +317,8 @@ class EventProcessor:
     def stop(self) -> None:
         """
         Stops event tracking, and has the worker send the buffered events,
-        without waiting for it. `close` still runs at exit, to wait for it.
+        without waiting for it. `close` still runs at exit, to wait for it, as
+        long as the worker is sending.
         """
         with self._condition:
             self._closed = True
@@ -474,6 +473,16 @@ def _restart_workers_after_fork() -> None:
     for processor in list(_processors):
         processor._start_worker()
 
+
+def _close_processors_at_exit() -> None:
+    # One hook for every processor: a hook per processor would keep each one
+    # alive until exit. The worker keeps its processor alive while it runs, so
+    # a stopped processor is still closed here if its events are being sent.
+    for processor in list(_processors):
+        processor.close()
+
+
+atexit.register(_close_processors_at_exit)
 
 if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_restart_workers_after_fork)
