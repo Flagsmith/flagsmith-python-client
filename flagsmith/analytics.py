@@ -109,6 +109,11 @@ class EventProcessorConfig:
     flush_interval_seconds: float = 10.0
 
 
+class _BufferedEvent(typing.NamedTuple):
+    payload: str
+    exposure_key: typing.Optional[ExposureKey]
+
+
 class _DeliveryOutcome(enum.Enum):
     DELIVERED = "delivered"
     DROPPED = "dropped"
@@ -145,13 +150,15 @@ class EventProcessor:
 
         self._session = requests.Session()
         self._condition = threading.Condition()
-        self._buffer: typing.Deque[str] = deque()
+        self._buffer: typing.Deque[_BufferedEvent] = deque()
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
-        # Events are numbered as tracked: a flush waits until the worker has
-        # sent every event up to the number tracked when it was called.
         self._tracked_count = 0
-        self._flush_requested_count = 0
         self._sent_count = 0
+        # Events tracked up to this count are being sent, if a send is running.
+        self._sending_count: typing.Optional[int] = None
+        self._flush_requested = False
+        self._sends_started = 0
+        self._sends_completed = 0
         self._refused = False
         self._closed = False
         # Set once `close` returns: the worker starts no more requests.
@@ -227,6 +234,7 @@ class EventProcessor:
                     "Not tracking %s event: event tracking has stopped.", event
                 )
                 return
+            exposure_key = None
             if event == FLAG_EXPOSURE_EVENT:
                 # An exposure is defined by who saw which variant of which
                 # feature; equal exposures within one flush interval add no
@@ -245,7 +253,7 @@ class EventProcessor:
                     )
                     return
                 self._buffered_exposure_keys.add(exposure_key)
-            self._buffer.append(serialised_event)
+            self._buffer.append(_BufferedEvent(serialised_event, exposure_key))
             self._tracked_count += 1
             self._drop_oldest_events()
             if len(self._buffer) >= self._max_buffer:
@@ -253,18 +261,25 @@ class EventProcessor:
 
     def flush(self) -> None:
         """
-        Sends the events tracked so far, and returns once each of them has
-        been delivered, dropped, or kept for the next send. Does nothing once
-        closed.
+        Sends the buffered events, including any kept from a failed send, and
+        returns once each of them has been delivered, dropped, or kept for the
+        next send. If a send already running covers every event tracked so
+        far, waits for it instead. Does nothing once closed.
         """
         with self._condition:
             if self._closed:
                 return
-            flush_count = self._tracked_count
-            self._flush_requested_count = max(self._flush_requested_count, flush_count)
-            self._condition.notify_all()
+            if (
+                self._sending_count is not None
+                and self._sending_count >= self._tracked_count
+            ):
+                send = self._sends_started
+            else:
+                self._flush_requested = True
+                send = self._sends_started + 1
+                self._condition.notify_all()
             self._condition.wait_for(
-                lambda: self._sent_count >= flush_count or not self._worker.is_alive()
+                lambda: self._sends_completed >= send or not self._worker.is_alive()
             )
 
     def close(
@@ -304,7 +319,7 @@ class EventProcessor:
             with self._condition:
                 while not (
                     self._closed
-                    or self._flush_requested_count > self._sent_count
+                    or self._flush_requested
                     or (
                         len(self._buffer) >= self._max_buffer
                         and self._tracked_count > self._sent_count
@@ -316,21 +331,30 @@ class EventProcessor:
                 events = list(self._buffer)
                 self._buffer.clear()
                 self._buffered_exposure_keys.clear()
-                sent_count = self._tracked_count
+                self._flush_requested = False
+                self._sends_started += 1
+                sending_count = self._sending_count = self._tracked_count
             next_send_at = time.monotonic() + self._flush_interval_seconds
 
             try:
                 outcome = (
-                    self._deliver(events) if events else _DeliveryOutcome.DELIVERED
+                    self._deliver([event.payload for event in events])
+                    if events
+                    else _DeliveryOutcome.DELIVERED
                 )
             except Exception:
                 logger.exception("Dropping %d events: failed to send", len(events))
                 outcome = _DeliveryOutcome.DROPPED
 
             with self._condition:
-                self._sent_count = sent_count
+                self._sent_count = sending_count
+                self._sending_count = None
+                self._sends_completed += 1
                 if outcome is _DeliveryOutcome.KEPT:
                     self._buffer.extendleft(reversed(events))
+                    self._buffered_exposure_keys.update(
+                        event.exposure_key for event in events if event.exposure_key
+                    )
                     self._drop_oldest_events()
                 elif outcome is _DeliveryOutcome.REFUSED:
                     self._refused = True
@@ -343,7 +367,8 @@ class EventProcessor:
 
     def _drop_oldest_events(self) -> None:
         while len(self._buffer) > self._max_buffer:
-            self._buffer.popleft()
+            dropped = self._buffer.popleft()
+            self._buffered_exposure_keys.discard(dropped.exposure_key)
             logger.warning("Event buffer is full, dropped the oldest event")
 
     def _deliver(self, events: typing.List[str]) -> _DeliveryOutcome:

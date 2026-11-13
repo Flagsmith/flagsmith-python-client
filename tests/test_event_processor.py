@@ -371,6 +371,119 @@ def test_flush__last_attempt_fails_transiently__kept_ahead_of_newer_events(
     assert "Keeping 1 events for the next send" in caplog.messages
 
 
+def test_flush__kept_batch_and_no_new_events__kept_batch_sent(
+    mocker: MockerFixture,
+    event_processor: EventProcessor,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    mocker.patch("flagsmith.analytics.random.uniform", return_value=0)
+    for status in (503, 503, 503, 202):
+        mocked_responses.post("http://test_analytics/v1/events", status=status)
+    event_processor.track_event(event="add_to_cart")
+    event_processor.flush()
+
+    # When
+    event_processor.flush()
+
+    # Then
+    assert len(mocked_responses.calls) == 4
+    request_body = mocked_responses.calls[3].request.body
+    assert request_body
+    assert [e["event"] for e in json.loads(request_body)["events"]] == ["add_to_cart"]
+
+
+def test_flush__send_in_flight_covers_tracked_events__waits_without_resending(
+    mocker: MockerFixture,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    mocker.patch("flagsmith.analytics.random.uniform", return_value=0)
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/", max_buffer_items=2
+        ),
+        environment_key="test_key",
+    )
+    requested = threading.Event()
+    answer = threading.Event()
+
+    def answer_when_released(
+        request: requests.PreparedRequest,
+    ) -> typing.Tuple[int, typing.Dict[str, str], str]:
+        requested.set()
+        answer.wait(5)
+        return 503, {}, ""
+
+    mocked_responses.add_callback(
+        responses.POST,
+        "http://test_analytics/v1/events",
+        callback=answer_when_released,
+    )
+    processor.track_event(event="event_1")
+    processor.track_event(event="event_2")
+    requested.wait(5)
+    threading.Timer(0.1, answer.set).start()
+
+    # When
+    processor.flush()
+
+    # Then
+    assert len(mocked_responses.calls) == 3
+    processor.close(timeout_seconds=0)
+
+
+def test_track_exposure_event__equal_exposure_dropped_from_full_buffer__sent(
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/", max_buffer_items=2
+        ),
+        environment_key="test_key",
+    )
+    requested = threading.Event()
+    answer = threading.Event()
+
+    def answer_when_released(
+        request: requests.PreparedRequest,
+    ) -> typing.Tuple[int, typing.Dict[str, str], str]:
+        requested.set()
+        answer.wait(5)
+        return 202, {}, ""
+
+    mocked_responses.add_callback(
+        responses.POST,
+        "http://test_analytics/v1/events",
+        callback=answer_when_released,
+    )
+    processor.track_event(event="event_1")
+    processor.track_event(event="event_2")
+    requested.wait(5)
+    processor.track_exposure_event(
+        feature_name="checkout", identifier="user1", value="variant_b"
+    )
+    processor.track_event(event="event_3")
+    processor.track_event(event="event_4")
+
+    # When
+    processor.track_exposure_event(
+        feature_name="checkout", identifier="user1", value="variant_b"
+    )
+    answer.set()
+    processor.flush()
+    processor.close(timeout_seconds=0)
+
+    # Then
+    sent_events = []
+    for call in mocked_responses.calls:
+        request_body = call.request.body
+        assert request_body
+        sent_events += [e["event"] for e in json.loads(request_body)["events"]]
+    assert sent_events == ["event_1", "event_2", "event_4", FLAG_EXPOSURE_EVENT]
+
+
 @pytest.mark.parametrize(
     "statuses, expected_log",
     [
