@@ -145,7 +145,12 @@ class EventProcessor:
             url = f"{url}/"
         self._batch_endpoint = f"{url}v1/events"
         self._environment_key = environment_key
-        self._max_buffer = config.max_buffer_items
+        if config.max_buffer_items < 1:
+            logger.warning(
+                "max_buffer_items must be at least 1, not %d: using 1",
+                config.max_buffer_items,
+            )
+        self._max_buffer = max(config.max_buffer_items, 1)
         self._flush_interval_seconds = config.flush_interval_seconds
 
         self._session = requests.Session()
@@ -256,7 +261,7 @@ class EventProcessor:
             self._buffer.append(_BufferedEvent(serialised_event, exposure_key))
             self._tracked_count += 1
             self._drop_oldest_events()
-            if len(self._buffer) >= self._max_buffer:
+            if self._has_full_buffer_of_new_events():
                 self._condition.notify_all()
 
     def flush(self) -> None:
@@ -320,10 +325,7 @@ class EventProcessor:
                 while not (
                     self._closed
                     or self._flush_requested
-                    or (
-                        len(self._buffer) >= self._max_buffer
-                        and self._tracked_count > self._sent_count
-                    )
+                    or self._has_full_buffer_of_new_events()
                     or time.monotonic() >= next_send_at
                 ):
                     self._condition.wait(next_send_at - time.monotonic())
@@ -364,6 +366,13 @@ class EventProcessor:
             if closing:
                 self._session.close()
                 return
+
+    def _has_full_buffer_of_new_events(self) -> bool:
+        """
+        Whether a buffer's worth of events was tracked since the last send. A
+        buffer full of events kept from failed sends waits for the timer.
+        """
+        return self._tracked_count - self._sent_count >= self._max_buffer
 
     def _drop_oldest_events(self) -> None:
         while len(self._buffer) > self._max_buffer:

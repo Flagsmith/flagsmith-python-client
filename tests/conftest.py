@@ -52,6 +52,7 @@ def stop_flagsmith_background_threads(
             stream.join(timeout=5)
         if flagsmith._event_processor:
             flagsmith._event_processor.close(timeout_seconds=0)
+            flagsmith._event_processor._worker.join(5)
 
 
 @pytest.fixture()
@@ -76,6 +77,7 @@ def event_processor(
     )
     yield processor
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
 
 @pytest.fixture(scope="session")

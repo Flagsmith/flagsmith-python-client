@@ -248,6 +248,7 @@ def test_track_event__full_buffer__sent_without_flush(
         time.sleep(0.01)
     processor.flush()
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
     # Then
     assert len(mocked_responses.calls) == 1
@@ -255,6 +256,67 @@ def test_track_event__full_buffer__sent_without_flush(
     assert request_body
     body = json.loads(request_body)
     assert [e["event"] for e in body["events"]] == [f"event_{i}" for i in range(5)]
+
+
+def test_track_event__buffer_full_of_kept_events__waits_for_flush_interval(
+    mocker: MockerFixture,
+    mocked_responses: responses.RequestsMock,
+) -> None:
+    # Given
+    mocker.patch("flagsmith.analytics.random.uniform", return_value=0)
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/", max_buffer_items=2
+        ),
+        environment_key="test_key",
+    )
+    mocked_responses.post("http://test_analytics/v1/events", status=503)
+    processor.track_event(event="event_1")
+    processor.track_event(event="event_2")
+    processor.flush()
+
+    # When
+    processor.track_event(event="event_3")
+    time.sleep(0.3)
+
+    # Then
+    assert len(mocked_responses.calls) == 3
+    processor.close(timeout_seconds=0)
+    processor._worker.join(5)
+
+
+@pytest.mark.parametrize("max_buffer_items", [0, -1])
+def test_track_event__max_buffer_items_below_one__event_sent_without_flush(
+    mocked_responses: responses.RequestsMock,
+    caplog: pytest.LogCaptureFixture,
+    max_buffer_items: int,
+) -> None:
+    # Given
+    processor = EventProcessor(
+        config=EventProcessorConfig(
+            events_api_url="http://test_analytics/",
+            max_buffer_items=max_buffer_items,
+        ),
+        environment_key="test_key",
+    )
+    mocked_responses.post("http://test_analytics/v1/events", status=202)
+
+    # When
+    processor.track_event(event="purchase")
+    deadline = time.monotonic() + 5
+    while not mocked_responses.calls and time.monotonic() < deadline:
+        time.sleep(0.01)
+    processor.close(timeout_seconds=0)
+    processor._worker.join(5)
+
+    # Then
+    assert len(mocked_responses.calls) == 1
+    request_body = mocked_responses.calls[0].request.body
+    assert request_body
+    assert [e["event"] for e in json.loads(request_body)["events"]] == ["purchase"]
+    assert caplog.messages[0] == (
+        f"max_buffer_items must be at least 1, not {max_buffer_items}: using 1"
+    )
 
 
 def test_flush__full_buffer__drops_oldest_event(
@@ -280,6 +342,7 @@ def test_flush__full_buffer__drops_oldest_event(
     processor.track_event(event="event_4")
     processor.flush()
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
     # Then
     assert len(mocked_responses.calls) == 4
@@ -431,6 +494,7 @@ def test_flush__send_in_flight_covers_tracked_events__waits_without_resending(
     # Then
     assert len(mocked_responses.calls) == 3
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
 
 def test_track_exposure_event__equal_exposure_dropped_from_full_buffer__sent(
@@ -474,6 +538,7 @@ def test_track_exposure_event__equal_exposure_dropped_from_full_buffer__sent(
     answer.set()
     processor.flush()
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
     # Then
     sent_events = []
@@ -622,6 +687,7 @@ def test_events__flush_interval_elapsed__sent_without_flush(
     while not mocked_responses.calls and time.monotonic() < deadline:
         time.sleep(0.01)
     processor.close(timeout_seconds=0)
+    processor._worker.join(5)
 
     # Then
     assert len(mocked_responses.calls) == 1
