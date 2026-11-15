@@ -1,5 +1,7 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from threading import Event
 from unittest import mock
 
 from flagsmith.analytics import (
@@ -92,3 +94,43 @@ def test_analytics_processor_posts_to_analytics_url_when_set() -> None:
     session.post.assert_called_once()
     assert session.post.call_args[0][0] == "http://core-api/analytics/flags/"
     assert "edge-proxy" not in session.post.call_args[0][0]
+
+
+def test_analytics_processor_preserves_evaluations_during_flush(
+    analytics_processor: AnalyticsProcessor,
+) -> None:
+    submitted = Event()
+    release = Event()
+    analytics_processor.track_feature("my_feature")
+
+    def post(*args: object, **kwargs: object) -> None:
+        submitted.set()
+        assert release.wait(5)
+
+    with mock.patch("flagsmith.analytics.session.post", side_effect=post) as post_mock:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            flushing = executor.submit(analytics_processor.flush)
+            try:
+                assert submitted.wait(5)
+                # Tracking must finish while submission is still blocked.
+                executor.submit(analytics_processor.track_feature, "my_feature").result(
+                    timeout=5
+                )
+                executor.submit(
+                    analytics_processor.track_feature, "another_feature"
+                ).result(timeout=5)
+            finally:
+                release.set()
+            flushing.result(timeout=5)
+
+        assert json.loads(post_mock.call_args.kwargs["data"]) == {"my_feature": 1}
+        assert analytics_processor.analytics_data == {
+            "my_feature": 1,
+            "another_feature": 1,
+        }
+        analytics_processor.flush()
+        assert json.loads(post_mock.call_args.kwargs["data"]) == {
+            "my_feature": 1,
+            "another_feature": 1,
+        }
+        assert analytics_processor.analytics_data == {}
