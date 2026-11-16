@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.6.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.5.1...v6.6.0) (2026-11-16)
+
+
+### Features
+
+* Retry event delivery and flush on close ([#283](https://github.com/Flagsmith/flagsmith-python-client/issues/283)) ([14a8f5e](https://github.com/Flagsmith/flagsmith-python-client/commit/14a8f5e281ec4c847b72f80917ca4f23a52441c0))
+
 ## [6.5.1](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.5.0...v6.5.1) (2026-11-11)
 
 ### CI
