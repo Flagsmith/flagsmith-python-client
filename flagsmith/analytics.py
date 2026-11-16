@@ -168,13 +168,13 @@ class EventProcessor:
         self._buffer: typing.Deque[_BufferedEvent] = deque()
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()
         self._dropped_count = 0
-        self._tracked_count = 0
-        self._sent_count = 0
-        # Events tracked up to this count are being sent, if a send is running.
-        self._sending_count: typing.Optional[int] = None
-        self._flush_requested = False
-        self._sends_started = 0
-        self._sends_completed = 0
+        # Events tracked since the last send started.
+        self._new_count = 0
+        # `flush` calls waiting for the next send, and, while a send is
+        # running, those waiting for it. The worker sets each once its send
+        # finishes.
+        self._flush_waiters: typing.List[threading.Event] = []
+        self._sending_waiters: typing.Optional[typing.List[threading.Event]] = None
         # Set once `close` returns: the worker starts no more requests.
         self._abandoned = threading.Event()
         self._worker = threading.Thread(
@@ -266,7 +266,7 @@ class EventProcessor:
                     return
                 self._buffered_exposure_keys.add(exposure_key)
             self._buffer.append(_BufferedEvent(serialised_event, exposure_key))
-            self._tracked_count += 1
+            self._new_count += 1
             self._drop_oldest_events()
             if self._has_full_buffer_of_new_events():
                 self._condition.notify_all()
@@ -281,17 +281,14 @@ class EventProcessor:
         with self._condition:
             if self._closed:
                 return
-            if (
-                self._sending_count is not None
-                and self._sending_count >= self._tracked_count
-            ):
-                send = self._sends_started
+            waiter = threading.Event()
+            if self._sending_waiters is not None and not self._new_count:
+                self._sending_waiters.append(waiter)
             else:
-                self._flush_requested = True
-                send = self._sends_started + 1
+                self._flush_waiters.append(waiter)
                 self._condition.notify_all()
             self._condition.wait_for(
-                lambda: self._sends_completed >= send or not self._worker.is_alive()
+                lambda: waiter.is_set() or not self._worker.is_alive()
             )
 
     def close(
@@ -329,7 +326,7 @@ class EventProcessor:
             with self._condition:
                 while not (
                     self._closed
-                    or self._flush_requested
+                    or self._flush_waiters
                     or self._has_full_buffer_of_new_events()
                     or time.monotonic() >= next_send_at
                 ):
@@ -338,9 +335,9 @@ class EventProcessor:
                 events = list(self._buffer)
                 self._buffer.clear()
                 self._buffered_exposure_keys.clear()
-                self._flush_requested = False
-                self._sends_started += 1
-                sending_count = self._sending_count = self._tracked_count
+                waiters = self._sending_waiters = self._flush_waiters
+                self._flush_waiters = []
+                self._new_count = 0
                 dropped_count, self._dropped_count = self._dropped_count, 0
             next_send_at = time.monotonic() + self._flush_interval_seconds
             if dropped_count:
@@ -360,9 +357,9 @@ class EventProcessor:
                 outcome = _DeliveryOutcome.DROPPED
 
             with self._condition:
-                self._sent_count = sending_count
-                self._sending_count = None
-                self._sends_completed += 1
+                self._sending_waiters = None
+                for waiter in waiters:
+                    waiter.set()
                 if outcome is _DeliveryOutcome.KEPT:
                     self._buffer.extendleft(reversed(events))
                     self._buffered_exposure_keys.update(
@@ -383,7 +380,7 @@ class EventProcessor:
         Whether a buffer's worth of events was tracked since the last send. A
         buffer full of events kept from failed sends waits for the timer.
         """
-        return self._tracked_count - self._sent_count >= self._max_buffer
+        return self._new_count >= self._max_buffer
 
     def _drop_oldest_events(self) -> None:
         while len(self._buffer) > self._max_buffer:
