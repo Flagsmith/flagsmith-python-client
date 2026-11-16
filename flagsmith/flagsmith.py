@@ -103,7 +103,8 @@ class Flagsmith:
             API to power flag analytics charts
         :param enable_events: if enabled, starts an event processor that buffers
             and sends events (custom and flag-exposure) to the Flagsmith events
-            API, powering experimentation analytics.
+            API, powering experimentation analytics. Call ``close`` when the
+            application shuts down: events still buffered at exit are lost.
         :param event_processor_config: optional configuration for the event
             processor (URL override for self-hosted, buffer/flush tuning). Only
             valid when ``enable_events=True``.
@@ -470,6 +471,9 @@ class Flagsmith:
         """
         Stop the client's background work, and send the buffered events. Events
         tracked afterwards are not sent. Calling it again does nothing.
+
+        The client does not close itself at exit: when events are enabled, call
+        this when the application shuts down, or events still buffered are lost.
 
         :param timeout_seconds: how long to wait for the buffered events to be
             sent. Events not sent by then are lost.

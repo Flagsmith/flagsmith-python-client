@@ -17,7 +17,6 @@ from flagsmith.analytics import (
     FLAG_EXPOSURE_EVENT,
     EventProcessor,
     EventProcessorConfig,
-    _close_processors_at_exit,
 )
 
 
@@ -912,31 +911,3 @@ def test_stop__processor_no_longer_referenced__garbage_collected(
     # Then
     assert len(mocked_responses.calls) == 1
     assert collected() is None
-
-
-def test_close_processors_at_exit__stopped_processor_sending__waits_for_it(
-    event_processor_config: EventProcessorConfig,
-    mocked_responses: responses.RequestsMock,
-) -> None:
-    # Given
-    answer = threading.Event()
-    mocked_responses.add_callback(
-        responses.POST,
-        "http://test_analytics/v1/events",
-        callback=lambda request: (answer.wait(5), (202, {}, ""))[1],
-    )
-    processor = EventProcessor(
-        config=event_processor_config, environment_key="test_key"
-    )
-    processor.track_event(event="purchase")
-    worker = processor._worker
-    processor.stop()
-    del processor
-    threading.Timer(0.2, answer.set).start()
-
-    # When
-    _close_processors_at_exit()
-
-    # Then
-    assert len(mocked_responses.calls) == 1
-    assert not worker.is_alive()

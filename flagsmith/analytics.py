@@ -1,4 +1,3 @@
-import atexit
 import enum
 import json
 import logging
@@ -317,8 +316,8 @@ class EventProcessor:
     def stop(self) -> None:
         """
         Stops event tracking, and has the worker send the buffered events,
-        without waiting for it. `close` still runs at exit, to wait for it, as
-        long as the worker is sending.
+        without waiting for it. Events not sent before the interpreter exits
+        are lost: call `close` to wait for them.
         """
         with self._condition:
             self._closed = True
@@ -473,16 +472,6 @@ def _restart_workers_after_fork() -> None:
     for processor in list(_processors):
         processor._start_worker()
 
-
-def _close_processors_at_exit() -> None:
-    # One hook for every processor: a hook per processor would keep each one
-    # alive until exit. The worker keeps its processor alive while it runs, so
-    # a stopped processor is still closed here if its events are being sent.
-    for processor in list(_processors):
-        processor.close()
-
-
-atexit.register(_close_processors_at_exit)
 
 if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_restart_workers_after_fork)
