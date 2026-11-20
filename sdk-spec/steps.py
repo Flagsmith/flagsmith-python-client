@@ -15,7 +15,12 @@ EventValue = typing.Union[str, int, float, bool]
 
 
 def as_spec_flag(flag: Flag) -> SpecFlag:
-    return {"feature": flag.feature_name, "enabled": flag.enabled, "value": flag.value}
+    return {
+        "feature": flag.feature_name,
+        "enabled": flag.enabled,
+        "value": flag.value,
+        "reason": flag.reason,
+    }
 
 
 def as_spec_flags(flags: Flags) -> list[SpecFlag]:
