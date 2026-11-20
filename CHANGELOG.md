@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.7.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.6.0...v6.7.0) (2026-11-20)
+
+
+### Features
+
+* Every SDK includes `reason` in responses for identity and environment flags ([#288](https://github.com/Flagsmith/flagsmith-python-client/issues/288)) ([ca3032a](https://github.com/Flagsmith/flagsmith-python-client/commit/ca3032ae00a3ca29eecc93f102b63ae94611cc37))
+
 ## [6.6.0](https://github.com/Flagsmith/flagsmith-python-client/compare/v6.5.1...v6.6.0) (2026-11-16)
 
 ### Features
