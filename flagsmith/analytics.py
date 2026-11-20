@@ -70,17 +70,23 @@ class AnalyticsProcessor:
         self._last_flushed = datetime.now()
         self.analytics_data: typing.MutableMapping[str, typing.Any] = {}
         self.timeout = timeout or 3
+        self._lock = threading.Lock()
 
     def flush(self) -> None:
         """
         Sends all the collected data to the api asynchronously and resets the timer
         """
 
-        if not self.analytics_data:
-            return
+        with self._lock:
+            if not self.analytics_data:
+                return
+            analytics_data = self.analytics_data
+            self.analytics_data = {}
+            self._last_flushed = datetime.now()
+
         session.post(
             self.analytics_endpoint,
-            data=json.dumps(self.analytics_data),
+            data=json.dumps(analytics_data),
             timeout=self.timeout,
             headers={
                 "X-Environment-Key": self.environment_key,
@@ -88,12 +94,15 @@ class AnalyticsProcessor:
             },
         )
 
-        self.analytics_data.clear()
-        self._last_flushed = datetime.now()
-
     def track_feature(self, feature_name: str) -> None:
-        self.analytics_data[feature_name] = self.analytics_data.get(feature_name, 0) + 1
-        if (datetime.now() - self._last_flushed).seconds > ANALYTICS_TIMER:
+        with self._lock:
+            self.analytics_data[feature_name] = (
+                self.analytics_data.get(feature_name, 0) + 1
+            )
+            should_flush = (
+                datetime.now() - self._last_flushed
+            ).seconds > ANALYTICS_TIMER
+        if should_flush:
             self.flush()
 
 
