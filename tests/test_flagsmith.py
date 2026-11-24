@@ -23,6 +23,41 @@ from flagsmith.offline_handlers import OfflineHandler
 from flagsmith.types import SDKEvaluationContext
 
 
+@responses.activate()
+def test_ready_tracks_local_document_availability(
+    mocker: MockerFixture, environment_json: str
+) -> None:
+    mocker.patch("flagsmith.flagsmith.EnvironmentDataPollingManager")
+    url = "https://edge.api.flagsmith.com/api/v1/environment-document/"
+    responses.get(url, status=500)
+    responses.get(url, body=environment_json)
+    responses.get(url, status=500)
+    client = Flagsmith(environment_key="ser.test", enable_local_evaluation=True)
+
+    assert client.ready() is False
+    assert len(responses.calls) == 1
+    client.update_environment()
+    assert client.ready() is True
+    client.update_environment()
+    assert client.ready() is True
+    assert len(responses.calls) == 3
+
+
+def test_ready_remote_evaluation(flagsmith: Flagsmith) -> None:
+    assert flagsmith.ready() is True
+
+
+def test_ready_offline_document(
+    mocker: MockerFixture, environment: EnvironmentModel
+) -> None:
+    handler = mocker.Mock(spec=OfflineHandler)
+    handler.get_environment.return_value = environment
+    client = Flagsmith(offline_mode=True, offline_handler=handler)
+
+    assert client.ready() is True
+    assert client.get_environment_flags().is_feature_enabled("some_feature")
+
+
 def test_flagsmith_starts_polling_manager_on_init_if_enabled(
     mocker: MockerFixture, server_api_key: str, requests_session_response_ok: None
 ) -> None:
