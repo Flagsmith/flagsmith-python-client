@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import requests
 import responses
@@ -42,14 +42,14 @@ def test_environment_updates_on_recent_event(
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 2, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
-    mocker.patch("flagsmith.Flagsmith.update_environment")
-
     flagsmith = Flagsmith(environment_key=server_api_key)
+    update_environment = mocker.patch.object(flagsmith, "update_environment")
     flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
+
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
-    assert isinstance(flagsmith.update_environment, Mock)
-    flagsmith.update_environment.assert_called_once()
+
+    update_environment.assert_called_once_with()
 
 
 def test_environment_does_not_update_on_past_event(
@@ -58,15 +58,14 @@ def test_environment_does_not_update_on_past_event(
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 2, tzinfo=timezone.utc)
 
-    mocker.patch("flagsmith.Flagsmith.update_environment")
-
     flagsmith = Flagsmith(environment_key=server_api_key)
+    update_environment = mocker.patch.object(flagsmith, "update_environment")
     flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
-    assert isinstance(flagsmith.update_environment, Mock)
-    flagsmith.update_environment.assert_not_called()
+
+    update_environment.assert_not_called()
 
 
 def test_environment_does_not_update_on_same_event(
@@ -75,12 +74,11 @@ def test_environment_does_not_update_on_same_event(
     stream_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
     environment_updated_at = datetime(2020, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
 
-    mocker.patch("flagsmith.Flagsmith.update_environment")
-
     flagsmith = Flagsmith(environment_key=server_api_key)
+    update_environment = mocker.patch.object(flagsmith, "update_environment")
     flagsmith._local_evaluation = MagicMock(spec=LocalEvaluation)
     flagsmith._environment_updated_at = environment_updated_at
 
     flagsmith.handle_stream_event(event=StreamEvent(updated_at=stream_updated_at))
-    assert isinstance(flagsmith.update_environment, Mock)
-    flagsmith.update_environment.assert_not_called()
+
+    update_environment.assert_not_called()
