@@ -19,6 +19,7 @@ class EventStreamManager(threading.Thread):
         stream_url: str,
         on_event: Callable[[StreamEvent], None],
         request_timeout_seconds: Optional[int] = None,
+        proxies: Optional[typing.Dict[str, str]] = None,
         **kwargs: typing.Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -26,6 +27,7 @@ class EventStreamManager(threading.Thread):
         self.stream_url = stream_url
         self.on_event = on_event
         self.request_timeout_seconds = request_timeout_seconds
+        self.proxies = proxies
 
     def run(self) -> None:
         while not self._stop_event.is_set():
@@ -35,6 +37,7 @@ class EventStreamManager(threading.Thread):
                     stream=True,
                     headers={"Accept": "application/json, text/event-stream"},
                     timeout=self.request_timeout_seconds,
+                    proxies=self.proxies,
                 ) as response:
                     sse_client = sseclient.SSEClient(chunk for chunk in response)
                     for event in sse_client.events():
