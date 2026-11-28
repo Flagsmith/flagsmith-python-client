@@ -50,6 +50,7 @@ class AnalyticsProcessor:
         base_api_url: str,
         timeout: typing.Optional[int] = 3,
         analytics_url: typing.Optional[str] = None,
+        proxies: typing.Optional[typing.Dict[str, str]] = None,
     ):
         """
         Initialise the AnalyticsProcessor to handle sending analytics on flag usage to
@@ -64,9 +65,11 @@ class AnalyticsProcessor:
             where flag evaluation traffic and analytics traffic must go to different
             hosts (for example, evaluating through the Edge Proxy while sending
             analytics to the core API).
+        :param proxies: as per requests.Session.proxies
         """
         self.analytics_endpoint = analytics_url or (base_api_url + ANALYTICS_ENDPOINT)
         self.environment_key = environment_key
+        self.proxies = proxies
         self._last_flushed = datetime.now()
         self.analytics_data: typing.MutableMapping[str, typing.Any] = {}
         self.timeout = timeout or 3
@@ -86,6 +89,7 @@ class AnalyticsProcessor:
                 "X-Environment-Key": self.environment_key,
                 "Content-Type": "application/json",
             },
+            proxies=self.proxies,
         )
 
         self.analytics_data.clear()
@@ -140,12 +144,14 @@ class EventProcessor:
         self,
         config: EventProcessorConfig,
         environment_key: str,
+        proxies: typing.Optional[typing.Dict[str, str]] = None,
     ) -> None:
         url = config.events_api_url
         if not url.endswith("/"):
             url = f"{url}/"
         self._batch_endpoint = f"{url}v1/events"
         self._environment_key = environment_key
+        self._proxies = proxies
         if config.max_buffer_items < 1:
             logger.warning(
                 "max_buffer_items must be at least 1, not %d: using 1",
@@ -164,6 +170,7 @@ class EventProcessor:
         the parent's worker doesn't exist and the parent sends its own events.
         """
         self._session = requests.Session()
+        self._session.proxies.update(self._proxies or {})
         self._condition = threading.Condition()
         self._buffer: typing.Deque[_BufferedEvent] = deque()
         self._buffered_exposure_keys: typing.Set[ExposureKey] = set()

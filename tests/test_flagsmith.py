@@ -1675,3 +1675,36 @@ def test_get_environment_flags__local_evaluation__running_experiment__no_experim
     assert isinstance(flag, Flag)
     assert flag.value == "control"
     assert flag.experiment is None
+
+
+def test_flagsmith__proxies__used_by_realtime_analytics_and_events(
+    requests_session_response_ok: None,
+    server_api_key: str,
+    mocker: MockerFixture,
+) -> None:
+    # Given
+    proxies = {"https": "http://proxy.example.com:3128"}
+    mock_get = mocker.patch("flagsmith.streaming_manager.requests.get")
+    mock_get.side_effect = requests.exceptions.ReadTimeout()
+    mock_session = mocker.patch("flagsmith.analytics.session")
+    mock_events = mocker.patch("flagsmith.flagsmith.EventProcessor")
+
+    # When
+    flagsmith = Flagsmith(
+        environment_key=server_api_key,
+        enable_local_evaluation=True,
+        enable_realtime_updates=True,
+        enable_analytics=True,
+        enable_events=True,
+        proxies=proxies,
+    )
+    flagsmith.event_stream_thread.stop()
+    flagsmith.event_stream_thread.join(timeout=5)
+    assert flagsmith._analytics_processor
+    flagsmith._analytics_processor.track_feature("my_feature")
+    flagsmith._analytics_processor.flush()
+
+    # Then
+    assert mock_get.call_args.kwargs["proxies"] == proxies
+    assert mock_session.post.call_args.kwargs["proxies"] == proxies
+    assert mock_events.call_args.kwargs["proxies"] == proxies

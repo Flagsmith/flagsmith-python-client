@@ -911,3 +911,19 @@ def test_stop__processor_no_longer_referenced__garbage_collected(
     # Then
     assert len(mocked_responses.calls) == 1
     assert collected() is None
+
+
+def test_event_processor__proxies__set_on_session() -> None:
+    # Given
+    proxies = {"https": "http://proxy.example.com:3128"}
+
+    # When
+    processor = EventProcessor(
+        config=EventProcessorConfig(),
+        environment_key="key",
+        proxies=proxies,
+    )
+
+    # Then
+    assert processor._session.proxies == proxies
+    processor.close()

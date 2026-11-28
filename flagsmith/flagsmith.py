@@ -122,6 +122,7 @@ class Flagsmith:
         """
 
         self.offline_mode = offline_mode
+        self.proxies = proxies
         self.enable_local_evaluation = enable_local_evaluation
         self.environment_refresh_interval_seconds = environment_refresh_interval_seconds
         self.offline_handler = offline_handler
@@ -221,6 +222,7 @@ class Flagsmith:
                 self.api_url,
                 timeout=self.request_timeout_seconds,
                 analytics_url=analytics_url,
+                proxies=self.proxies,
             )
 
     def _initialise_events(
@@ -233,6 +235,7 @@ class Flagsmith:
             self._event_processor = EventProcessor(
                 config=event_processor_config or EventProcessorConfig(),
                 environment_key=environment_key,
+                proxies=self.proxies,
             )
 
     def _initialise_local_evaluation(self) -> None:
@@ -252,6 +255,7 @@ class Flagsmith:
             self.event_stream_thread = EventStreamManager(
                 stream_url=stream_url,
                 on_event=self.handle_stream_event,
+                proxies=self.proxies,
                 daemon=True,
             )
 
